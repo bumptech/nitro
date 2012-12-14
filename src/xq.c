@@ -141,13 +141,29 @@ xq_frame_t *xq_frame_new(void *data, uint32_t size, xq_free_function ff, void *b
     f->ff = ff;
     f->baton = baton;
     f->prev = f->next = NULL;
-
+    pthread_mutex_init(&f->lock, NULL);
+    f->ref_count = 1;
     return f;
 }
 
-void xq_frame_destroy(xq_frame_t *fr) {
-    fr->ff(fr->data, fr->baton);
-    free(fr);
+void xq_frame_retain(xq_frame_t *f) {
+    pthread_mutex_lock(&f->lock);
+    f->ref_count++;
+    pthread_mutex_unlock(&f->lock);
+}
+
+void xq_frame_destroy(xq_frame_t *f) {
+    // This decrements the ref_count and frees if necessary
+    pthread_mutex_lock(&f->lock);
+    f->ref_count--;
+    pthread_mutex_unlock(&f->lock);
+
+    assert(f->ref_count >= 0);
+    if (f->ref_count == 0)
+    {
+        f->ff(f->data, f->baton);
+        free(f);
+    }
 }
 
 static void just_free(void *data, void *unused) {
@@ -391,6 +407,9 @@ inline uint32_t xq_frame_size(xq_frame_t *fr) {
     return fr->size;
 }
 
+
+// This puts the lotion in the basket.
+// puts the packets on the socket.
 void xq_frame_send(xq_frame_t *fr, xq_socket_t *s) {
     pthread_mutex_lock(&s->l_send);
     while (s->capacity && s->count_send == s->capacity) {
@@ -398,7 +417,12 @@ void xq_frame_send(xq_frame_t *fr, xq_socket_t *s) {
     }
     DL_APPEND(s->q_send, fr);
     pthread_mutex_unlock(&s->l_send);
+
+
+    // If we are a socket portal, use uv
     uv_async_send(&s->tcp_flush_handle);
+
+    // else just ~ some list pointers
 }
 
 void xq_run() {

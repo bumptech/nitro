@@ -36,6 +36,10 @@ typedef struct xq_frame_t {
     xq_free_function ff;
     void *baton;
 
+    uint32_t ref_count;
+    pthread_mutex_t lock;
+
+    // For UT_LIST
     struct xq_frame_t *prev;
     struct xq_frame_t *next;
 } xq_frame_t;
@@ -70,16 +74,23 @@ typedef struct xq_socket_t {
     xq_frame_t *q_recv;
     xq_frame_t *q_send;
 
+    // locks for sending and receiving from other threads
+    // control locks for maniuplating counts, queues, or pipes
     pthread_mutex_t l_recv;
     pthread_mutex_t l_send;
 
+    // condition for when we are blocking waiting for sending or receiving
+    // Buffer is full, or there are no incoming packets ready
     pthread_cond_t c_recv;
     pthread_cond_t c_send;
 
     uint32_t count_send;
     uint32_t count_recv;
 
+    // for reply-style session mapping
+    // UT Hash.  Pipes that have not yet registered are not in here
     xq_pipe_t *pipes_by_session;
+    // Circular List of all connected pipes (can use for round robining, or broadcast with pub)
     xq_pipe_t *pipes;
 
     xq_pipe_t *next_pipe; // for RR
