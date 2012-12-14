@@ -98,6 +98,7 @@ typedef struct xq_socket_t {
 
     struct sockaddr_in connect_location;
     int is_connecting;
+    int reconnect;
 
     /* Options */
     uint32_t capacity;

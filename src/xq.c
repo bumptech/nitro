@@ -32,6 +32,8 @@ static void fatal(char *why) {
     fprintf(stderr, "fatal error: %s\n", why);
 }
 
+static void poll_timers(uv_timer_t *handle, int status);
+
 static char * parse_location(char *location, XQ_SOCKET_TRANSPORT *trans) {
     if (!strncmp(location, TCP_PREFIX, strlen(TCP_PREFIX))) {
         *trans = XQ_SOCKET_TCP;
@@ -219,8 +221,16 @@ static void on_tcp_read(uv_stream_t *peer, ssize_t nread, uv_buf_t unused) {
     xq_socket_t *s = (xq_socket_t *)p->the_socket;
 
     if (nread == -1) {
-        fprintf(stderr, "closed!\n");
         destroy_tcp_pipe(p);
+        if (s->reconnect) {
+            uv_tcp_init(the_loop, &s->tcp_socket);
+            s->is_connecting = 0;
+            pthread_mutex_lock(&l_tcp_connect);
+            DL_APPEND(want_tcp_connect, s);
+            pthread_mutex_unlock(&l_tcp_connect);
+            poll_timers(NULL, 0);
+        }
+
         return;
     }
 
@@ -329,7 +339,6 @@ static void on_tcp_connection(uv_stream_t *peer, int status) {
     }
 }
 
-static void poll_timers(uv_timer_t *handle, int status);
 
 static void tcp_connect_cb(uv_async_t *handle, int status) {
     poll_timers(NULL, 0);
@@ -492,6 +501,7 @@ void xq_run() {
 int tcp_connect(xq_socket_t *s, char *location) {
 
     s->tcp_flush_handle.data = s;
+    s->reconnect = 1;
     uv_async_init(the_loop, &s->tcp_flush_handle, tcp_flush_cb);
 
     s->connect_location = parse_tcp_location(location);
