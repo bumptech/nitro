@@ -53,11 +53,14 @@ typedef struct xq_pipe_t {
     uint32_t buf_bytes;
 
     void *the_socket;
+    void *dest_socket;
     xq_frame_t *outgoing;
 
     struct xq_pipe_t *prev;
     struct xq_pipe_t *next;
     int registered;
+
+    void (*do_write)(void *, void *);
 
     UT_hash_handle hh;
 } xq_pipe_t;

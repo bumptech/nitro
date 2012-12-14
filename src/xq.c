@@ -75,7 +75,7 @@ typedef struct tcp_write_request {
     xq_socket_t *socket;
 } tcp_write_request;
 
-static void tcp_flush(xq_socket_t *s);
+static void socket_flush(xq_socket_t *s);
 
 static void tcp_write_finished(uv_write_t *w, int status) {
     // for now, we're ignoring status
@@ -94,38 +94,42 @@ static void tcp_write_finished(uv_write_t *w, int status) {
         pthread_mutex_lock(&s->l_send);
         DL_PREPEND(req->socket->q_send, req->frame);
         pthread_mutex_unlock(&s->l_send);
-        tcp_flush(req->socket);
+        socket_flush(req->socket);
     }
     free(req);
     free(w);
 }
 
-static void tcp_flush(xq_socket_t *s) {
+void tcp_write(void *p, void *f) {
+    tcp_write_request *req = calloc(1, sizeof(tcp_write_request));
+    uv_write_t *w = calloc(1, sizeof(uv_write_t));
+    w->data = req;
+    req->header.protocol_version = 1;
+    req->header.frame_size = ((xq_frame_t *)f)->size;
+    req->frame = ((xq_frame_t *)f);
+    req->socket = ((xq_pipe_t *)p)->the_socket;
+
+    uv_buf_t out[] = {
+        { .base = (void *)&req->header, .len = sizeof(xq_protocol_header)},
+        { .base = (void *)((xq_frame_t *)f)->data, .len = ((xq_frame_t *)f)->size}
+    };
+
+    uv_write(w, (uv_stream_t *)((xq_pipe_t *)p)->tcp_socket,
+    out, 2, tcp_write_finished);
+}
+
+static void socket_flush(xq_socket_t *s) {
     pthread_mutex_lock(&s->l_send);
     while (1) {
         if (!s->q_send || !s->next_pipe)
             break;
 
         xq_pipe_t *p = s->next_pipe;
-        xq_frame_t *fr = s->q_send;
+        xq_frame_t *f = s->q_send;
 
-        DL_DELETE(s->q_send, fr);
+        DL_DELETE(s->q_send, f);
 
-        tcp_write_request *req = calloc(1, sizeof(tcp_write_request));
-        uv_write_t *w = calloc(1, sizeof(uv_write_t));
-        w->data = req;
-        req->header.protocol_version = 1;
-        req->header.frame_size = fr->size;
-        req->frame = fr;
-        req->socket = s;
-
-        uv_buf_t out[] = {
-            { .base = (void *)&req->header, .len = sizeof(xq_protocol_header)},
-            { .base = (void *)fr->data, .len = fr->size}
-        };
-
-        uv_write(w, (uv_stream_t *)p->tcp_socket,
-        out, 2, tcp_write_finished);
+        p->do_write(p, f);
 
         s->next_pipe = s->next_pipe->next;
     }
@@ -298,6 +302,7 @@ static xq_pipe_t *new_tcp_pipe(xq_socket_t *s, uv_tcp_t *tcp_socket) {
     xq_pipe_t *p = calloc(1, sizeof(xq_pipe_t));
     p->tcp_socket = tcp_socket;
     p->the_socket = (void *)s;
+    p->do_write = &tcp_write;
 
     return p;
 }
@@ -316,7 +321,7 @@ static void on_tcp_connection(uv_stream_t *peer, int status) {
         CDL_PREPEND(s->pipes, pipe);
         if (!s->next_pipe) {
             s->next_pipe = s->pipes;
-            tcp_flush(s); // if there's anything waiting, give it to this guy
+            socket_flush(s); // if there's anything waiting, give it to this guy
         }
         client->data = pipe;
         uv_read_start((uv_stream_t*) client, pipe_allocate, on_tcp_read);
@@ -328,7 +333,7 @@ static void on_tcp_connection(uv_stream_t *peer, int status) {
 
 static void tcp_flush_cb(uv_async_t *handle, int status) {
     xq_socket_t *s = (xq_socket_t *)handle->data;
-    tcp_flush(s);
+    socket_flush(s);
 }
 
 void tcp_bind(void *p, char *p_location) {
@@ -420,9 +425,17 @@ void xq_frame_send(xq_frame_t *fr, xq_socket_t *s) {
 
 
     // If we are a socket portal, use uv
-    uv_async_send(&s->tcp_flush_handle);
+    switch (s->typ) {
+    case XQ_SOCKET_TCP:
+        uv_async_send(&s->tcp_flush_handle);
 
-    // else just ~ some list pointers
+        break;
+    case XQ_SOCKET_INPROC:
+         socket_flush(s);
+        break;
+    default:
+        assert(0);
+    }
 }
 
 void xq_run() {
