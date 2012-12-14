@@ -100,21 +100,38 @@ static void tcp_write_finished(uv_write_t *w, int status) {
     free(w);
 }
 
-void tcp_write(void *p, void *f) {
+void inproc_write(void *pipe, void *frame) {
+    xq_pipe_t *p = (xq_pipe_t *)pipe;
+    xq_frame_t *f = (xq_frame_t *)frame;
+
+    xq_socket_t *s = (xq_socket_t *)p->dest_socket;
+
+    xq_frame_retain(f);
+    pthread_mutex_lock(&s->l_recv);
+    DL_APPEND(s->q_recv, f);
+    pthread_cond_signal(&s->c_recv);
+    s->count_recv++;
+    pthread_mutex_unlock(&s->l_recv);
+}
+
+void tcp_write(void *pipe, void *frame) {
+    xq_pipe_t *p = (xq_pipe_t *)pipe;
+    xq_frame_t *f = (xq_frame_t *)frame;
+    xq_frame_retain(f);
     tcp_write_request *req = calloc(1, sizeof(tcp_write_request));
     uv_write_t *w = calloc(1, sizeof(uv_write_t));
     w->data = req;
     req->header.protocol_version = 1;
-    req->header.frame_size = ((xq_frame_t *)f)->size;
-    req->frame = ((xq_frame_t *)f);
-    req->socket = ((xq_pipe_t *)p)->the_socket;
+    req->header.frame_size = f->size;
+    req->frame = f;
+    req->socket = p->the_socket;
 
     uv_buf_t out[] = {
         { .base = (void *)&req->header, .len = sizeof(xq_protocol_header)},
-        { .base = (void *)((xq_frame_t *)f)->data, .len = ((xq_frame_t *)f)->size}
+        { .base = (void *)f->data, .len = f->size}
     };
 
-    uv_write(w, (uv_stream_t *)((xq_pipe_t *)p)->tcp_socket,
+    uv_write(w, (uv_stream_t *)p->tcp_socket,
     out, 2, tcp_write_finished);
 }
 
@@ -130,6 +147,7 @@ static void socket_flush(xq_socket_t *s) {
         DL_DELETE(s->q_send, f);
 
         p->do_write(p, f);
+        xq_frame_destroy(f);
 
         s->next_pipe = s->next_pipe->next;
     }
@@ -256,8 +274,8 @@ static void on_tcp_read(uv_stream_t *peer, ssize_t nread, uv_buf_t unused) {
         pthread_mutex_lock(&s->l_recv);
         DL_APPEND(s->q_recv, fr);
         pthread_cond_signal(&s->c_recv);
+        s->count_recv++;
         pthread_mutex_unlock(&s->l_recv);
-        
 
         p->buf_bytes -= whole_size;
         if (p->buf_bytes < sizeof(xq_protocol_header))
@@ -292,6 +310,8 @@ xq_frame_t * xq_frame_recv(xq_socket_t *s) {
         pthread_cond_wait(&s->c_recv, &s->l_recv);
     out = s->q_recv;
     DL_DELETE(s->q_recv, out);
+    s->count_recv--;
+
     pthread_mutex_unlock(&s->l_recv);
     assert(out); // why triggered with no frame?
 

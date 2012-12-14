@@ -113,5 +113,6 @@ uint32_t xq_frame_size(xq_frame_t *fr);
 void xq_frame_destroy(xq_frame_t *fr);
 xq_frame_t * xq_frame_recv(xq_socket_t *s);
 void xq_frame_send(xq_frame_t *fr, xq_socket_t *s);
+void xq_frame_retain(xq_frame_t *f);
 
 #endif /* XQ_H */
