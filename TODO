@@ -3,6 +3,7 @@
 * s/xq/nq (nano queue)
 * Decide on bind
 * Close async request
+* Clean up API (remove frame etc prefixing... small project?)
 * Way to shut down everything?
 * Remove socket types
 * Inproc
@@ -25,3 +26,4 @@
 * Memory checks
 * Docs
 * Push
+* Engine Groups
