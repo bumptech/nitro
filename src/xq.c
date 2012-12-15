@@ -7,8 +7,12 @@
 #include "uthash/utlist.h"
 
 static uv_loop_t *the_loop;
+static uv_timer_t connect_timer;
+static uv_async_t connect_trigger;
 static pthread_t the_thread;
 static int run_started;
+static xq_socket_t *want_tcp_connect;
+static pthread_mutex_t l_tcp_connect;
 
 static void destroy_tcp_pipe(xq_pipe_t *p);
 
@@ -30,6 +34,8 @@ typedef struct xq_counted_buffer {
 static void fatal(char *why) {
     fprintf(stderr, "fatal error: %s\n", why);
 }
+
+static void poll_timers(uv_timer_t *handle, int status);
 
 static char * parse_location(char *location, XQ_SOCKET_TRANSPORT *trans) {
     if (!strncmp(location, TCP_PREFIX, strlen(TCP_PREFIX))) {
@@ -238,8 +244,16 @@ static void on_tcp_read(uv_stream_t *peer, ssize_t nread, uv_buf_t unused) {
     xq_socket_t *s = (xq_socket_t *)p->the_socket;
 
     if (nread == -1) {
-        fprintf(stderr, "closed!\n");
         p->destroy(p);
+        if (s->reconnect) {
+            uv_tcp_init(the_loop, &s->tcp_socket);
+            s->is_connecting = 0;
+            pthread_mutex_lock(&l_tcp_connect);
+            DL_APPEND(want_tcp_connect, s);
+            pthread_mutex_unlock(&l_tcp_connect);
+            poll_timers(NULL, 0);
+        }
+
         return;
     }
 
@@ -364,21 +378,19 @@ static void on_tcp_connection(uv_stream_t *peer, int status) {
     }
 }
 
+
+static void tcp_connect_cb(uv_async_t *handle, int status) {
+    poll_timers(NULL, 0);
+}
+
 static void tcp_flush_cb(uv_async_t *handle, int status) {
     xq_socket_t *s = (xq_socket_t *)handle->data;
     socket_flush(s);
 }
 
-void tcp_bind(void *p, char *p_location) {
-    xq_socket_t *s = (xq_socket_t *)p;
-
+static struct sockaddr_in parse_tcp_location(char *p_location) {
     char *location = alloca(strlen(p_location)+1);
     strcpy(location, p_location);
-
-    s->tcp_socket.data = p;
-    s->tcp_flush_handle.data = s;
-    uv_async_init(the_loop, &s->tcp_flush_handle,
-    tcp_flush_cb);
 
     char *split = strchr(location, ':');
 
@@ -394,9 +406,20 @@ void tcp_bind(void *p, char *p_location) {
         fatal("tcp bind port is not an integer");
     }
 
+    return uv_ip4_addr(location, port);
+}
+
+void tcp_bind(void *p, char *p_location) {
+    xq_socket_t *s = (xq_socket_t *)p;
+
+    s->tcp_flush_handle.data = s;
+    uv_async_init(the_loop, &s->tcp_flush_handle, tcp_flush_cb);
+
+    struct sockaddr_in bind_loc = parse_tcp_location(p_location);
+    s->tcp_socket.data = p;
     uv_tcp_init(the_loop, &s->tcp_socket);
-    int r = uv_tcp_bind(&s->tcp_socket, 
-        uv_ip4_addr(location, port));
+    int r = uv_tcp_bind(&s->tcp_socket, bind_loc);
+
 
     if (r) {
         fatal("tcp bind error"); // why?
@@ -404,7 +427,7 @@ void tcp_bind(void *p, char *p_location) {
 
     r = uv_listen((uv_stream_t *) &s->tcp_socket, 128, on_tcp_connection);
 
-    printf("did bind to: %s\n", location);
+    printf("did bind to: %s\n", p_location);
 }
 
 int xq_socket_bind(xq_socket_t *s, char *location) {
@@ -426,9 +449,49 @@ int xq_socket_bind(xq_socket_t *s, char *location) {
 
     return 0;
 }
+static void on_tcp_connectresult(uv_connect_t *handle, int status) {
+    pthread_mutex_lock(&l_tcp_connect);
+    xq_socket_t *s = (xq_socket_t *)handle->data;
+    s->is_connecting = 0;
+    // XXX handle disconnect
+
+    if (!status) {
+        DL_DELETE(want_tcp_connect, s);
+        xq_pipe_t *pipe = new_tcp_pipe(s, &s->tcp_socket);
+        CDL_PREPEND(s->pipes, pipe);
+        if (!s->next_pipe) {
+            s->next_pipe = s->pipes;
+            tcp_flush(s); // if there's anything waiting, give it to this guy
+        }
+        s->tcp_socket.data = pipe;
+        uv_read_start((uv_stream_t*) &s->tcp_socket, pipe_allocate, on_tcp_read);
+    }
+    pthread_mutex_unlock(&l_tcp_connect);
+}
+
+static void poll_timers(uv_timer_t *handle, int status) {
+    xq_socket_t *s = want_tcp_connect;
+    pthread_mutex_lock(&l_tcp_connect);
+
+    while (s) {
+        if (!s->is_connecting) {
+            uv_tcp_connect(&s->tcp_connect, &s->tcp_socket,
+            s->connect_location, on_tcp_connectresult);
+            s->is_connecting = 1;
+        }
+        s = s->next;
+    }
+    pthread_mutex_unlock(&l_tcp_connect);
+}
 
 void xq_init() {
     the_loop = uv_loop_new();
+    pthread_mutex_init(&l_tcp_connect, NULL);
+    uv_timer_init(the_loop, &connect_timer);
+    int r = uv_timer_start(&connect_timer, poll_timers, 500, 500);
+    assert(!r);
+    r = uv_async_init(the_loop, &connect_trigger, tcp_connect_cb);
+    assert(!r);
 }
 
 static void *actual_run(void *unused) {
@@ -482,6 +545,41 @@ void xq_run() {
     */
 }
 
+int tcp_connect(xq_socket_t *s, char *location) {
+
+    s->tcp_flush_handle.data = s;
+    s->reconnect = 1;
+    uv_async_init(the_loop, &s->tcp_flush_handle, tcp_flush_cb);
+
+    s->connect_location = parse_tcp_location(location);
+    uv_tcp_init(the_loop, &s->tcp_socket);
+    s->tcp_connect.data = s;
+
+    pthread_mutex_lock(&l_tcp_connect);
+    DL_APPEND(want_tcp_connect, s);
+    pthread_mutex_unlock(&l_tcp_connect);
+    uv_async_send(&connect_trigger);
+
+    return 0;
+}
+
+int xq_socket_connect(xq_socket_t *s, char *location) {
+    char *next = parse_location(location, &s->trans);
+
+    int ret = -1;
+
+    switch(s->trans) {
+    case XQ_SOCKET_TCP:
+        ret = tcp_connect(s, next);
+        break;
+
+    default:
+        assert(0);
+    }
+            
+    return ret;
+}
+
 #include <unistd.h>
 
 int main(int argc, char **argv) {
@@ -502,6 +600,20 @@ int main(int argc, char **argv) {
 
     xq_frame_t *fr = xq_frame_new_copy("world", 6);
     xq_frame_send(fr, s);
+
+    xq_socket_t *cs = xq_socket_new(XQ_SOCKET_PULL);
+
+    xq_socket_connect(cs, "tcp://127.0.0.1:4444");
+    fr = xq_frame_new_copy("dogs!", 6);
+    xq_frame_send(fr, cs);
+    sleep(1);
+    printf("yo\n");
+    fr = xq_frame_new_copy("dogs!", 6);
+
+    xq_frame_t *in = xq_frame_recv(s);
+    printf("yo, I got: %u %s\n", xq_frame_size(in), (char *)xq_frame_data(in));
+    assert(!strcmp(xq_frame_data(in), xq_frame_data(fr)));
+    printf("yo\n");
 
     sleep(1);
 

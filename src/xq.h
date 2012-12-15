@@ -74,6 +74,7 @@ typedef struct xq_socket_t {
 
     uv_tcp_t tcp_socket;
     uv_async_t tcp_flush_handle;
+    uv_connect_t tcp_connect;
 //    uv_async_t close_handle;
 
     xq_frame_t *q_recv;
@@ -100,8 +101,15 @@ typedef struct xq_socket_t {
 
     xq_pipe_t *next_pipe; // for RR
 
+    struct sockaddr_in connect_location;
+    int is_connecting;
+    int reconnect;
+
     /* Options */
     uint32_t capacity;
+
+    struct xq_socket_t *prev;
+    struct xq_socket_t *next;
 } xq_socket_t;
 
 xq_socket_t * xq_socket_new(XQ_SOCKET_TYPE socktype);
@@ -116,5 +124,6 @@ void xq_frame_destroy(xq_frame_t *fr);
 xq_frame_t * xq_frame_recv(xq_socket_t *s);
 void xq_frame_send(xq_frame_t *fr, xq_socket_t *s);
 void xq_frame_retain(xq_frame_t *f);
+int xq_socket_connect(xq_socket_t *s, char *location);
 
 #endif /* XQ_H */
