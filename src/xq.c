@@ -100,10 +100,7 @@ static void tcp_write_finished(uv_write_t *w, int status) {
     free(w);
 }
 
-void inproc_write(void *pipe, void *frame) {
-    xq_pipe_t *p = (xq_pipe_t *)pipe;
-    xq_frame_t *f = (xq_frame_t *)frame;
-
+void inproc_write(xq_pipe_t *p, xq_frame_t *f) {
     xq_socket_t *s = (xq_socket_t *)p->dest_socket;
 
     xq_frame_retain(f);
@@ -114,9 +111,7 @@ void inproc_write(void *pipe, void *frame) {
     pthread_mutex_unlock(&s->l_recv);
 }
 
-void tcp_write(void *pipe, void *frame) {
-    xq_pipe_t *p = (xq_pipe_t *)pipe;
-    xq_frame_t *f = (xq_frame_t *)frame;
+void tcp_write(xq_pipe_t *p, xq_frame_t *f) {
     xq_frame_retain(f);
     tcp_write_request *req = calloc(1, sizeof(tcp_write_request));
     uv_write_t *w = calloc(1, sizeof(uv_write_t));

@@ -43,6 +43,8 @@ typedef struct xq_frame_t {
     struct xq_frame_t *prev;
     struct xq_frame_t *next;
 } xq_frame_t;
+typedef struct xq_pipe_t* xq_pipe_t_p;
+
 
 typedef struct xq_pipe_t {
 
@@ -60,8 +62,7 @@ typedef struct xq_pipe_t {
     struct xq_pipe_t *next;
     int registered;
 
-    void (*do_write)(void *, void *);
-
+    void (*do_write)(xq_pipe_t_p, xq_frame_t *);
     UT_hash_handle hh;
 } xq_pipe_t;
 
