@@ -63,6 +63,7 @@ typedef struct xq_pipe_t {
     int registered;
 
     void (*do_write)(xq_pipe_t_p, xq_frame_t *);
+    void (*destroy)(xq_pipe_t_p);
     UT_hash_handle hh;
 } xq_pipe_t;
 

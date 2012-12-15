@@ -10,6 +10,9 @@ static uv_loop_t *the_loop;
 static pthread_t the_thread;
 static int run_started;
 
+static void destroy_tcp_pipe(xq_pipe_t *p);
+
+
 typedef struct xq_protocol_header {
     char protocol_version;
     uint32_t frame_size;
@@ -207,7 +210,7 @@ static void buffer_decref(void *data, void *bufptr) {
         pthread_mutex_unlock(&buf->lock);
 }
 
-static void destroy_tcp_pipe(xq_pipe_t *p) {
+static void destroy_pipe(xq_pipe_t *p) {
     xq_socket_t *s = (xq_socket_t *)p->the_socket;
 
     if (p->next == p) {
@@ -220,10 +223,13 @@ static void destroy_tcp_pipe(xq_pipe_t *p) {
     CDL_DELETE(s->pipes, p);
     if (p->registered)
         HASH_DEL(s->pipes_by_session, p);
-    uv_close((uv_handle_t *)p->tcp_socket, NULL);
-
     free(p->buffer);
     free(p);
+}
+
+static void destroy_tcp_pipe(xq_pipe_t *p) {
+    uv_close((uv_handle_t *)p->tcp_socket, NULL);
+    destroy_pipe(p);
 }
 
 
@@ -233,7 +239,7 @@ static void on_tcp_read(uv_stream_t *peer, ssize_t nread, uv_buf_t unused) {
 
     if (nread == -1) {
         fprintf(stderr, "closed!\n");
-        destroy_tcp_pipe(p);
+        p->destroy(p);
         return;
     }
 
@@ -318,6 +324,7 @@ static xq_pipe_t *new_tcp_pipe(xq_socket_t *s, uv_tcp_t *tcp_socket) {
     p->tcp_socket = tcp_socket;
     p->the_socket = (void *)s;
     p->do_write = &tcp_write;
+    p->destroy = &destroy_tcp_pipe;
 
     return p;
 }
