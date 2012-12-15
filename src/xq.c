@@ -614,38 +614,56 @@ int xq_socket_connect(xq_socket_t *s, char *location) {
 
 int main(int argc, char **argv) {
     xq_init();
-    xq_socket_t *s = xq_socket_new(XQ_SOCKET_PULL);
+    // xq_socket_t *s = xq_socket_new(XQ_SOCKET_PULL);
 
-    xq_socket_bind(s, "tcp://127.0.0.1:4444");
+    // xq_socket_bind(s, "tcp://127.0.0.1:4444");
+
+
+    xq_socket_t *ins = xq_socket_new(XQ_SOCKET_PULL);
+    xq_socket_bind(ins, "inproc://inbox");
+
+
 
     xq_run();
 
-    int x = 0;
-    for (; x < 10000; x++) {
-        xq_frame_t *fr = xq_frame_recv(s);
-//        printf("got frame length = %u and content = '%s' count = %d!\n",
-////        xq_frame_size(fr), (char *)xq_frame_data(fr), x);
-        xq_frame_destroy(fr);
-    }
 
-    xq_frame_t *fr = xq_frame_new_copy("world", 6);
-    xq_frame_send(fr, s);
+    xq_socket_t *inout = xq_socket_new(XQ_SOCKET_PUSH);
+    xq_socket_bind(inout, "inproc://inbox");
 
-    xq_socket_t *cs = xq_socket_new(XQ_SOCKET_PULL);
 
-    xq_socket_connect(cs, "tcp://127.0.0.1:4444");
-    fr = xq_frame_new_copy("dogs!", 6);
-    xq_frame_send(fr, cs);
-    sleep(1);
-    printf("yo\n");
-    fr = xq_frame_new_copy("dogs!", 6);
+    xq_frame_t *fra = xq_frame_new_copy("world", 6);
+    xq_frame_send(fra, inout);
 
-    xq_frame_t *in = xq_frame_recv(s);
-    printf("yo, I got: %u %s\n", xq_frame_size(in), (char *)xq_frame_data(in));
-    assert(!strcmp(xq_frame_data(in), xq_frame_data(fr)));
-    printf("yo\n");
 
-    sleep(1);
+
 
     return 0;
+//     int x = 0;
+//     for (; x < 10000; x++) {
+//         xq_frame_t *fr = xq_frame_recv(s);
+// //        printf("got frame length = %u and content = '%s' count = %d!\n",
+// ////        xq_frame_size(fr), (char *)xq_frame_data(fr), x);
+//         xq_frame_destroy(fr);
+//     }
+
+//     xq_frame_t *fr = xq_frame_new_copy("world", 6);
+//     xq_frame_send(fr, s);
+
+//     xq_socket_t *cs = xq_socket_new(XQ_SOCKET_PULL);
+
+//     xq_socket_connect(cs, "tcp://127.0.0.1:4444");
+//     fr = xq_frame_new_copy("dogs!", 6);
+//     xq_frame_send(fr, cs);
+//     sleep(1);
+//     printf("yo\n");
+//     fr = xq_frame_new_copy("dogs!", 6);
+
+//     xq_frame_t *in = xq_frame_recv(s);
+//     printf("yo, I got: %u %s\n", xq_frame_size(in), (char *)xq_frame_data(in));
+//     assert(!strcmp(xq_frame_data(in), xq_frame_data(fr)));
+//     printf("yo\n");
+
+//     sleep(1);
+
+//     return 0;
 }
