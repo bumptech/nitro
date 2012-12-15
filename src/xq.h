@@ -108,8 +108,12 @@ typedef struct xq_socket_t {
     /* Options */
     uint32_t capacity;
 
+    /* for tcp connect list */
     struct xq_socket_t *prev;
     struct xq_socket_t *next;
+
+    /* hash table for bound inproc sockets */
+    UT_hash_handle hh;
 } xq_socket_t;
 
 xq_socket_t * xq_socket_new(XQ_SOCKET_TYPE socktype);

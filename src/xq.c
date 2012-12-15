@@ -14,8 +14,10 @@ static int run_started;
 static xq_socket_t *want_tcp_connect;
 static pthread_mutex_t l_tcp_connect;
 
-static void destroy_tcp_pipe(xq_pipe_t *p);
+static xq_socket_t *bound_inproc_socks;
 
+
+static void destroy_tcp_pipe(xq_pipe_t *p);
 
 typedef struct xq_protocol_header {
     char protocol_version;
@@ -333,15 +335,15 @@ xq_frame_t * xq_frame_recv(xq_socket_t *s) {
     return out;
 }
 
-// static xq_pipe_t *new_inproc_pipe(xq_socket_t *orig_socket, xq_socket_t *dest_socket) {
-//     xq_pipe_t *p = calloc(1, sizeof(xq_pipe_t));
-//     p->the_socket = (void *)orig_socket;
-//     p->dest_socket = (void *) dest_socket;
-//     p->do_write = &inproc_write;
-//     p->destroy = &destroy_pipe;
+static xq_pipe_t *new_inproc_pipe(xq_socket_t *orig_socket, xq_socket_t *dest_socket) {
+    xq_pipe_t *p = calloc(1, sizeof(xq_pipe_t));
+    p->the_socket = (void *)orig_socket;
+    p->dest_socket = (void *) dest_socket;
+    p->do_write = &inproc_write;
+    p->destroy = &destroy_pipe;
 
-//     return p;
-// }
+    return p;
+}
 
 
 static xq_pipe_t *new_tcp_pipe(xq_socket_t *s, uv_tcp_t *tcp_socket) {
@@ -409,6 +411,14 @@ static struct sockaddr_in parse_tcp_location(char *p_location) {
     return uv_ip4_addr(location, port);
 }
 
+void inproc_bind(void *s, char *location) {
+    xq_socket_t *result;
+    HASH_FIND(hh, bound_inproc_socks, location, strlen(location), result);
+    /* XXX YOU SUCK FOR DOUBLE BINDING */
+    assert(!result);
+    HASH_ADD_KEYPTR(hh, bound_inproc_socks, location, strlen(location), (xq_socket_t *)s);
+}
+
 void tcp_bind(void *p, char *p_location) {
     xq_socket_t *s = (xq_socket_t *)p;
 
@@ -440,6 +450,10 @@ int xq_socket_bind(xq_socket_t *s, char *location) {
         s->do_bind = tcp_bind;
         break;
 
+    case XQ_SOCKET_INPROC:
+        s->do_bind = inproc_bind;
+        break;
+
    default:
         assert(0);
         break;
@@ -461,7 +475,7 @@ static void on_tcp_connectresult(uv_connect_t *handle, int status) {
         CDL_PREPEND(s->pipes, pipe);
         if (!s->next_pipe) {
             s->next_pipe = s->pipes;
-            tcp_flush(s); // if there's anything waiting, give it to this guy
+            socket_flush(s); // if there's anything waiting, give it to this guy
         }
         s->tcp_socket.data = pipe;
         uv_read_start((uv_stream_t*) &s->tcp_socket, pipe_allocate, on_tcp_read);
@@ -563,6 +577,19 @@ int tcp_connect(xq_socket_t *s, char *location) {
     return 0;
 }
 
+int inproc_connect(xq_socket_t *s, char *location) {
+    xq_socket_t *result;
+    HASH_FIND(hh, bound_inproc_socks, location, strlen(location), result);
+    /* XXX YOU SUCK FOR LOOKING UP SOMETHING WRONG */
+    assert(result);
+    if (result) {
+        new_inproc_pipe(s, result);
+        new_inproc_pipe(result, s);
+    }
+
+    return 0;
+}
+
 int xq_socket_connect(xq_socket_t *s, char *location) {
     char *next = parse_location(location, &s->trans);
 
@@ -571,6 +598,9 @@ int xq_socket_connect(xq_socket_t *s, char *location) {
     switch(s->trans) {
     case XQ_SOCKET_TCP:
         ret = tcp_connect(s, next);
+        break;
+    case XQ_SOCKET_INPROC:
+        ret = inproc_connect(s, next);
         break;
 
     default:
