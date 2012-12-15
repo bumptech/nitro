@@ -45,8 +45,8 @@ static char * parse_location(char *location, XQ_SOCKET_TRANSPORT *trans) {
         return location + strlen(TCP_PREFIX);
     }
     if (!strncmp(location, INPROC_PREFIX, strlen(TCP_PREFIX))) {
-        *trans = XQ_SOCKET_TCP;
-        return location + strlen(TCP_PREFIX);
+        *trans = XQ_SOCKET_INPROC;
+        return location + strlen(INPROC_PREFIX);
     }
 
     fatal("invalid transport type for socket");
