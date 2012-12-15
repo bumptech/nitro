@@ -319,6 +319,17 @@ xq_frame_t * xq_frame_recv(xq_socket_t *s) {
     return out;
 }
 
+// static xq_pipe_t *new_inproc_pipe(xq_socket_t *orig_socket, xq_socket_t *dest_socket) {
+//     xq_pipe_t *p = calloc(1, sizeof(xq_pipe_t));
+//     p->the_socket = (void *)orig_socket;
+//     p->dest_socket = (void *) dest_socket;
+//     p->do_write = &inproc_write;
+//     p->destroy = &destroy_pipe;
+
+//     return p;
+// }
+
+
 static xq_pipe_t *new_tcp_pipe(xq_socket_t *s, uv_tcp_t *tcp_socket) {
     xq_pipe_t *p = calloc(1, sizeof(xq_pipe_t));
     p->tcp_socket = tcp_socket;
