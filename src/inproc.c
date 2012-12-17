@@ -6,9 +6,9 @@ static nitro_socket_t *bound_inproc_socks;
 void inproc_write(nitro_pipe_t *p, nitro_frame_t *f) {
     nitro_socket_t *s = (nitro_socket_t *)p->dest_socket;
 
-    nitro_frame_retain(f);
+    nitro_frame_t *fcopy = nitro_frame_copy(f);
     pthread_mutex_lock(&s->l_recv);
-    DL_APPEND(s->q_recv, f);
+    DL_APPEND(s->q_recv, fcopy);
     pthread_cond_signal(&s->c_recv);
     s->count_recv++;
     pthread_mutex_unlock(&s->l_recv);

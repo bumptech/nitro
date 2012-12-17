@@ -17,12 +17,12 @@ nitro_frame_t * nitro_recv(nitro_socket_t *s) {
 }
 
 void nitro_send(nitro_frame_t *fr, nitro_socket_t *s) {
-    nitro_frame_retain(fr);
+    nitro_frame_t *f = nitro_frame_copy(fr);
     pthread_mutex_lock(&s->l_send);
     while (s->capacity && s->count_send == s->capacity) {
         pthread_cond_wait(&s->c_send, &s->l_send);
     }
-    DL_APPEND(s->q_send, fr);
+    DL_APPEND(s->q_send, f);
     pthread_mutex_unlock(&s->l_send);
 
     // If we are a socket portal, use uv

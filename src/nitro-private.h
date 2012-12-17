@@ -45,17 +45,20 @@ typedef struct nitro_counted_buffer {
     void *ptr;
     int count;
     pthread_mutex_t lock;
+    nitro_free_function ff;
+    void *baton;
 } nitro_counted_buffer;
-nitro_counted_buffer * nitro_counted_buffer_new(void *backing);
+nitro_counted_buffer * nitro_counted_buffer_new(void *backing, nitro_free_function ff, void *baton);
 
 void buffer_decref(void *data, void *bufptr);
+void buffer_incref(void *bufptr);
 void just_free(void *data, void *unused);
 
 // core.c
 nitro_socket_t * nitro_socket_new();
 
 void socket_flush(nitro_socket_t *s);
-void nitro_frame_retain(nitro_frame_t *f);
+nitro_frame_t *nitro_frame_copy(nitro_frame_t *f);
 void destroy_pipe(nitro_pipe_t *p);
 nitro_socket_t * nitro_connect_inproc(char *location);
 

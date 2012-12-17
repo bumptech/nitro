@@ -24,12 +24,11 @@ typedef enum {
 typedef void (*nitro_free_function)(void *, void *);
 
 typedef struct nitro_frame_t {
-    void *data;
+    void *buffer;
     uint32_t size;
     nitro_free_function ff;
     void *baton;
 
-    uint32_t ref_count;
     pthread_mutex_t lock;
 
     // For UT_LIST

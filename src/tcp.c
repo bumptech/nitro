@@ -68,8 +68,8 @@ static void tcp_write_finished(uv_write_t *w, int status) {
     free(w);
 }
 
-void tcp_write(nitro_pipe_t *p, nitro_frame_t *f) {
-    nitro_frame_retain(f);
+void tcp_write(nitro_pipe_t *p, nitro_frame_t *frame) {
+    nitro_frame_t *f = nitro_frame_copy(frame);
     tcp_write_request *req = calloc(1, sizeof(tcp_write_request));
     uv_write_t *w = calloc(1, sizeof(uv_write_t));
     w->data = req;
@@ -80,7 +80,7 @@ void tcp_write(nitro_pipe_t *p, nitro_frame_t *f) {
 
     uv_buf_t out[] = {
         { .base = (void *)&req->header, .len = sizeof(nitro_protocol_header)},
-        { .base = (void *)f->data, .len = f->size}
+        { .base = (void *)((nitro_counted_buffer*)f->buffer)->ptr, .len = f->size}
     };
 
     uv_write(w, (uv_stream_t *)p->tcp_socket,
@@ -128,11 +128,9 @@ static void on_tcp_read(uv_stream_t *peer, ssize_t nread, uv_buf_t unused) {
         assert(header->protocol_version == 1);
         /* we have the whole frame! */
         if (!buf)
-            buf = nitro_counted_buffer_new(p->buffer);
-        pthread_mutex_lock(&buf->lock);
-        buf->count++;
-        pthread_mutex_unlock(&buf->lock);
-
+            buf = nitro_counted_buffer_new(p->buffer, &just_free, NULL);
+        buffer_incref(buf);
+        
         nitro_frame_t *fr = nitro_frame_new(region + sizeof(nitro_protocol_header),
         current_frame_size, buffer_decref, buf);
         pthread_mutex_lock(&s->l_recv);
