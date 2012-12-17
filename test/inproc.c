@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
 
     nitro_frame_t *fra = nitro_frame_new_copy("world", 6);
     nitro_send(fra, inout);
+    nitro_frame_destroy(fra);
 
     nitro_frame_t * f = nitro_recv(ins);
     printf("got frame length = %u and content = '%s' count = %d!\n", nitro_frame_size(f), (char *)nitro_frame_data(f), 1);
