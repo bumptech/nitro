@@ -165,6 +165,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 645EB8B6167F928F006431DE /* Build configuration list for PBXNativeTarget "nitro" */;
 			buildPhases = (
+				645EB8E7167FC1CA006431DE /* ShellScript */,
 				645EB8A8167F928F006431DE /* Sources */,
 				645EB8A9167F928F006431DE /* Frameworks */,
 				645EB8AA167F928F006431DE /* CopyFiles */,
@@ -203,6 +204,22 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		645EB8E7167FC1CA006431DE /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cd ..\n redo";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		645EB8A8167F928F006431DE /* Sources */ = {
