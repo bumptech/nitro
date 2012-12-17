@@ -624,11 +624,12 @@ int main(int argc, char **argv) {
 
 
 
-    xq_run();
 
 
     xq_socket_t *inout = xq_socket_new(XQ_SOCKET_PUSH);
-    xq_socket_bind(inout, "inproc://inbox");
+    xq_socket_connect(inout, "inproc://inbox");
+
+    xq_run();
 
 
     xq_frame_t *fra = xq_frame_new_copy("world", 6);
