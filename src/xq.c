@@ -644,8 +644,9 @@ int main(int argc, char **argv) {
     xq_frame_t *fra = xq_frame_new_copy("world", 6);
     xq_frame_send(fra, inout);
 
-
-
+    xq_frame_t * f = xq_frame_recv(ins);
+    printf("got frame length = %u and content = '%s' count = %d!\n", xq_frame_size(f), (char *)xq_frame_data(f), 1);
+    f  = f;
 
     return 0;
 //     int x = 0;
