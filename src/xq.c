@@ -535,7 +535,7 @@ void xq_frame_send(xq_frame_t *fr, xq_socket_t *s) {
 
 
     // If we are a socket portal, use uv
-    switch (s->typ) {
+    switch (s->trans) {
     case XQ_SOCKET_TCP:
         uv_async_send(&s->tcp_flush_handle);
 
