@@ -1,0 +1,255 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		645EB8B3167F928F006431DE /* nitro.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 645EB8B2167F928F006431DE /* nitro.1 */; };
+		645EB8C0167F92B1006431DE /* xq.c in Sources */ = {isa = PBXBuildFile; fileRef = 645EB8BE167F92AE006431DE /* xq.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		645EB8AA167F928F006431DE /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+				645EB8B3167F928F006431DE /* nitro.1 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		645EB8AC167F928F006431DE /* nitro */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = nitro; sourceTree = BUILT_PRODUCTS_DIR; };
+		645EB8B2167F928F006431DE /* nitro.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = nitro.1; sourceTree = "<group>"; };
+		645EB8BE167F92AE006431DE /* xq.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = xq.c; path = ../../src/xq.c; sourceTree = "<group>"; };
+		645EB8BF167F92AE006431DE /* xq.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = xq.h; path = ../../src/xq.h; sourceTree = "<group>"; };
+		645EB8C2167F92B7006431DE /* utarray.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utarray.h; sourceTree = "<group>"; };
+		645EB8C3167F92B7006431DE /* uthash.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = uthash.h; sourceTree = "<group>"; };
+		645EB8C4167F92B7006431DE /* utlist.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utlist.h; sourceTree = "<group>"; };
+		645EB8C5167F92B7006431DE /* utstring.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utstring.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		645EB8A9167F928F006431DE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		645EB8A1167F928F006431DE = {
+			isa = PBXGroup;
+			children = (
+				645EB8AF167F928F006431DE /* nitro */,
+				645EB8AD167F928F006431DE /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		645EB8AD167F928F006431DE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				645EB8AC167F928F006431DE /* nitro */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		645EB8AF167F928F006431DE /* nitro */ = {
+			isa = PBXGroup;
+			children = (
+				645EB8C1167F92B7006431DE /* uthash */,
+				645EB8BE167F92AE006431DE /* xq.c */,
+				645EB8BF167F92AE006431DE /* xq.h */,
+				645EB8B2167F928F006431DE /* nitro.1 */,
+			);
+			path = nitro;
+			sourceTree = "<group>";
+		};
+		645EB8C1167F92B7006431DE /* uthash */ = {
+			isa = PBXGroup;
+			children = (
+				645EB8C2167F92B7006431DE /* utarray.h */,
+				645EB8C3167F92B7006431DE /* uthash.h */,
+				645EB8C4167F92B7006431DE /* utlist.h */,
+				645EB8C5167F92B7006431DE /* utstring.h */,
+			);
+			name = uthash;
+			path = ../../src/uthash;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		645EB8AB167F928F006431DE /* nitro */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 645EB8B6167F928F006431DE /* Build configuration list for PBXNativeTarget "nitro" */;
+			buildPhases = (
+				645EB8A8167F928F006431DE /* Sources */,
+				645EB8A9167F928F006431DE /* Frameworks */,
+				645EB8AA167F928F006431DE /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = nitro;
+			productName = nitro;
+			productReference = 645EB8AC167F928F006431DE /* nitro */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		645EB8A3167F928F006431DE /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0450;
+				ORGANIZATIONNAME = "Bump Technologies";
+			};
+			buildConfigurationList = 645EB8A6167F928F006431DE /* Build configuration list for PBXProject "nitro" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 645EB8A1167F928F006431DE;
+			productRefGroup = 645EB8AD167F928F006431DE /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				645EB8AB167F928F006431DE /* nitro */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		645EB8A8167F928F006431DE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				645EB8C0167F92B1006431DE /* xq.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		645EB8B4167F928F006431DE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		645EB8B5167F928F006431DE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		645EB8B7167F928F006431DE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				HEADER_SEARCH_PATHS = /usr/local/include;
+				LIBRARY_SEARCH_PATHS = /usr/local/lib/;
+				OTHER_LDFLAGS = (
+					"-lpthread",
+					"-luv",
+					"-framework",
+					CoreFoundation,
+					"-framework",
+					CoreServices,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		645EB8B8167F928F006431DE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				HEADER_SEARCH_PATHS = /usr/local/include;
+				LIBRARY_SEARCH_PATHS = /usr/local/lib/;
+				OTHER_LDFLAGS = (
+					"-lpthread",
+					"-luv",
+					"-framework",
+					CoreFoundation,
+					"-framework",
+					CoreServices,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		645EB8A6167F928F006431DE /* Build configuration list for PBXProject "nitro" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				645EB8B4167F928F006431DE /* Debug */,
+				645EB8B5167F928F006431DE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		645EB8B6167F928F006431DE /* Build configuration list for PBXNativeTarget "nitro" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				645EB8B7167F928F006431DE /* Debug */,
+				645EB8B8167F928F006431DE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 645EB8A3167F928F006431DE /* Project object */;
+}
