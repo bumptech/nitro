@@ -648,6 +648,7 @@ int main(int argc, char **argv) {
     printf("got frame length = %u and content = '%s' count = %d!\n", xq_frame_size(f), (char *)xq_frame_data(f), 1);
     f  = f;
 
+    xq_frame_destroy(f);
     return 0;
 //     int x = 0;
 //     for (; x < 10000; x++) {
