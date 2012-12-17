@@ -23,7 +23,6 @@ void buffer_decref(void *data, void *bufptr) {
     pthread_mutex_lock(&buf->lock);
     buf->count--;
     if (!buf->count) {
-        printf("free!\n");
         if (buf->ff) {
             buf->ff(buf->ptr, buf->baton);
         }
