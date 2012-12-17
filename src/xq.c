@@ -583,8 +583,17 @@ int inproc_connect(xq_socket_t *s, char *location) {
     /* XXX YOU SUCK FOR LOOKING UP SOMETHING WRONG */
     assert(result);
     if (result) {
-        new_inproc_pipe(s, result);
-        new_inproc_pipe(result, s);
+        xq_pipe_t *pipe1 = new_inproc_pipe(s, result);
+        CDL_PREPEND(s->pipes, pipe1);
+        if (!s->next_pipe) {
+            s->next_pipe = s->pipes;
+        }
+        xq_pipe_t *pipe2 = new_inproc_pipe(result, s);
+        CDL_PREPEND(result->pipes, pipe2);
+        if (!result->next_pipe) {
+            result->next_pipe = result->pipes;
+        }
+        
     }
 
     return 0;
