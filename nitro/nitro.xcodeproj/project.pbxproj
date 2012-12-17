@@ -8,7 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		645EB8B3167F928F006431DE /* nitro.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 645EB8B2167F928F006431DE /* nitro.1 */; };
-		645EB8C0167F92B1006431DE /* xq.c in Sources */ = {isa = PBXBuildFile; fileRef = 645EB8BE167F92AE006431DE /* xq.c */; };
+		645EB8C7167FBE1F006431DE /* libnitro.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 645EB8C6167FBE1F006431DE /* libnitro.a */; };
+		645EB8E6167FBE46006431DE /* inproc.c in Sources */ = {isa = PBXBuildFile; fileRef = 645EB8E5167FBE46006431DE /* inproc.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -27,12 +28,39 @@
 /* Begin PBXFileReference section */
 		645EB8AC167F928F006431DE /* nitro */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = nitro; sourceTree = BUILT_PRODUCTS_DIR; };
 		645EB8B2167F928F006431DE /* nitro.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = nitro.1; sourceTree = "<group>"; };
-		645EB8BE167F92AE006431DE /* xq.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = xq.c; path = ../../src/xq.c; sourceTree = "<group>"; };
-		645EB8BF167F92AE006431DE /* xq.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = xq.h; path = ../../src/xq.h; sourceTree = "<group>"; };
 		645EB8C2167F92B7006431DE /* utarray.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utarray.h; sourceTree = "<group>"; };
 		645EB8C3167F92B7006431DE /* uthash.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = uthash.h; sourceTree = "<group>"; };
 		645EB8C4167F92B7006431DE /* utlist.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utlist.h; sourceTree = "<group>"; };
 		645EB8C5167F92B7006431DE /* utstring.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utstring.h; sourceTree = "<group>"; };
+		645EB8C6167FBE1F006431DE /* libnitro.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnitro.a; path = ../../libnitro.a; sourceTree = "<group>"; };
+		645EB8C9167FBE2D006431DE /* core.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = core.c; sourceTree = "<group>"; };
+		645EB8CA167FBE2D006431DE /* core.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = core.o; sourceTree = "<group>"; };
+		645EB8CB167FBE2D006431DE /* err.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = err.c; sourceTree = "<group>"; };
+		645EB8CC167FBE2D006431DE /* err.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = err.o; sourceTree = "<group>"; };
+		645EB8CD167FBE2D006431DE /* frame.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = frame.c; sourceTree = "<group>"; };
+		645EB8CE167FBE2D006431DE /* frame.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = frame.o; sourceTree = "<group>"; };
+		645EB8CF167FBE2D006431DE /* inproc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = inproc.c; sourceTree = "<group>"; };
+		645EB8D0167FBE2D006431DE /* inproc.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = inproc.o; sourceTree = "<group>"; };
+		645EB8D1167FBE2D006431DE /* nitro-private.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "nitro-private.h"; sourceTree = "<group>"; };
+		645EB8D2167FBE2D006431DE /* nitro.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = nitro.h; sourceTree = "<group>"; };
+		645EB8D3167FBE2D006431DE /* pipe.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = pipe.c; sourceTree = "<group>"; };
+		645EB8D4167FBE2D006431DE /* pipe.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = pipe.o; sourceTree = "<group>"; };
+		645EB8D5167FBE2D006431DE /* setup.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = setup.c; sourceTree = "<group>"; };
+		645EB8D6167FBE2D006431DE /* setup.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = setup.o; sourceTree = "<group>"; };
+		645EB8D7167FBE2D006431DE /* tcp.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tcp.c; sourceTree = "<group>"; };
+		645EB8D8167FBE2D006431DE /* tcp.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = tcp.o; sourceTree = "<group>"; };
+		645EB8DA167FBE2D006431DE /* utarray.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utarray.h; sourceTree = "<group>"; };
+		645EB8DB167FBE2D006431DE /* uthash.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = uthash.h; sourceTree = "<group>"; };
+		645EB8DC167FBE2D006431DE /* utlist.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utlist.h; sourceTree = "<group>"; };
+		645EB8DD167FBE2D006431DE /* utstring.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utstring.h; sourceTree = "<group>"; };
+		645EB8DE167FBE2D006431DE /* util.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = util.c; sourceTree = "<group>"; };
+		645EB8DF167FBE2D006431DE /* util.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = util.o; sourceTree = "<group>"; };
+		645EB8E0167FBE2D006431DE /* xq.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = xq.c; sourceTree = "<group>"; };
+		645EB8E1167FBE2D006431DE /* xq.c.orig */ = {isa = PBXFileReference; lastKnownFileType = text; path = xq.c.orig; sourceTree = "<group>"; };
+		645EB8E2167FBE2D006431DE /* xq.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = xq.h; sourceTree = "<group>"; };
+		645EB8E3167FBE2D006431DE /* xq.h.orig */ = {isa = PBXFileReference; lastKnownFileType = text; path = xq.h.orig; sourceTree = "<group>"; };
+		645EB8E4167FBE2D006431DE /* xq.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = xq.o; sourceTree = "<group>"; };
+		645EB8E5167FBE46006431DE /* inproc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = inproc.c; path = ../../test/inproc.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -40,6 +68,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				645EB8C7167FBE1F006431DE /* libnitro.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,9 +94,9 @@
 		645EB8AF167F928F006431DE /* nitro */ = {
 			isa = PBXGroup;
 			children = (
+				645EB8E5167FBE46006431DE /* inproc.c */,
+				645EB8C8167FBE2D006431DE /* src */,
 				645EB8C1167F92B7006431DE /* uthash */,
-				645EB8BE167F92AE006431DE /* xq.c */,
-				645EB8BF167F92AE006431DE /* xq.h */,
 				645EB8B2167F928F006431DE /* nitro.1 */,
 			);
 			path = nitro;
@@ -76,6 +105,7 @@
 		645EB8C1167F92B7006431DE /* uthash */ = {
 			isa = PBXGroup;
 			children = (
+				645EB8C6167FBE1F006431DE /* libnitro.a */,
 				645EB8C2167F92B7006431DE /* utarray.h */,
 				645EB8C3167F92B7006431DE /* uthash.h */,
 				645EB8C4167F92B7006431DE /* utlist.h */,
@@ -83,6 +113,49 @@
 			);
 			name = uthash;
 			path = ../../src/uthash;
+			sourceTree = "<group>";
+		};
+		645EB8C8167FBE2D006431DE /* src */ = {
+			isa = PBXGroup;
+			children = (
+				645EB8C9167FBE2D006431DE /* core.c */,
+				645EB8CA167FBE2D006431DE /* core.o */,
+				645EB8CB167FBE2D006431DE /* err.c */,
+				645EB8CC167FBE2D006431DE /* err.o */,
+				645EB8CD167FBE2D006431DE /* frame.c */,
+				645EB8CE167FBE2D006431DE /* frame.o */,
+				645EB8CF167FBE2D006431DE /* inproc.c */,
+				645EB8D0167FBE2D006431DE /* inproc.o */,
+				645EB8D1167FBE2D006431DE /* nitro-private.h */,
+				645EB8D2167FBE2D006431DE /* nitro.h */,
+				645EB8D3167FBE2D006431DE /* pipe.c */,
+				645EB8D4167FBE2D006431DE /* pipe.o */,
+				645EB8D5167FBE2D006431DE /* setup.c */,
+				645EB8D6167FBE2D006431DE /* setup.o */,
+				645EB8D7167FBE2D006431DE /* tcp.c */,
+				645EB8D8167FBE2D006431DE /* tcp.o */,
+				645EB8D9167FBE2D006431DE /* uthash */,
+				645EB8DE167FBE2D006431DE /* util.c */,
+				645EB8DF167FBE2D006431DE /* util.o */,
+				645EB8E0167FBE2D006431DE /* xq.c */,
+				645EB8E1167FBE2D006431DE /* xq.c.orig */,
+				645EB8E2167FBE2D006431DE /* xq.h */,
+				645EB8E3167FBE2D006431DE /* xq.h.orig */,
+				645EB8E4167FBE2D006431DE /* xq.o */,
+			);
+			name = src;
+			path = ../../src;
+			sourceTree = "<group>";
+		};
+		645EB8D9167FBE2D006431DE /* uthash */ = {
+			isa = PBXGroup;
+			children = (
+				645EB8DA167FBE2D006431DE /* utarray.h */,
+				645EB8DB167FBE2D006431DE /* uthash.h */,
+				645EB8DC167FBE2D006431DE /* utlist.h */,
+				645EB8DD167FBE2D006431DE /* utstring.h */,
+			);
+			path = uthash;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -136,7 +209,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				645EB8C0167F92B1006431DE /* xq.c in Sources */,
+				645EB8E6167FBE46006431DE /* inproc.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -198,7 +271,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				HEADER_SEARCH_PATHS = /usr/local/include;
-				LIBRARY_SEARCH_PATHS = /usr/local/lib/;
+				LIBRARY_SEARCH_PATHS = (
+					/usr/local/lib/,
+					"\"$(SRCROOT)/..\"",
+				);
 				OTHER_LDFLAGS = (
 					"-lpthread",
 					"-luv",
@@ -215,7 +291,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				HEADER_SEARCH_PATHS = /usr/local/include;
-				LIBRARY_SEARCH_PATHS = /usr/local/lib/;
+				LIBRARY_SEARCH_PATHS = (
+					/usr/local/lib/,
+					"\"$(SRCROOT)/..\"",
+				);
 				OTHER_LDFLAGS = (
 					"-lpthread",
 					"-luv",
