@@ -4,6 +4,7 @@
 #include "uv.h"
 #include "uthash/uthash.h"
 
+#define NITRO_KEY_LENGTH 1024
 int nitro_start();
 int nitro_stop();
 
@@ -29,6 +30,9 @@ typedef struct nitro_frame_t {
     nitro_free_function ff;
     void *baton;
 
+    int is_pub;
+    char key[NITRO_KEY_LENGTH];
+    
     pthread_mutex_t lock;
 
     // For UT_LIST
@@ -36,6 +40,12 @@ typedef struct nitro_frame_t {
     struct nitro_frame_t *next;
 } nitro_frame_t;
 
+
+typedef struct nitro_key_t {
+    char key[NITRO_KEY_LENGTH];
+    struct nitro_key_t *prev;
+    struct nitro_key_t *next;
+} nitro_key_t;
 
 typedef struct nitro_pipe_t* nitro_pipe_t_p;
 
@@ -56,7 +66,10 @@ typedef struct nitro_pipe_t {
     int registered;
 
     void (*do_write)(nitro_pipe_t_p, nitro_frame_t *);
+    void (*do_sub)(nitro_pipe_t_p, char *);
     void (*destroy)(nitro_pipe_t_p);
+
+    nitro_key_t *sub_keys;
 
 
     UT_hash_handle hh;
@@ -105,7 +118,11 @@ typedef struct nitro_socket_t {
 
     struct nitro_socket_t *prev;
     struct nitro_socket_t *next;
+    
+    /* for pub-sub subscription keys */
 
+    nitro_key_t *sub_keys;
+    
     /* hash table for bound inproc sockets */
     UT_hash_handle hh;
 
@@ -121,6 +138,9 @@ nitro_socket_t * nitro_connect_inproc(char *location);
 
 nitro_frame_t * nitro_recv(nitro_socket_t *s);
 void nitro_send(nitro_frame_t *fr, nitro_socket_t *s);
+void nitro_pub(nitro_frame_t *fr, nitro_socket_t *s, char *key);
+void nitro_sub(nitro_socket_t *s, char *key);
+
 
 nitro_frame_t * nitro_frame_new_copy(void *data, uint32_t size);
 nitro_frame_t * nitro_frame_new(void *data, uint32_t size, nitro_free_function ff, void *baton);

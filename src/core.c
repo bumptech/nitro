@@ -48,6 +48,8 @@ nitro_socket_t * nitro_socket_new() {
 
     pthread_cond_init(&sock->c_recv, NULL);
     pthread_cond_init(&sock->c_send, NULL);
+    
+    sock->sub_keys = NULL;
 
     return sock;
 }
@@ -57,21 +59,43 @@ nitro_socket_t * nitro_socket_new() {
 void socket_flush(nitro_socket_t *s) {
     pthread_mutex_lock(&s->l_send);
     while (1) {
-        if (!s->q_send || !s->next_pipe)
-            break;
-
-        nitro_pipe_t *p = s->next_pipe;
         nitro_frame_t *f = s->q_send;
-
+        if (!f) {
+            break;
+        }
+        nitro_pipe_t *p = s->next_pipe;
+        // Non- pub frames need a pipe to go to.
+        if (!f->is_pub) {
+            if (!p) break;
+            p->do_write(p, f);
+            s->next_pipe = p->next;
+        } else {
+        
+            CDL_FOREACH(s->next_pipe,p) {
+                int matched_pipe = 0;
+                nitro_key_t *key;
+                DL_FOREACH(p->sub_keys, key) {
+                    if (strcmp(key->key, f->key) == 0) {
+                        matched_pipe = 1;
+                    }
+                }
+                if (matched_pipe) {
+                    p->do_write(p, f);
+                }
+            }
+        }
         DL_DELETE(s->q_send, f);
-
-        p->do_write(p, f);
         nitro_frame_destroy(f);
-
-        s->next_pipe = s->next_pipe->next;
     }
     pthread_mutex_unlock(&s->l_send);
 }
+
+void add_pub_filter(nitro_socket_t *s, nitro_pipe_t *p, char *key) {
+    nitro_key_t *t = nitro_key_new(key);
+    DL_APPEND(p->sub_keys, t);
+    // XXX add trie insertion here
+}
+
 
 NITRO_SOCKET_TRANSPORT parse_location(char *location, char **next) {
     if (!strncmp(location, TCP_PREFIX, strlen(TCP_PREFIX))) {
@@ -129,4 +153,31 @@ nitro_socket_t * nitro_socket_connect(char *location) {
     }
             
     return ret;
+}
+
+void nitro_pub(nitro_frame_t *fr, nitro_socket_t *s, char *key) {
+    // XXX We are incurring an etra copy here
+    nitro_frame_t *f = nitro_frame_copy(fr);
+    f->is_pub = 1;
+    memmove(f->key, key, strlen(key));
+    
+    nitro_send(f, s);
+    nitro_frame_destroy(f);
+}
+
+void nitro_sub(nitro_socket_t *s, char *key) {
+    nitro_pipe_t *p;
+    CDL_FOREACH(s->pipes, p) {
+        p->do_sub(p, key);
+    }
+    nitro_key_t *k = nitro_key_new(key);
+    DL_APPEND(s->sub_keys, k);
+}
+
+nitro_key_t *nitro_key_new(char *key) {
+    nitro_key_t *k = malloc(sizeof(nitro_key_t));
+    k->next = NULL;
+    k->prev = NULL;
+    memmove(k->key, key, strlen(key));
+    return k;
 }

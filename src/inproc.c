@@ -3,6 +3,20 @@
 
 static nitro_socket_t *bound_inproc_socks;
 
+
+
+void inproc_sub(nitro_pipe_t *p, char *key) {
+    nitro_socket_t *s = (nitro_socket_t *)p->dest_socket;
+    nitro_pipe_t *return_pipe = NULL;
+    CDL_FOREACH(s->pipes, return_pipe) {
+        if (return_pipe->dest_socket == p->the_socket) {
+            // we found the return pipe, let's add the sub key.
+            add_pub_filter(s, return_pipe, key);
+        }
+    }
+}
+                      
+
 void inproc_write(nitro_pipe_t *p, nitro_frame_t *f) {
     nitro_socket_t *s = (nitro_socket_t *)p->dest_socket;
 
@@ -15,11 +29,12 @@ void inproc_write(nitro_pipe_t *p, nitro_frame_t *f) {
 }
 
 static nitro_pipe_t *new_inproc_pipe(nitro_socket_t *orig_socket, nitro_socket_t *dest_socket) {
-    nitro_pipe_t *p = calloc(1, sizeof(nitro_pipe_t));
+    nitro_pipe_t *p = nitro_pipe_new();
     p->the_socket = (void *)orig_socket;
     p->dest_socket = (void *) dest_socket;
     p->do_write = &inproc_write;
     p->destroy = &destroy_pipe;
+    p->do_sub = &inproc_sub;
 
     return p;
 }
@@ -55,7 +70,6 @@ nitro_socket_t * nitro_connect_inproc(char *location) {
         }
         
     }
-
     return s;
 }
 

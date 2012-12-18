@@ -7,6 +7,9 @@
 [x] Clean up API (remove frame etc prefixing... small project?)
 [x] Remove socket types
 [x] Inproc
+[ ] Pub/Sub
+	[x] Inproc
+	[ ] TCP
 [ ] Close async request
 [ ] Way to shut down everything?
 [ ] Sessions (frame query and reply api)

@@ -17,3 +17,9 @@ void destroy_pipe(nitro_pipe_t *p) {
     free(p->buffer);
     free(p);
 }
+
+nitro_pipe_t *nitro_pipe_new() {
+    nitro_pipe_t *p = calloc(1, sizeof(nitro_pipe_t));
+    p->sub_keys = NULL;
+    return p;
+}

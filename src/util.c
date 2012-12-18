@@ -13,7 +13,6 @@ nitro_counted_buffer * nitro_counted_buffer_new(void *backing, nitro_free_functi
     pthread_mutex_init(&buf->lock, NULL);
     buf->ff = ff;
     buf->baton = baton;
-    
     return buf;
 }
 
@@ -37,7 +36,6 @@ void buffer_incref(void *bufptr) {
     pthread_mutex_lock(&buf->lock);
     buf->count++;
     pthread_mutex_unlock(&buf->lock);
-
 }
 
 void just_free(void *data, void *unused) {

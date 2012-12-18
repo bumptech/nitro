@@ -62,4 +62,8 @@ nitro_frame_t *nitro_frame_copy(nitro_frame_t *f);
 void destroy_pipe(nitro_pipe_t *p);
 nitro_socket_t * nitro_connect_inproc(char *location);
 
+nitro_key_t *nitro_key_new(char *key);
+void add_pub_filter(nitro_socket_t *s, nitro_pipe_t *p, char *key);
+nitro_pipe_t *nitro_pipe_new();
+
 #endif /* NITRO_PRIV_H */
