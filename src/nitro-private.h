@@ -36,9 +36,11 @@ int nitro_set_error(NITRO_ERROR e);
 // tcp.c
 void tcp_poll(uv_timer_t *handle, int status);
 void tcp_poll_cb(uv_async_t *handle, int status);
+void nitro_close_tcp(nitro_socket_t *s);
 
-
+// inproc.c
 nitro_socket_t * nitro_bind_inproc(char *location);
+void nitro_close_inproc(nitro_socket_t *s);
 
 // util.c
 typedef struct nitro_counted_buffer {
@@ -53,9 +55,11 @@ nitro_counted_buffer * nitro_counted_buffer_new(void *backing, nitro_free_functi
 void buffer_decref(void *data, void *bufptr);
 void buffer_incref(void *bufptr);
 void just_free(void *data, void *unused);
+double now_double();
 
 // core.c
 nitro_socket_t * nitro_socket_new();
+void nitro_socket_destroy();
 
 void socket_flush(nitro_socket_t *s);
 nitro_frame_t *nitro_frame_copy(nitro_frame_t *f);

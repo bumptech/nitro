@@ -101,6 +101,8 @@ static void on_tcp_read(uv_stream_t *peer, ssize_t nread, uv_buf_t unused) {
         if (s->outbound) {
             uv_tcp_init(the_runtime->the_loop, &s->tcp_socket);
             s->is_connecting = 0;
+            s->next_pipe = NULL;
+            s->needs_uv_close = 0;
             pthread_mutex_lock(&the_runtime->l_tcp_pair);
             DL_APPEND(the_runtime->want_tcp_pair, s);
             pthread_mutex_unlock(&the_runtime->l_tcp_pair);
@@ -225,19 +227,80 @@ static void on_tcp_connectresult(uv_connect_t *handle, int status) {
         s->tcp_socket.data = pipe;
         uv_read_start((uv_stream_t*) &s->tcp_socket, pipe_allocate, on_tcp_read);
     }
+    else {
+        s->needs_uv_close = 0;
+    }
     pthread_mutex_unlock(&the_runtime->l_tcp_pair);
 }
 
+void on_pipe_close(uv_handle_t *handle) {
+    printf("pipe close\n");
+    nitro_pipe_t *p = (nitro_pipe_t *)handle->data;
+    nitro_socket_t *s = (nitro_socket_t *)p->the_socket;
+
+    destroy_pipe(p);
+    s->close_refs--;
+
+    if (!s->close_refs) {
+        printf("socket is _Done!\n");
+        nitro_socket_destroy(s);
+    }
+}
+
+void on_bound_close(uv_handle_t *handle) {
+    printf("bound close\n");
+    nitro_socket_t *s = (nitro_socket_t *)handle->data;
+
+    s->close_refs--;
+
+    if (!s->close_refs) {
+        printf("socket is _Done!\n");
+        nitro_socket_destroy(s);
+    }
+}
+
 void tcp_poll(uv_timer_t *handle, int status) {
-    nitro_socket_t *s = the_runtime->want_tcp_pair;
     pthread_mutex_lock(&the_runtime->l_tcp_pair);
+    nitro_socket_t *s = the_runtime->want_tcp_pair;
+    nitro_socket_t *tmp;
 
     while (s) {
+        if (s->close_time) {
+            tmp = s->next;
+
+            DL_DELETE(the_runtime->want_tcp_pair, s);
+            if (s->outbound) {
+                s->close_refs = 1;
+                if (s->needs_uv_close)
+                    uv_close((uv_handle_t *)(s->next_pipe->tcp_socket), on_pipe_close);
+                else
+                    on_pipe_close((uv_handle_t *)(s->next_pipe->tcp_socket));
+            }
+            else {
+                s->close_refs = 1;
+                nitro_pipe_t *start = s->pipes, *p = s->pipes;
+                
+                while (p) {
+                    s->close_refs++;
+                    uv_close((uv_handle_t *)(p->tcp_socket), on_pipe_close);
+                    p = p->next;
+                    if (p == start)
+                        break;
+                }
+
+                uv_close((uv_handle_t *)&s->tcp_socket, 
+                on_bound_close);
+            }
+
+            s = tmp;
+            continue;
+        }
         if (s->outbound) {
             if (!s->is_connecting) {
                 uv_tcp_connect(&s->tcp_connect, &s->tcp_socket,
                 s->tcp_location, on_tcp_connectresult);
                 s->is_connecting = 1;
+                s->needs_uv_close = 1;
             }
         }
         else {
@@ -294,6 +357,7 @@ nitro_socket_t * nitro_bind_tcp(char *location) {
     s->tcp_socket.data = s;
     uv_tcp_init(the_runtime->the_loop, &s->tcp_socket);
     r = uv_tcp_bind(&s->tcp_socket, s->tcp_location);
+    s->needs_uv_close = 1;
 
     if (r) {
         nitro_set_error(NITRO_ERR_ERRNO);
@@ -312,4 +376,13 @@ nitro_socket_t * nitro_bind_tcp(char *location) {
 errout:
     // XXX socket destroy
     return NULL;
+}
+
+void nitro_close_tcp(nitro_socket_t *s) {
+    assert(!s->close_time);
+    pthread_mutex_lock(&the_runtime->l_tcp_pair);
+    DL_APPEND(the_runtime->want_tcp_pair, s);
+    s->close_time = now_double(); // XXX plus linger
+    pthread_mutex_unlock(&the_runtime->l_tcp_pair);
+    uv_async_send(&the_runtime->tcp_trigger);
 }

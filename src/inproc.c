@@ -73,3 +73,13 @@ nitro_socket_t * nitro_connect_inproc(char *location) {
     return s;
 }
 
+void nitro_close_inproc(nitro_socket_t *s) {
+    nitro_pipe_t *p, *tmp;
+
+    for (p=s->pipes; p; p = tmp) {
+        tmp = p->next;
+        destroy_pipe(p);
+    }
+
+    nitro_socket_destroy(s);
+}

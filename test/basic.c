@@ -29,12 +29,14 @@ int main(int argc, char **argv) {
     printf("yo\n");
     fr = nitro_frame_new_copy("dogs!", 6);
 
+    nitro_socket_close(s);
     nitro_frame_t *in = nitro_recv(s);
     printf("yo, I got: %u %s\n", nitro_frame_size(in), (char *)nitro_frame_data(in));
     assert(!strcmp(nitro_frame_data(in), nitro_frame_data(fr)));
     printf("yo\n");
+    nitro_socket_close(cs);
 
-    sleep(1);
+    sleep(100);
 
     return 0;
 }

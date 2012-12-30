@@ -1,6 +1,8 @@
 #include "nitro.h"
 #include "nitro-private.h"
 
+#include <sys/time.h>
+
 void fatal(char *why) {
     fprintf(stderr, "fatal error: %s\n", why);
 }
@@ -40,4 +42,12 @@ void buffer_incref(void *bufptr) {
 
 void just_free(void *data, void *unused) {
     free(data);
+}
+
+double now_double() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    return ((double)tv.tv_sec +
+    ((double)tv.tv_usec / 1000000));
 }

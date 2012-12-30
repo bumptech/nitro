@@ -54,7 +54,19 @@ nitro_socket_t * nitro_socket_new() {
     return sock;
 }
 
-// TODO common socket destroy
+void nitro_socket_destroy(nitro_socket_t *s) {
+    nitro_frame_t *f, *tmp;
+
+    for (f=s->q_send; f; f = tmp) {
+        tmp = f->next;
+        nitro_frame_destroy(f);
+    }
+    for (f=s->q_recv; f; f = tmp) {
+        tmp = f->next;
+        nitro_frame_destroy(f);
+    }
+    free(s);
+}
 
 void socket_flush(nitro_socket_t *s) {
     pthread_mutex_lock(&s->l_send);
@@ -153,6 +165,20 @@ nitro_socket_t * nitro_socket_connect(char *location) {
     }
             
     return ret;
+}
+
+void nitro_socket_close(nitro_socket_t *s) {
+    switch (s->trans) {
+    case NITRO_SOCKET_TCP:
+        nitro_close_tcp(s);
+        break;
+    case NITRO_SOCKET_INPROC:
+        nitro_close_inproc(s);
+        break;
+
+    default:
+        assert(0);
+    }
 }
 
 void nitro_pub(nitro_frame_t *fr, nitro_socket_t *s, char *key) {

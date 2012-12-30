@@ -110,6 +110,9 @@ typedef struct nitro_socket_t {
     struct sockaddr_in tcp_location;
     int is_connecting;
     int outbound;
+    double close_time;
+    int close_refs;
+    int needs_uv_close;
 
     /* Options */
     uint32_t capacity;
@@ -130,6 +133,7 @@ typedef struct nitro_socket_t {
 
 nitro_socket_t * nitro_socket_bind(char *location);
 nitro_socket_t * nitro_socket_connect(char *location);
+void nitro_socket_close(nitro_socket_t *s);
 
 nitro_socket_t * nitro_bind_tcp(char *location);
 nitro_socket_t * nitro_connect_tcp(char *location);
