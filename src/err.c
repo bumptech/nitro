@@ -12,6 +12,9 @@ char *nitro_errmsg(NITRO_ERROR error) {
         case NITRO_ERR_ALREADY_RUNNING:
             return "nitro is already running; cannot call nitro_start twice";
             break;
+        case NITRO_ERR_NOT_RUNNING:
+            return "nitro is not running";
+            break;
         case NITRO_ERR_TCP_LOC_NOCOLON:
             return "TCP socket location did not contain a colon";
             break;

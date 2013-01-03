@@ -16,6 +16,7 @@ typedef enum {
 typedef enum {
     NITRO_ERR_ERRNO,
     NITRO_ERR_ALREADY_RUNNING,
+    NITRO_ERR_NOT_RUNNING,
     NITRO_ERR_TCP_LOC_NOCOLON,
     NITRO_ERR_TCP_LOC_BADPORT,
     NITRO_ERR_PARSE_BAD_TRANSPORT,
@@ -67,7 +68,6 @@ typedef struct nitro_pipe_t {
 
     void (*do_write)(nitro_pipe_t_p, nitro_frame_t *);
     void (*do_sub)(nitro_pipe_t_p, char *);
-    void (*destroy)(nitro_pipe_t_p);
 
     nitro_key_t *sub_keys;
 
@@ -78,10 +78,10 @@ typedef struct nitro_pipe_t {
 typedef struct nitro_socket_t {
     NITRO_SOCKET_TRANSPORT trans;
 
-    uv_tcp_t tcp_socket;
+    uv_tcp_t *tcp_bound_socket;
+    uv_tcp_t *tcp_connecting_handle;
     uv_async_t tcp_flush_handle;
     uv_connect_t tcp_connect;
-//    uv_async_t close_handle;
 
     nitro_frame_t *q_recv;
     nitro_frame_t *q_send;
@@ -112,7 +112,6 @@ typedef struct nitro_socket_t {
     int outbound;
     double close_time;
     int close_refs;
-    int needs_uv_close;
 
     /* Options */
     uint32_t capacity;

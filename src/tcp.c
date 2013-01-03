@@ -1,6 +1,8 @@
 #include "nitro.h"
 #include "nitro-private.h"
 
+static void on_pipe_close(uv_handle_t *handle);
+
 typedef struct nitro_protocol_header {
     char protocol_version;
     uint32_t frame_size;
@@ -87,28 +89,13 @@ void tcp_write(nitro_pipe_t *p, nitro_frame_t *frame) {
     out, 2, tcp_write_finished);
 }
 
-static void destroy_tcp_pipe(nitro_pipe_t *p) {
-    uv_close((uv_handle_t *)p->tcp_socket, NULL);
-    destroy_pipe(p);
-}
-
 static void on_tcp_read(uv_stream_t *peer, ssize_t nread, uv_buf_t unused) {
     nitro_pipe_t *p = (nitro_pipe_t *)peer->data;
     nitro_socket_t *s = (nitro_socket_t *)p->the_socket;
 
     if (nread == -1) {
-        p->destroy(p);
-        if (s->outbound) {
-            uv_tcp_init(the_runtime->the_loop, &s->tcp_socket);
-            s->is_connecting = 0;
-            s->next_pipe = NULL;
-            s->needs_uv_close = 0;
-            pthread_mutex_lock(&the_runtime->l_tcp_pair);
-            DL_APPEND(the_runtime->want_tcp_pair, s);
-            pthread_mutex_unlock(&the_runtime->l_tcp_pair);
-            tcp_poll(NULL, 0);
-        }
-
+        printf("read closed on pipe: %p!\n", p);
+        uv_close((uv_handle_t*)p->tcp_socket, on_pipe_close);
         return;
     }
 
@@ -171,9 +158,13 @@ static nitro_pipe_t *new_tcp_pipe(nitro_socket_t *s, uv_tcp_t *tcp_socket) {
     p->tcp_socket = tcp_socket;
     p->the_socket = (void *)s;
     p->do_write = &tcp_write;
-    p->destroy = &destroy_tcp_pipe;
+    tcp_socket->data = p;
 
     return p;
+}
+
+static void free_tcp_handle(uv_handle_t *handle) {
+    free(handle);
 }
 
 static void on_tcp_connection(uv_stream_t *peer, int status) {
@@ -192,11 +183,10 @@ static void on_tcp_connection(uv_stream_t *peer, int status) {
             s->next_pipe = s->pipes;
             socket_flush(s); // if there's anything waiting, give it to this guy
         }
-        client->data = pipe;
         uv_read_start((uv_stream_t*) client, pipe_allocate, on_tcp_read);
     }
     else {
-        uv_close((uv_handle_t*) client, NULL);
+        uv_close((uv_handle_t*) client, free_tcp_handle);
     }
 }
 
@@ -213,48 +203,72 @@ static void tcp_flush_cb(uv_async_t *handle, int status) {
 static void on_tcp_connectresult(uv_connect_t *handle, int status) {
     pthread_mutex_lock(&the_runtime->l_tcp_pair);
     nitro_socket_t *s = (nitro_socket_t *)handle->data;
+    if (!s) {
+        //printf("socket is gone!\n");
+        free(handle);
+        return;
+    }
     s->is_connecting = 0;
-    // XXX handle disconnect
 
     if (!status) {
+        assert(!s->pipes);
+        assert(!s->next_pipe);
         DL_DELETE(the_runtime->want_tcp_pair, s);
-        nitro_pipe_t *pipe = new_tcp_pipe(s, &s->tcp_socket);
+        nitro_pipe_t *pipe = new_tcp_pipe(s, s->tcp_connecting_handle);
         CDL_PREPEND(s->pipes, pipe);
-        if (!s->next_pipe) {
-            s->next_pipe = s->pipes;
-            socket_flush(s); // if there's anything waiting, give it to this guy
-        }
-        s->tcp_socket.data = pipe;
-        uv_read_start((uv_stream_t*) &s->tcp_socket, pipe_allocate, on_tcp_read);
+        s->next_pipe = s->pipes;
+        s->tcp_connecting_handle = NULL;
+        socket_flush(s); // if there's anything waiting, give it to this guy
+        /*printf("connectresult is good for pipe %p and uv_tcp %p!\n", */
+        /*pipe,*/
+        /*pipe->tcp_socket);*/
+        uv_read_start((uv_stream_t*) pipe->tcp_socket, pipe_allocate, on_tcp_read);
     }
     else {
-        s->needs_uv_close = 0;
+        free(s->tcp_connecting_handle);
     }
     pthread_mutex_unlock(&the_runtime->l_tcp_pair);
 }
 
-void on_pipe_close(uv_handle_t *handle) {
-    printf("pipe close\n");
+static void on_pipe_close(uv_handle_t *handle) {
+    //printf("pipe close\n");
     nitro_pipe_t *p = (nitro_pipe_t *)handle->data;
     nitro_socket_t *s = (nitro_socket_t *)p->the_socket;
 
-    destroy_pipe(p);
-    s->close_refs--;
+    free(handle);
 
-    if (!s->close_refs) {
-        printf("socket is _Done!\n");
-        nitro_socket_destroy(s);
+    destroy_pipe(p);
+
+    /* Socket is closing; check the pipe count for destruction */
+    if (s->close_time) {
+        s->close_refs--;
+
+        if (!s->close_refs) {
+            //printf("socket is _Done!\n");
+            nitro_socket_destroy(s);
+        }
+    }
+    /* Socket is connected (non-closing) client; attempt reconnect */
+    else if (s->outbound) {
+        assert(!s->next_pipe);
+        s->is_connecting = 0;
+        pthread_mutex_lock(&the_runtime->l_tcp_pair);
+        DL_APPEND(the_runtime->want_tcp_pair, s);
+        pthread_mutex_unlock(&the_runtime->l_tcp_pair);
+        tcp_poll(NULL, 0);
     }
 }
 
 void on_bound_close(uv_handle_t *handle) {
-    printf("bound close\n");
+    //printf("bound close\n");
     nitro_socket_t *s = (nitro_socket_t *)handle->data;
+
+    free(handle);
 
     s->close_refs--;
 
     if (!s->close_refs) {
-        printf("socket is _Done!\n");
+        //printf("socket is _Done!\n");
         nitro_socket_destroy(s);
     }
 }
@@ -266,20 +280,26 @@ void tcp_poll(uv_timer_t *handle, int status) {
 
     while (s) {
         if (s->close_time) {
+            //printf("wants close..\n");
             tmp = s->next;
 
             DL_DELETE(the_runtime->want_tcp_pair, s);
             if (s->outbound) {
+                //printf("outbound close..\n");
                 s->close_refs = 1;
-                if (s->needs_uv_close)
+                if (s->tcp_connecting_handle)
+                    s->tcp_connecting_handle->data = NULL;
+                if (s->next_pipe)
                     uv_close((uv_handle_t *)(s->next_pipe->tcp_socket), on_pipe_close);
-                else
-                    on_pipe_close((uv_handle_t *)(s->next_pipe->tcp_socket));
+                else {
+                    //printf("socket is (immediately) _Done!\n");
+                    nitro_socket_destroy(s);
+                }
             }
             else {
                 s->close_refs = 1;
                 nitro_pipe_t *start = s->pipes, *p = s->pipes;
-                
+
                 while (p) {
                     s->close_refs++;
                     uv_close((uv_handle_t *)(p->tcp_socket), on_pipe_close);
@@ -288,7 +308,7 @@ void tcp_poll(uv_timer_t *handle, int status) {
                         break;
                 }
 
-                uv_close((uv_handle_t *)&s->tcp_socket, 
+                uv_close((uv_handle_t *)s->tcp_bound_socket,
                 on_bound_close);
             }
 
@@ -297,15 +317,20 @@ void tcp_poll(uv_timer_t *handle, int status) {
         }
         if (s->outbound) {
             if (!s->is_connecting) {
-                uv_tcp_connect(&s->tcp_connect, &s->tcp_socket,
+                //printf("connecting!\n");
+                s->tcp_connecting_handle = malloc(sizeof(uv_tcp_t));
+                uv_tcp_init(the_runtime->the_loop, s->tcp_connecting_handle);
+                s->tcp_connecting_handle->data = s;
+                s->tcp_connect.data = s;
+
+                uv_tcp_connect(&s->tcp_connect, s->tcp_connecting_handle,
                 s->tcp_location, on_tcp_connectresult);
                 s->is_connecting = 1;
-                s->needs_uv_close = 1;
             }
         }
         else {
             // do the bind/listen
-            int r = uv_listen((uv_stream_t *)&s->tcp_socket, 512, on_tcp_connection);
+            int r = uv_listen((uv_stream_t *)s->tcp_bound_socket, 512, on_tcp_connection);
             if (!r) {
                 DL_DELETE(the_runtime->want_tcp_pair, s);
             }
@@ -326,10 +351,10 @@ nitro_socket_t * nitro_connect_tcp(char *location) {
     uv_async_init(the_runtime->the_loop, &s->tcp_flush_handle, tcp_flush_cb);
 
     int r = parse_tcp_location(location, &s->tcp_location);
-    if (r) goto errout;
-
-    uv_tcp_init(the_runtime->the_loop, &s->tcp_socket);
-    s->tcp_connect.data = s;
+    if (r) {
+        /* Note - error detail set by parse_tcp_location */
+        goto errout;
+    }
 
     pthread_mutex_lock(&the_runtime->l_tcp_pair);
     DL_APPEND(the_runtime->want_tcp_pair, s);
@@ -339,7 +364,7 @@ nitro_socket_t * nitro_connect_tcp(char *location) {
     return s;
 
 errout:
-    // XXX destroy socket
+    nitro_socket_destroy(s);
     return NULL;
 }
 
@@ -354,10 +379,11 @@ nitro_socket_t * nitro_bind_tcp(char *location) {
     if (r)
         goto errout;
 
-    s->tcp_socket.data = s;
-    uv_tcp_init(the_runtime->the_loop, &s->tcp_socket);
-    r = uv_tcp_bind(&s->tcp_socket, s->tcp_location);
-    s->needs_uv_close = 1;
+    ZALLOC(s->tcp_bound_socket);
+    uv_tcp_init(the_runtime->the_loop, s->tcp_bound_socket);
+    s->tcp_bound_socket->data = s;
+
+    r = uv_tcp_bind(s->tcp_bound_socket, s->tcp_location);
 
     if (r) {
         nitro_set_error(NITRO_ERR_ERRNO);
@@ -368,18 +394,18 @@ nitro_socket_t * nitro_bind_tcp(char *location) {
     DL_APPEND(the_runtime->want_tcp_pair, s);
     pthread_mutex_unlock(&the_runtime->l_tcp_pair);
 
-    // XXX debug
-    printf("did bind to: %s\n", location);
-
     return s;
 
 errout:
-    // XXX socket destroy
+    nitro_socket_destroy(s);
     return NULL;
 }
 
+#include <unistd.h>
 void nitro_close_tcp(nitro_socket_t *s) {
     assert(!s->close_time);
+    sleep(1);
+    printf("requesting close\n");
     pthread_mutex_lock(&the_runtime->l_tcp_pair);
     DL_APPEND(the_runtime->want_tcp_pair, s);
     s->close_time = now_double(); // XXX plus linger

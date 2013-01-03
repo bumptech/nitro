@@ -33,7 +33,6 @@ static nitro_pipe_t *new_inproc_pipe(nitro_socket_t *orig_socket, nitro_socket_t
     p->the_socket = (void *)orig_socket;
     p->dest_socket = (void *) dest_socket;
     p->do_write = &inproc_write;
-    p->destroy = &destroy_pipe;
     p->do_sub = &inproc_sub;
 
     return p;

@@ -23,8 +23,10 @@ int main(int argc, char **argv) {
     nitro_send(fr, s);
 
     nitro_socket_t *cs = nitro_connect_tcp("127.0.0.1:4444");
+    nitro_frame_destroy(fr);
     fr = nitro_frame_new_copy("dogs!", 6);
     nitro_send(fr, cs);
+    nitro_frame_destroy(fr);
     sleep(1);
     printf("yo\n");
     fr = nitro_frame_new_copy("dogs!", 6);
@@ -35,8 +37,16 @@ int main(int argc, char **argv) {
     assert(!strcmp(nitro_frame_data(in), nitro_frame_data(fr)));
     printf("yo\n");
     nitro_socket_close(cs);
+    nitro_frame_destroy(fr);
+    nitro_frame_destroy(in);
 
-    sleep(100);
 
+    sleep(2);
+
+    printf("closing..\n");
+    nitro_stop();
+
+
+    sleep(1);
     return 0;
 }

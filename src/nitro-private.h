@@ -20,8 +20,15 @@ typedef struct nitro_runtime {
     nitro_socket_t *want_tcp_pair;
     pthread_mutex_t l_tcp_pair;
 
+    pthread_mutex_t dm;
+    pthread_cond_t dc;
+
     uv_timer_t tcp_timer;
     uv_async_t tcp_trigger;
+    uv_async_t done_wake;
+
+    int run;
+    uint32_t num_sock;
 
 } nitro_runtime;
 

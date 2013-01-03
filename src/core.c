@@ -50,6 +50,7 @@ nitro_socket_t * nitro_socket_new() {
     pthread_cond_init(&sock->c_send, NULL);
     
     sock->sub_keys = NULL;
+    __sync_add_and_fetch(&the_runtime->num_sock, 1);
 
     return sock;
 }
@@ -66,6 +67,7 @@ void nitro_socket_destroy(nitro_socket_t *s) {
         nitro_frame_destroy(f);
     }
     free(s);
+    __sync_sub_and_fetch(&the_runtime->num_sock, 1);
 }
 
 void socket_flush(nitro_socket_t *s) {
