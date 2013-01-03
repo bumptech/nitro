@@ -10,8 +10,8 @@
 [ ] Pub/Sub
 	[x] Inproc
 	[ ] TCP
-[ ] Close async request
-[ ] Way to shut down everything?
+[x] Close async request
+[x] Way to shut down everything?
 [ ] Sessions (frame query and reply api)
     [ ] manual flush so app can control
 [ ] Keep-alive and timeouts
