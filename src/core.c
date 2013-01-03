@@ -66,8 +66,22 @@ void nitro_socket_destroy(nitro_socket_t *s) {
         tmp = f->next;
         nitro_frame_destroy(f);
     }
+    /* XXX free sub_keys */
     free(s);
     __sync_sub_and_fetch(&the_runtime->num_sock, 1);
+}
+
+void pub_trie_callback(uint8_t *pfx,
+uint8_t length, nitro_prefix_trie_mem *members,
+void *baton) {
+    nitro_frame_t *f = (nitro_frame_t *)baton;
+    nitro_prefix_trie_mem *m = NULL;
+    for(m = members; m; m = m->next) {
+        nitro_pipe_t *p =
+        (nitro_pipe_t *)m->ptr;
+        printf("callback for %s and %p!\n", pfx, p);
+        p->do_write(p, f);
+    }
 }
 
 void socket_flush(nitro_socket_t *s) {
@@ -77,26 +91,17 @@ void socket_flush(nitro_socket_t *s) {
         if (!f) {
             break;
         }
-        nitro_pipe_t *p = s->next_pipe;
+        nitro_pipe_t *p;
         // Non- pub frames need a pipe to go to.
         if (!f->is_pub) {
+            p = s->next_pipe;
             if (!p) break;
             p->do_write(p, f);
             s->next_pipe = p->next;
         } else {
-        
-            CDL_FOREACH(s->next_pipe,p) {
-                int matched_pipe = 0;
-                nitro_key_t *key;
-                DL_FOREACH(p->sub_keys, key) {
-                    if (strcmp(key->key, f->key) == 0) {
-                        matched_pipe = 1;
-                    }
-                }
-                if (matched_pipe) {
-                    p->do_write(p, f);
-                }
-            }
+            nitro_prefix_trie_search(
+            s->subs, (uint8_t *)f->key, strlen(f->key),
+            pub_trie_callback, (void *)f);
         }
         DL_DELETE(s->q_send, f);
         nitro_frame_destroy(f);
@@ -105,9 +110,11 @@ void socket_flush(nitro_socket_t *s) {
 }
 
 void add_pub_filter(nitro_socket_t *s, nitro_pipe_t *p, char *key) {
+    // XXX -- support binary pub keys?
     nitro_key_t *t = nitro_key_new(key);
     DL_APPEND(p->sub_keys, t);
-    // XXX add trie insertion here
+    nitro_prefix_trie_add(&s->subs,
+    (uint8_t *)key, strlen(key), p);
 }
 
 

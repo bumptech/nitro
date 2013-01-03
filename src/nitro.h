@@ -48,6 +48,24 @@ typedef struct nitro_key_t {
     struct nitro_key_t *next;
 } nitro_key_t;
 
+// trie.c
+typedef struct nitro_prefix_trie_mem {
+    void *ptr;
+
+    struct nitro_prefix_trie_mem *prev;
+    struct nitro_prefix_trie_mem *next;
+} nitro_prefix_trie_mem;
+
+typedef struct nitro_prefix_trie_node {
+    uint8_t *rep;
+    uint8_t length;
+    struct nitro_prefix_trie_node *subs[256];
+
+    nitro_prefix_trie_mem *members;
+
+} nitro_prefix_trie_node;
+
+
 typedef struct nitro_pipe_t* nitro_pipe_t_p;
 
 typedef struct nitro_pipe_t {
@@ -116,14 +134,16 @@ typedef struct nitro_socket_t {
     /* Options */
     uint32_t capacity;
 
+    /* Subscription trie */
+    nitro_prefix_trie_node *subs;
+
+    /* Local "want subscription" list */
+    nitro_key_t *sub_keys;
+
     /* for tcp connect list */
 
     struct nitro_socket_t *prev;
     struct nitro_socket_t *next;
-    
-    /* for pub-sub subscription keys */
-
-    nitro_key_t *sub_keys;
     
     /* hash table for bound inproc sockets */
     UT_hash_handle hh;

@@ -77,4 +77,16 @@ nitro_key_t *nitro_key_new(char *key);
 void add_pub_filter(nitro_socket_t *s, nitro_pipe_t *p, char *key);
 nitro_pipe_t *nitro_pipe_new();
 
+typedef void (*nitro_prefix_trie_search_callback)
+    (uint8_t *pfx, uint8_t length, nitro_prefix_trie_mem *members, void *baton);
+
+// trie.c
+void nitro_prefix_trie_search(
+    nitro_prefix_trie_node *t, uint8_t *rep, uint8_t length,
+    nitro_prefix_trie_search_callback cb, void *baton);
+void nitro_prefix_trie_add(nitro_prefix_trie_node **t,
+    uint8_t *rep, uint8_t length, void *ptr);
+int nitro_prefix_trie_del(nitro_prefix_trie_node *t,
+    uint8_t *rep, uint8_t length, void *ptr);
+
 #endif /* NITRO_PRIV_H */

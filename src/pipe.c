@@ -4,6 +4,9 @@
 void destroy_pipe(nitro_pipe_t *p) {
     nitro_socket_t *s = (nitro_socket_t *)p->the_socket;
 
+    /* XXX remove subscriptions from socket trie*/
+    /* XXX free sub_keys */
+
     if (p->next == p) {
         s->next_pipe = NULL;
     }
@@ -20,6 +23,5 @@ void destroy_pipe(nitro_pipe_t *p) {
 
 nitro_pipe_t *nitro_pipe_new() {
     nitro_pipe_t *p = calloc(1, sizeof(nitro_pipe_t));
-    p->sub_keys = NULL;
     return p;
 }

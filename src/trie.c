@@ -1,24 +1,6 @@
 #include "nitro.h"
 #include "nitro-private.h"
 
-typedef struct nitro_prefix_trie_mem {
-    void *ptr;
-
-    struct nitro_prefix_trie_mem *prev;
-    struct nitro_prefix_trie_mem *next;
-} nitro_prefix_trie_mem;
-
-typedef struct nitro_prefix_trie_node {
-    uint8_t *rep;
-    uint8_t length;
-    struct nitro_prefix_trie_node *subs[256];
-
-    nitro_prefix_trie_mem *members;
-
-} nitro_prefix_trie_node;
-
-typedef void (*nitro_prefix_trie_search_callback)(uint8_t *pfx, uint8_t length, nitro_prefix_trie_mem *members, void *baton);
-
 void nitro_prefix_trie_search(
     nitro_prefix_trie_node *t, uint8_t *rep, uint8_t length,
     nitro_prefix_trie_search_callback cb, void *baton) {
@@ -121,7 +103,8 @@ int nitro_prefix_trie_del(nitro_prefix_trie_node *t,
     return 0;
 }
 
-void print_trie(nitro_prefix_trie_node *t, int c) {
+#if 0
+static void print_trie(nitro_prefix_trie_node *t, int c) {
     int x;
     for (x=0; x < c; x++) {
         printf(" ");
@@ -142,7 +125,6 @@ void print_trie(nitro_prefix_trie_node *t, int c) {
     }
 }
 
-#if 0
 
 void callback(uint8_t *pfx, uint8_t length, nitro_prefix_trie_mem *members, void *baton) {
     printf("got: %s\n", (char *)pfx);
