@@ -48,10 +48,13 @@ int nitro_set_error(NITRO_ERROR e);
 // tcp.c
 void tcp_poll(uv_timer_t *handle, int status);
 void tcp_poll_cb(uv_async_t *handle, int status);
+nitro_socket_t * nitro_bind_tcp(char *location);
+nitro_socket_t * nitro_connect_tcp(char *location);
 void nitro_close_tcp(nitro_socket_t *s);
 
 // inproc.c
 nitro_socket_t * nitro_bind_inproc(char *location);
+nitro_socket_t * nitro_connect_inproc(char *location);
 void nitro_close_inproc(nitro_socket_t *s);
 
 // util.c

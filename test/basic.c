@@ -10,7 +10,7 @@
 
 int main(int argc, char **argv) {
     nitro_start();
-    nitro_socket_t *s = nitro_bind_tcp("127.0.0.1:4444");
+    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4444");
     assert(s);
 
     int x = 0;
@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
     nitro_frame_t *fr = nitro_frame_new_copy("world", 6);
     nitro_send(fr, s);
 
-    nitro_socket_t *cs = nitro_connect_tcp("127.0.0.1:4444");
+    nitro_socket_t *cs = nitro_socket_connect("tcp://127.0.0.1:4444");
     nitro_frame_destroy(fr);
     fr = nitro_frame_new_copy("dogs!", 6);
     nitro_send(fr, cs);

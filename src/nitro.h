@@ -173,11 +173,6 @@ nitro_socket_t * nitro_socket_bind(char *location);
 nitro_socket_t * nitro_socket_connect(char *location);
 void nitro_socket_close(nitro_socket_t *s);
 
-nitro_socket_t * nitro_bind_tcp(char *location);
-nitro_socket_t * nitro_connect_tcp(char *location);
-nitro_socket_t * nitro_bind_inproc(char *location);
-nitro_socket_t * nitro_connect_inproc(char *location);
-
 nitro_frame_t * nitro_recv(nitro_socket_t *s);
 void nitro_send(nitro_frame_t *fr, nitro_socket_t *s);
 void nitro_pub(nitro_frame_t *fr, nitro_socket_t *s, char *key);
