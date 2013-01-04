@@ -9,7 +9,10 @@
 [x] Inproc
 [ ] Pub/Sub
 	[x] Inproc
-	[ ] TCP
+	[X] TCP
+    [ ] Unsub?
+    [ ] TCP Async re-broadcast on change
+    [ ] TCP re-broadcast on timer
 [x] Close async request
 [x] Way to shut down everything?
 [ ] Sessions (frame query and reply api)
@@ -18,16 +21,17 @@
     [ ] How to jam keep-alives in there when
         the outgoing buffer is full
     [ ] Echo packet... or use tcp keepalive
+[ ] Select-style multi-wait api
 [ ] More options (set capacity, max packet
     size, linger, etc)
-[ ] More inspection (connectedness state, 
+[ ] More inspection (connectedness state,
     queue lengths)
-[ ] More frame init types (ptr? static (no free)?
-                         just free?)
 [ ] Tests
 [ ] Benchmarks
 [ ] Memory checks
 [ ] Docs
 [ ] Push
-[ ] Engine Groups
 [ ] Questions -- shorten api more (no "frame" and "socket")?
+
+-- Future ideas --
+[ ] Engine Groups (abstract away multicore, share a socket)
