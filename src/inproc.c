@@ -3,9 +3,11 @@
 
 static nitro_socket_t *bound_inproc_socks;
 
+void inproc_socket_sub(nitro_socket_t *s, char *key) {
+    /* NO-OP */
+}
 
-
-void inproc_sub(nitro_pipe_t *p, char *key) {
+void inproc_pipe_sub(nitro_pipe_t *p, char *key) {
     nitro_socket_t *s = (nitro_socket_t *)p->dest_socket;
     nitro_pipe_t *return_pipe = NULL;
     CDL_FOREACH(s->pipes, return_pipe) {
@@ -33,7 +35,7 @@ static nitro_pipe_t *new_inproc_pipe(nitro_socket_t *orig_socket, nitro_socket_t
     p->the_socket = (void *)orig_socket;
     p->dest_socket = (void *) dest_socket;
     p->do_write = &inproc_write;
-    p->do_sub = &inproc_sub;
+    p->do_sub = &inproc_pipe_sub;
 
     return p;
 }
@@ -41,6 +43,7 @@ static nitro_pipe_t *new_inproc_pipe(nitro_socket_t *orig_socket, nitro_socket_t
 nitro_socket_t * nitro_bind_inproc(char *location) {
     nitro_socket_t *s = nitro_socket_new();
     s->trans = NITRO_SOCKET_INPROC;
+    s->do_sub = inproc_socket_sub;
     nitro_socket_t *result;
     HASH_FIND(hh, bound_inproc_socks, location, strlen(location), result);
     /* XXX YOU SUCK FOR DOUBLE BINDING */
@@ -52,6 +55,7 @@ nitro_socket_t * nitro_bind_inproc(char *location) {
 nitro_socket_t * nitro_connect_inproc(char *location) {
     nitro_socket_t *s = nitro_socket_new();
     s->trans = NITRO_SOCKET_INPROC;
+    s->do_sub = inproc_socket_sub;
     nitro_socket_t *result;
     HASH_FIND(hh, bound_inproc_socks, location, strlen(location), result);
     /* XXX YOU SUCK FOR LOOKING UP SOMETHING WRONG */

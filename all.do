@@ -5,3 +5,4 @@ redo-ifchange libnitro.a
 redo-ifchange test/basic
 redo-ifchange test/inproc
 redo-ifchange test/inprocpubsub
+redo-ifchange test/tcppubsub

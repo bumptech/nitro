@@ -5,6 +5,8 @@ static void on_pipe_close(uv_handle_t *handle);
 
 typedef struct nitro_protocol_header {
     char protocol_version;
+    char packet_type;
+    uint16_t flags;
     uint32_t frame_size;
 } nitro_protocol_header;
 
@@ -15,14 +17,14 @@ static int parse_tcp_location(char *p_location,
 
     char *split = strchr(location, ':');
 
-    if (!split) 
+    if (!split)
         return nitro_set_error(NITRO_ERR_TCP_LOC_NOCOLON);
 
     *split = 0;
 
     errno = 0;
     int port = strtol(split + 1, NULL, 10);
-    if (errno) 
+    if (errno)
         return nitro_set_error(NITRO_ERR_TCP_LOC_BADPORT);
 
     *addr = uv_ip4_addr(location, port);
@@ -40,6 +42,54 @@ static uv_buf_t pipe_allocate(uv_handle_t *handle, size_t suggested_size) {
     return uv_buf_init((char *)p->buffer + p->buf_bytes, avail);
 }
 
+typedef struct tcp_sub_packet {
+    nitro_protocol_header header;
+    nitro_counted_buffer *buf;
+} tcp_sub_packet;
+
+static void tcp_sub_send_finished(uv_write_t *w, int status) {
+    tcp_sub_packet *packet = (tcp_sub_packet *)w->data;
+
+    nitro_counted_buffer_decref(packet->buf);
+    free(packet);
+    free(w);
+}
+
+void tcp_send_sub(nitro_pipe_t *p, nitro_socket_t *s) {
+    pthread_mutex_lock(&s->l_sub);
+    if (!s->sub_data) {
+        goto unlock;
+    }
+
+    uv_write_t *w;
+    ZALLOC(w);
+    tcp_sub_packet *packet;
+    ZALLOC(packet);
+    packet->header.protocol_version = 1;
+    packet->header.packet_type = NITRO_PACKET_SUB;
+    packet->header.frame_size = s->sub_data_length;
+    packet->buf = s->sub_data;
+    w->data = packet;
+    nitro_counted_buffer_incref(s->sub_data);
+
+    uv_buf_t out[] = {
+        { .base = (void *)&packet->header, .len = sizeof(nitro_protocol_header)},
+        { .base = (void *)s->sub_data->ptr, .len = s->sub_data_length}
+    };
+
+    uv_write(w, (uv_stream_t *)p->tcp_socket,
+    out, 2, tcp_sub_send_finished);
+
+unlock:
+    pthread_mutex_unlock(&s->l_sub);
+}
+
+void tcp_pipe_sub(nitro_pipe_t *p, char *key) {
+    // XXX fire async that runs...
+    //tcp_send_sub(p, s);
+}
+
+
 typedef struct tcp_write_request {
     nitro_protocol_header header;
     nitro_frame_t *frame;
@@ -48,7 +98,6 @@ typedef struct tcp_write_request {
 
 
 static void tcp_write_finished(uv_write_t *w, int status) {
-    // for now, we're ignoring status
     tcp_write_request *req = (tcp_write_request *)w->data;
     nitro_socket_t *s = req->socket;
     if (status>=0) {
@@ -76,6 +125,7 @@ void tcp_write(nitro_pipe_t *p, nitro_frame_t *frame) {
     uv_write_t *w = calloc(1, sizeof(uv_write_t));
     w->data = req;
     req->header.protocol_version = 1;
+    req->header.packet_type = NITRO_PACKET_FRAME;
     req->header.frame_size = f->size;
     req->frame = f;
     req->socket = p->the_socket;
@@ -87,6 +137,21 @@ void tcp_write(nitro_pipe_t *p, nitro_frame_t *frame) {
 
     uv_write(w, (uv_stream_t *)p->tcp_socket,
     out, 2, tcp_write_finished);
+}
+
+static void tcp_sub_in(nitro_socket_t *s,
+    nitro_pipe_t *p, nitro_frame_t *fr) {
+    remove_pub_filters(s, p);
+    char *ptr = (char *)nitro_frame_data(fr) + 20;
+    char *end = (char *)nitro_frame_data(fr) + nitro_frame_size(fr);
+    while (ptr < end) {
+        char *r = ptr;
+        while (ptr < end && *ptr) {ptr++;}
+        if (ptr == end) 
+            return;
+        add_pub_filter(s, p, r);
+        ptr++;
+    }
 }
 
 static void on_tcp_read(uv_stream_t *peer, ssize_t nread, uv_buf_t unused) {
@@ -114,19 +179,42 @@ static void on_tcp_read(uv_stream_t *peer, ssize_t nread, uv_buf_t unused) {
     uint32_t current_frame_size = header->frame_size;
     uint32_t whole_size = sizeof(nitro_protocol_header) + current_frame_size;
     while (p->buf_bytes >= whole_size) {
+        // XXX loosen up, don't crash on bad input
         assert(header->protocol_version == 1);
+
         /* we have the whole frame! */
         if (!buf)
             buf = nitro_counted_buffer_new(p->buffer, &just_free, NULL);
-        buffer_incref(buf);
-        
+        nitro_counted_buffer_incref(buf);
+
         nitro_frame_t *fr = nitro_frame_new(region + sizeof(nitro_protocol_header),
         current_frame_size, buffer_decref, buf);
-        pthread_mutex_lock(&s->l_recv);
-        DL_APPEND(s->q_recv, fr);
-        s->count_recv++;
-        pthread_cond_signal(&s->c_recv);
-        pthread_mutex_unlock(&s->l_recv);
+        switch (header->packet_type) {
+        case NITRO_PACKET_FRAME:
+            pthread_mutex_lock(&s->l_recv);
+            DL_APPEND(s->q_recv, fr);
+            s->count_recv++;
+            pthread_cond_signal(&s->c_recv);
+            pthread_mutex_unlock(&s->l_recv);
+            break;
+        case NITRO_PACKET_SUB:
+            if (nitro_frame_size(fr) >= 20) {
+                pthread_mutex_lock(&s->l_sub);
+                if (memcmp(nitro_frame_data(fr),
+                    p->last_sub_hash, 20)) {
+                    printf("got new sub!\n");
+                    tcp_sub_in(s, p, fr);
+                    memmove(p->last_sub_hash, 
+                    nitro_frame_data(fr), 20);
+                }
+                pthread_mutex_unlock(&s->l_sub);
+            }
+            nitro_frame_destroy(fr);
+            break;
+        default:
+            printf("unknown packet type!\n");
+            break;
+        }
 
         p->buf_bytes -= whole_size;
         if (p->buf_bytes < sizeof(nitro_protocol_header))
@@ -158,6 +246,7 @@ static nitro_pipe_t *new_tcp_pipe(nitro_socket_t *s, uv_tcp_t *tcp_socket) {
     p->tcp_socket = tcp_socket;
     p->the_socket = (void *)s;
     p->do_write = &tcp_write;
+    p->do_sub = &tcp_pipe_sub;
     tcp_socket->data = p;
 
     return p;
@@ -183,6 +272,7 @@ static void on_tcp_connection(uv_stream_t *peer, int status) {
             s->next_pipe = s->pipes;
             socket_flush(s); // if there's anything waiting, give it to this guy
         }
+        tcp_send_sub(pipe, s);
         uv_read_start((uv_stream_t*) client, pipe_allocate, on_tcp_read);
     }
     else {
@@ -218,6 +308,7 @@ static void on_tcp_connectresult(uv_connect_t *handle, int status) {
         CDL_PREPEND(s->pipes, pipe);
         s->next_pipe = s->pipes;
         s->tcp_connecting_handle = NULL;
+        tcp_send_sub(pipe, s);
         socket_flush(s); // if there's anything waiting, give it to this guy
         /*printf("connectresult is good for pipe %p and uv_tcp %p!\n", */
         /*pipe,*/
@@ -234,6 +325,8 @@ static void on_pipe_close(uv_handle_t *handle) {
     //printf("pipe close\n");
     nitro_pipe_t *p = (nitro_pipe_t *)handle->data;
     nitro_socket_t *s = (nitro_socket_t *)p->the_socket;
+
+    // XXX cancel subscription/echo timer
 
     free(handle);
 
@@ -340,11 +433,45 @@ void tcp_poll(uv_timer_t *handle, int status) {
     pthread_mutex_unlock(&the_runtime->l_tcp_pair);
 }
 
+void tcp_socket_sub(nitro_socket_t *s, char *key) {
+    // create frame data
+    uint32_t l = 20; // sha1
+    SHA1_CTX ctx;
+
+    if (s->sub_data) {
+        nitro_counted_buffer_decref(s->sub_data);
+        s->sub_data = NULL;
+    }
+
+    SHA1Init(&ctx);
+
+    nitro_key_t *k;
+    int kl = 0;
+    for(k=s->sub_keys; k; k = k->next) {
+        kl = strlen(k->key);
+        SHA1Update(&ctx, (uint8_t *)k->key, kl);
+        l += (kl + 1);
+    }
+    s->sub_data_length = l;
+    uint8_t *bytes = calloc(1, s->sub_data_length);
+    SHA1Final(bytes, &ctx);
+    kl = 0;
+    for (l=20, k=s->sub_keys; k; k = k->next, l+=(kl + 1)) {
+        kl = strlen(k->key);
+        memmove(bytes + l, k->key, kl);
+    }
+
+    s->sub_data = nitro_counted_buffer_new(
+    bytes, just_free, NULL);
+}
+
+
 /* Okay, make sockets of this type! */
 
 nitro_socket_t * nitro_connect_tcp(char *location) {
     nitro_socket_t *s = nitro_socket_new();
     s->trans = NITRO_SOCKET_TCP;
+    s->do_sub = tcp_socket_sub;
 
     s->tcp_flush_handle.data = s;
     s->outbound = 1;
@@ -371,6 +498,7 @@ errout:
 nitro_socket_t * nitro_bind_tcp(char *location) {
     int r;
     nitro_socket_t *s = nitro_socket_new();
+    s->do_sub = tcp_socket_sub;
     s->trans = NITRO_SOCKET_TCP;
     s->tcp_flush_handle.data = s;
     uv_async_init(the_runtime->the_loop, &s->tcp_flush_handle, tcp_flush_cb);

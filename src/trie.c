@@ -103,6 +103,20 @@ int nitro_prefix_trie_del(nitro_prefix_trie_node *t,
     return 0;
 }
 
+void nitro_prefix_trie_destroy(nitro_prefix_trie_node *t) {
+    if (!t) return;
+    assert(t->members == NULL);
+
+    int i;
+    for (i=0; i < 256; i++) {
+        if (t->subs[i])
+            nitro_prefix_trie_destroy(t->subs[i]);
+    }
+
+    free(t->rep);
+    free(t);
+}
+
 #if 0
 static void print_trie(nitro_prefix_trie_node *t, int c) {
     int x;

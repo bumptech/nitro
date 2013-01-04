@@ -13,6 +13,8 @@ typedef enum {
     NITRO_SOCKET_INPROC,
 } NITRO_SOCKET_TRANSPORT;
 
+#define NITRO_FLAG_ID (1 << 0)
+
 typedef enum {
     NITRO_ERR_ERRNO,
     NITRO_ERR_ALREADY_RUNNING,
@@ -22,8 +24,15 @@ typedef enum {
     NITRO_ERR_PARSE_BAD_TRANSPORT,
 } NITRO_ERROR;
 
-
 typedef void (*nitro_free_function)(void *, void *);
+
+typedef struct nitro_counted_buffer {
+    void *ptr;
+    int count;
+    pthread_mutex_t lock;
+    nitro_free_function ff;
+    void *baton;
+} nitro_counted_buffer;
 
 typedef struct nitro_frame_t {
     void *buffer;
@@ -88,10 +97,12 @@ typedef struct nitro_pipe_t {
     void (*do_sub)(nitro_pipe_t_p, char *);
 
     nitro_key_t *sub_keys;
-
+    uint8_t last_sub_hash[20];
 
     UT_hash_handle hh;
 } nitro_pipe_t;
+
+typedef struct nitro_socket_t* nitro_socket_t_p;
 
 typedef struct nitro_socket_t {
     NITRO_SOCKET_TRANSPORT trans;
@@ -108,6 +119,7 @@ typedef struct nitro_socket_t {
     // control locks for maniuplating counts, queues, or pipes
     pthread_mutex_t l_recv;
     pthread_mutex_t l_send;
+    pthread_mutex_t l_sub;
 
     // condition for when we are blocking waiting for sending or receiving
     // Buffer is full, or there are no incoming packets ready
@@ -120,11 +132,12 @@ typedef struct nitro_socket_t {
     // for reply-style session mapping
     // UT Hash.  Pipes that have not yet registered are not in here
     nitro_pipe_t *pipes_by_session;
+
     // Circular List of all connected pipes (can use for round robining, or broadcast with pub)
     nitro_pipe_t *pipes;
-
     nitro_pipe_t *next_pipe; // for RR
 
+    // Various TCP-related things
     struct sockaddr_in tcp_location;
     int is_connecting;
     int outbound;
@@ -140,6 +153,9 @@ typedef struct nitro_socket_t {
     /* Local "want subscription" list */
     nitro_key_t *sub_keys;
 
+    nitro_counted_buffer *sub_data;
+    uint32_t sub_data_length;
+
     /* for tcp connect list */
 
     struct nitro_socket_t *prev;
@@ -147,6 +163,9 @@ typedef struct nitro_socket_t {
     
     /* hash table for bound inproc sockets */
     UT_hash_handle hh;
+
+    /* handle a subscription */
+    void (*do_sub)(nitro_socket_t_p, char *);
 
 } nitro_socket_t;
 

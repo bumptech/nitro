@@ -45,6 +45,7 @@ nitro_socket_t * nitro_socket_new() {
 
     pthread_mutex_init(&sock->l_recv, NULL);
     pthread_mutex_init(&sock->l_send, NULL);
+    pthread_mutex_init(&sock->l_sub, NULL);
 
     pthread_cond_init(&sock->c_recv, NULL);
     pthread_cond_init(&sock->c_send, NULL);
@@ -66,7 +67,8 @@ void nitro_socket_destroy(nitro_socket_t *s) {
         tmp = f->next;
         nitro_frame_destroy(f);
     }
-    /* XXX free sub_keys */
+
+    nitro_prefix_trie_destroy(s->subs);
     free(s);
     __sync_sub_and_fetch(&the_runtime->num_sock, 1);
 }
@@ -99,9 +101,11 @@ void socket_flush(nitro_socket_t *s) {
             p->do_write(p, f);
             s->next_pipe = p->next;
         } else {
+            pthread_mutex_lock(&s->l_sub);
             nitro_prefix_trie_search(
             s->subs, (uint8_t *)f->key, strlen(f->key),
             pub_trie_callback, (void *)f);
+            pthread_mutex_unlock(&s->l_sub);
         }
         DL_DELETE(s->q_send, f);
         nitro_frame_destroy(f);
@@ -110,13 +114,25 @@ void socket_flush(nitro_socket_t *s) {
 }
 
 void add_pub_filter(nitro_socket_t *s, nitro_pipe_t *p, char *key) {
-    // XXX -- support binary pub keys?
     nitro_key_t *t = nitro_key_new(key);
     DL_APPEND(p->sub_keys, t);
     nitro_prefix_trie_add(&s->subs,
     (uint8_t *)key, strlen(key), p);
 }
 
+void remove_pub_filters(nitro_socket_t *s, nitro_pipe_t *p) {
+    nitro_key_t *key, *tmp;
+
+    for(key=p->sub_keys; key; key = tmp) {
+        tmp = key->next;
+        
+        nitro_prefix_trie_del(s->subs, 
+        (uint8_t *)key->key, strlen(key->key), p);
+
+        free(key);
+    }
+    s->sub_keys = NULL;
+}
 
 NITRO_SOCKET_TRANSPORT parse_location(char *location, char **next) {
     if (!strncmp(location, TCP_PREFIX, strlen(TCP_PREFIX))) {
@@ -195,18 +211,23 @@ void nitro_pub(nitro_frame_t *fr, nitro_socket_t *s, char *key) {
     nitro_frame_t *f = nitro_frame_copy(fr);
     f->is_pub = 1;
     memmove(f->key, key, strlen(key));
-    
+
     nitro_send(f, s);
     nitro_frame_destroy(f);
 }
 
 void nitro_sub(nitro_socket_t *s, char *key) {
+    /* thread safety XXX */
     nitro_pipe_t *p;
+    nitro_key_t *k = nitro_key_new(key);
+
+    pthread_mutex_lock(&s->l_sub);
+    DL_APPEND(s->sub_keys, k);
+    s->do_sub(s, key);
     CDL_FOREACH(s->pipes, p) {
         p->do_sub(p, key);
     }
-    nitro_key_t *k = nitro_key_new(key);
-    DL_APPEND(s->sub_keys, k);
+    pthread_mutex_unlock(&s->l_sub);
 }
 
 nitro_key_t *nitro_key_new(char *key) {

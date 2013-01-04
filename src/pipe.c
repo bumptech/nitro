@@ -4,8 +4,10 @@
 void destroy_pipe(nitro_pipe_t *p) {
     nitro_socket_t *s = (nitro_socket_t *)p->the_socket;
 
-    /* XXX remove subscriptions from socket trie*/
-    /* XXX free sub_keys */
+    pthread_mutex_lock(&s->l_sub);
+    remove_pub_filters(s, p);
+    pthread_mutex_unlock(&s->l_sub);
+    assert(p->sub_keys == NULL);
 
     if (p->next == p) {
         s->next_pipe = NULL;

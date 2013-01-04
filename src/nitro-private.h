@@ -12,6 +12,11 @@
 
 #define ZALLOC(p) {p = (typeof(p))calloc(1, sizeof(*p));}
 
+enum {
+    NITRO_PACKET_FRAME,
+    NITRO_PACKET_SUB
+};
+
 typedef struct nitro_runtime {
     uv_loop_t *the_loop;
     pthread_t the_thread;
@@ -50,17 +55,11 @@ nitro_socket_t * nitro_bind_inproc(char *location);
 void nitro_close_inproc(nitro_socket_t *s);
 
 // util.c
-typedef struct nitro_counted_buffer {
-    void *ptr;
-    int count;
-    pthread_mutex_t lock;
-    nitro_free_function ff;
-    void *baton;
-} nitro_counted_buffer;
 nitro_counted_buffer * nitro_counted_buffer_new(void *backing, nitro_free_function ff, void *baton);
+void nitro_counted_buffer_incref(nitro_counted_buffer *buf);
+void nitro_counted_buffer_decref(nitro_counted_buffer *buf);
 
 void buffer_decref(void *data, void *bufptr);
-void buffer_incref(void *bufptr);
 void just_free(void *data, void *unused);
 double now_double();
 
@@ -75,6 +74,7 @@ nitro_socket_t * nitro_connect_inproc(char *location);
 
 nitro_key_t *nitro_key_new(char *key);
 void add_pub_filter(nitro_socket_t *s, nitro_pipe_t *p, char *key);
+void remove_pub_filters(nitro_socket_t *s, nitro_pipe_t *p);
 nitro_pipe_t *nitro_pipe_new();
 
 typedef void (*nitro_prefix_trie_search_callback)
@@ -88,5 +88,25 @@ void nitro_prefix_trie_add(nitro_prefix_trie_node **t,
     uint8_t *rep, uint8_t length, void *ptr);
 int nitro_prefix_trie_del(nitro_prefix_trie_node *t,
     uint8_t *rep, uint8_t length, void *ptr);
+void nitro_prefix_trie_destroy(nitro_prefix_trie_node *t);
+
+// sha1.c
+
+/*
+SHA-1 in C
+By Steve Reid <steve@edmweb.com>
+100% Public Domain
+*/
+
+typedef struct {
+    u_int32_t state[5];
+    u_int32_t count[2];
+    unsigned char buffer[64];
+} SHA1_CTX;
+
+void SHA1Transform(u_int32_t state[5], const unsigned char buffer[64]);
+void SHA1Init(SHA1_CTX* context);
+void SHA1Update(SHA1_CTX* context, const unsigned char* data, u_int32_t len);
+void SHA1Final(unsigned char digest[20], SHA1_CTX* context);
 
 #endif /* NITRO_PRIV_H */

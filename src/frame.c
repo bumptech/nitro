@@ -4,7 +4,7 @@
 nitro_frame_t *nitro_frame_copy(nitro_frame_t *f) {
     nitro_frame_t *result = malloc(sizeof(nitro_frame_t));
     memcpy(result, f, sizeof(nitro_frame_t));
-    buffer_incref(f->buffer);
+    nitro_counted_buffer_incref(f->buffer);
     return result;
     
 }
@@ -21,7 +21,7 @@ nitro_frame_t *nitro_frame_new(void *data, uint32_t size, nitro_free_function ff
 }
 
 void nitro_frame_destroy(nitro_frame_t *f) {
-    buffer_decref(NULL, f->buffer);
+    nitro_counted_buffer_decref(f->buffer);
     free(f);
 }
 
