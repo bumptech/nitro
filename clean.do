@@ -1,5 +1,3 @@
-rm -f test/*.o src/*.o
+find . -name '*.o' | xargs rm
+rm -f test/nitro_test
 rm -f *.a
-
-TEST_PROGRAMS="`find test -name '*.c' | sed 's/\.c//g'`"
-rm -f $TEST_PROGRAMS

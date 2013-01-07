@@ -15,6 +15,10 @@ A million repetitions of "a"
 /* #define LITTLE_ENDIAN * This should be #define'd already, if true. */
 /* #define SHA1HANDSOFF * Copies data before messing with it. */
 
+/* added by jamwt (moved struct definition) */
+#include "nitro.h"
+#include "nitro-private.h"
+
 #define SHA1HANDSOFF
 
 #include <stdio.h>
@@ -22,7 +26,6 @@ A million repetitions of "a"
 #include <sys/types.h>	/* for u_int*_t */
 
 #include <endian.h>
-#include "sha1.h"
 
 #define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
 

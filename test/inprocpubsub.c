@@ -8,7 +8,7 @@
 
 #include <unistd.h>
 
-int main(int argc, char **argv) {
+int main_not1(int argc, char **argv) {
     nitro_start();
     
     nitro_socket_t *pub = nitro_socket_bind("inproc://inbox");
