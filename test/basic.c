@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 WVTEST_MAIN("basic_tcp") {
-    nitro_start();
+    WVPASS(!nitro_start());
     nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4444");
     WVPASS(s);
 
@@ -30,9 +30,7 @@ WVTEST_MAIN("basic_tcp") {
     nitro_frame_destroy(fr);
     nitro_frame_destroy(in);
 
-    sleep(2);
-
-    nitro_stop();
 
     sleep(1);
+    WVPASS(!nitro_stop());
 }

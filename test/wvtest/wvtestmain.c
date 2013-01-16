@@ -62,6 +62,8 @@ int main(int argc, char **argv)
 #if defined(_WIN32) && defined(HAVE_WVCRASH)
     setup_console_crash();
 #endif
+    setvbuf (stdout, NULL, _IOLBF, 1024 * 8);
+
 
     // test wvtest itself.  Not very thorough, but you have to draw the
     // line somewhere :)
