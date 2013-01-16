@@ -376,7 +376,8 @@ static void on_tcp_connectresult(uv_connect_t *handle, int status) {
         /*pipe->tcp_socket);*/
         uv_read_start((uv_stream_t *) pipe->tcp_socket, pipe_allocate, on_tcp_read);
     } else {
-        free(s->tcp_connecting_handle);
+        uv_close((uv_handle_t *)s->tcp_connecting_handle, free_tcp_handle);
+        s->tcp_connecting_handle = NULL;
     }
 
     pthread_mutex_unlock(&the_runtime->l_tcp_pair);
