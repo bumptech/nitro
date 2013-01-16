@@ -218,7 +218,7 @@ void remove_pub_filters(nitro_socket_t *s, nitro_pipe_t *p) {
         free(key);
     }
 
-    s->sub_keys = NULL;
+    p->sub_keys = NULL;
 }
 
 NITRO_SOCKET_TRANSPORT parse_location(char *location, char **next) {
