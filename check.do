@@ -1,1 +1,1 @@
-test/nitro_test | python2 -u wvcolor.py
+test/nitro_test | python2 -u util/wvcolor.py

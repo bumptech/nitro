@@ -1,3 +1,38 @@
+/*
+ * Nitro
+ *
+ * core.c - Public API implementations, that often do switching out to tcp/inproc.c on the
+ *          basis of socket type
+ *
+ *  -- LICENSE --
+ *
+ * Copyright 2013 Bump Technologies, Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ *    1. Redistributions of source code must retain the above copyright notice, this list of
+ *       conditions and the following disclaimer.
+ *
+ *    2. Redistributions in binary form must reproduce the above copyright notice, this list
+ *       of conditions and the following disclaimer in the documentation and/or other materials
+ *       provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY BUMP TECHNOLOGIES, INC. ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BUMP TECHNOLOGIES, INC. OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation are those of the
+ * authors and should not be interpreted as representing official policies, either expressed
+ * or implied, of Bump Technologies, Inc.
+ *
+ */
 #include "nitro.h"
 #include "nitro-private.h"
 
@@ -160,9 +195,6 @@ NITRO_SOCKET_TRANSPORT parse_location(char *location, char **next) {
     return -1;
 }
 
-
-
-
 nitro_socket_t *nitro_socket_bind(char *location) {
     // clean up bind failures through the stack
     char *next;
@@ -182,7 +214,6 @@ nitro_socket_t *nitro_socket_bind(char *location) {
 
     return NULL;
 }
-
 
 nitro_socket_t *nitro_socket_connect(char *location) {
     char *next;
@@ -230,7 +261,6 @@ void nitro_pub(nitro_frame_t *fr, nitro_socket_t *s, char *key) {
 }
 
 void nitro_sub(nitro_socket_t *s, char *key) {
-    /* thread safety XXX */
     nitro_pipe_t *p;
     nitro_key_t *k = nitro_key_new(key);
     pthread_mutex_lock(&s->l_sub);
@@ -239,6 +269,29 @@ void nitro_sub(nitro_socket_t *s, char *key) {
     CDL_FOREACH(s->pipes, p) {
         p->do_sub(p, key);
     }
+    pthread_mutex_unlock(&s->l_sub);
+}
+
+void nitro_unsub(nitro_socket_t *s, char *key) {
+    nitro_pipe_t *p;
+    nitro_key_t *k = NULL, *target = NULL;
+    pthread_mutex_lock(&s->l_sub);
+
+    for (k = s->sub_keys; k; k = k->next) {
+        if (!strcmp(k->key, key)) {
+            target = k;
+            break;
+        }
+    }
+
+    if (target) {
+        DL_DELETE(s->sub_keys, target);
+        s->do_unsub(s, key);
+        CDL_FOREACH(s->pipes, p) {
+            p->do_unsub(p, key);
+        }
+    }
+
     pthread_mutex_unlock(&s->l_sub);
 }
 
