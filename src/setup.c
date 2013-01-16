@@ -75,6 +75,8 @@ int nitro_start() {
     assert(!r);
     r = uv_async_init(the_runtime->the_loop, &the_runtime->done_wake, wake_and_die);
     assert(!r);
+    r = uv_async_init(the_runtime->the_loop, &the_runtime->tcp_flush, tcp_flush_cb);
+    assert(!r);
     pthread_mutex_init(&the_runtime->dm, NULL);
     pthread_cond_init(&the_runtime->dc, NULL);
     pthread_create(&the_runtime->the_thread, NULL, actual_run, NULL);

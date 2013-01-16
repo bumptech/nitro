@@ -80,6 +80,10 @@ static uv_buf_t pipe_allocate(uv_handle_t *handle, size_t suggested_size) {
     return uv_buf_init((char *)p->buffer + p->buf_bytes, avail);
 }
 
+void tcp_flush_cb(uv_async_t *handle, int status) {
+    nitro_flush();
+}
+
 typedef struct tcp_sub_packet {
     nitro_protocol_header header;
     nitro_counted_buffer *buf;
@@ -301,6 +305,7 @@ static nitro_pipe_t *new_tcp_pipe(nitro_socket_t *s, uv_tcp_t *tcp_socket) {
     p->the_socket = (void *)s;
     p->do_write = &tcp_write;
     p->do_sub = &tcp_pipe_sub;
+// XXX    p->do_unsub = &tcp_pipe_unsub;
     tcp_socket->data = p;
     return p;
 }
@@ -335,13 +340,13 @@ static void on_tcp_connection(uv_stream_t *peer, int status) {
     }
 }
 
-void tcp_poll_cb(uv_async_t *handle, int status) {
-    tcp_poll(NULL, 0);
+void tcp_sub_cb(uv_timer_t *handle, int status) {
+    fprintf(stderr, "send subs!\n");
+    // XXX do it
 }
 
-static void tcp_flush_cb(uv_async_t *handle, int status) {
-    nitro_socket_t *s = (nitro_socket_t *)handle->data;
-    socket_flush(s);
+void tcp_poll_cb(uv_async_t *handle, int status) {
+    tcp_poll(NULL, 0);
 }
 
 static void on_tcp_connectresult(uv_connect_t *handle, int status) {
@@ -554,8 +559,6 @@ nitro_socket_t *nitro_bind_tcp(char *location) {
     nitro_socket_t *s = nitro_socket_new();
     s->do_sub = tcp_socket_sub;
     s->trans = NITRO_SOCKET_TCP;
-    s->tcp_flush_handle.data = s;
-    uv_async_init(the_runtime->the_loop, &s->tcp_flush_handle, tcp_flush_cb);
     r = parse_tcp_location(location, &s->tcp_location);
 
     if (r) {

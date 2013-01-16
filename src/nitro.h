@@ -142,8 +142,8 @@ typedef struct nitro_socket_t {
 
     uv_tcp_t *tcp_bound_socket;
     uv_tcp_t *tcp_connecting_handle;
-    uv_async_t tcp_flush_handle;
     uv_connect_t tcp_connect;
+    uv_timer_t tcp_sub_timer;
 
     nitro_frame_t *q_recv;
     nitro_frame_t *q_send;
@@ -190,10 +190,12 @@ typedef struct nitro_socket_t {
     uint32_t sub_data_length;
 
     /* for tcp connect list */
-
     struct nitro_socket_t *prev;
     struct nitro_socket_t *next;
 
+    /* tcp deferred flushing */
+    struct nitro_socket_t *flush_next;
+    int flush_pending;
     /* hash table for bound inproc sockets */
     UT_hash_handle hh;
 

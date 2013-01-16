@@ -59,11 +59,15 @@ typedef struct nitro_runtime {
     nitro_socket_t *want_tcp_pair;
     pthread_mutex_t l_tcp_pair;
 
+    /* CAS-queue */
+    nitro_socket_t *want_flush;
+
     pthread_mutex_t dm;
     pthread_cond_t dc;
 
     uv_timer_t tcp_timer;
     uv_async_t tcp_trigger;
+    uv_async_t tcp_flush;
     uv_async_t done_wake;
 
     int run;
@@ -85,6 +89,7 @@ void tcp_poll_cb(uv_async_t *handle, int status);
 nitro_socket_t *nitro_bind_tcp(char *location);
 nitro_socket_t *nitro_connect_tcp(char *location);
 void nitro_close_tcp(nitro_socket_t *s);
+void tcp_flush_cb(uv_async_t *handle, int status);
 
 // inproc.c
 nitro_socket_t *nitro_bind_inproc(char *location);
@@ -103,6 +108,7 @@ double now_double();
 // core.c
 nitro_socket_t *nitro_socket_new();
 void nitro_socket_destroy();
+void nitro_flush();
 
 void socket_flush(nitro_socket_t *s);
 nitro_frame_t *nitro_frame_copy(nitro_frame_t *f);

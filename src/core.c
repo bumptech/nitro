@@ -52,6 +52,26 @@ nitro_frame_t *nitro_recv(nitro_socket_t *s) {
     return out;
 }
 
+void socket_schedule_tcp_flush(nitro_socket_t *s) {
+    pthread_mutex_lock(&s->l_send);
+    if (!s->flush_pending) {
+        nitro_socket_t *trial = NULL, *actual = NULL;
+        while (1) {
+            actual = __sync_val_compare_and_swap(
+                &the_runtime->want_flush,
+                trial, s);
+            if (actual == trial) {
+                s->flush_next = actual;
+                break;
+            }
+            trial = actual;
+        }
+        uv_async_send(&the_runtime->tcp_flush);
+        s->flush_pending = 1;
+    }
+    pthread_mutex_unlock(&s->l_send);
+}
+
 void nitro_send(nitro_frame_t *fr, nitro_socket_t *s) {
     nitro_frame_t *f = nitro_frame_copy(fr);
     pthread_mutex_lock(&s->l_send);
@@ -66,7 +86,7 @@ void nitro_send(nitro_frame_t *fr, nitro_socket_t *s) {
     // If we are a socket portal, use uv
     switch (s->trans) {
     case NITRO_SOCKET_TCP:
-        uv_async_send(&s->tcp_flush_handle);
+        socket_schedule_tcp_flush(s);
         break;
 
     case NITRO_SOCKET_INPROC:
@@ -123,8 +143,29 @@ void pub_trie_callback(uint8_t *pfx,
     }
 }
 
+void nitro_flush() {
+    while (1) {
+        nitro_socket_t *maybe_flush = NULL, *wanted_flush = NULL;
+        while (1) {
+            wanted_flush = __sync_val_compare_and_swap(
+                &the_runtime->want_flush,
+                maybe_flush, NULL);
+            if (wanted_flush == maybe_flush)
+                break;
+            maybe_flush = wanted_flush;
+        }
+        if (!wanted_flush)
+            break;
+
+        for (; wanted_flush; wanted_flush = wanted_flush->flush_next) {
+            socket_flush(wanted_flush);
+        }
+    }
+}
+
 void socket_flush(nitro_socket_t *s) {
     pthread_mutex_lock(&s->l_send);
+    s->flush_pending = 0;
 
     while (1) {
         nitro_frame_t *f = s->q_send;
