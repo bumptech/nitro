@@ -27,10 +27,12 @@
 [ ] Tests
      [ ] Framework
 [ ] Benchmarks
+[ ] Object pools (frames?  keys?  pipes?)
 [ ] Memory checks
 [ ] Docs
 [ ] Push
 [ ] Questions -- shorten api more (no "frame" and "socket")?
+
 
 -- Future ideas --
 [ ] Engine Groups (abstract away multicore, share a socket)
