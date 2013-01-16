@@ -42,7 +42,7 @@ typedef struct nitro_frame_t {
 
     int is_pub;
     char key[NITRO_KEY_LENGTH];
-    
+
     pthread_mutex_t lock;
 
     // For UT_LIST
@@ -75,7 +75,7 @@ typedef struct nitro_prefix_trie_node {
 } nitro_prefix_trie_node;
 
 
-typedef struct nitro_pipe_t* nitro_pipe_t_p;
+typedef struct nitro_pipe_t *nitro_pipe_t_p;
 
 typedef struct nitro_pipe_t {
 
@@ -102,7 +102,7 @@ typedef struct nitro_pipe_t {
     UT_hash_handle hh;
 } nitro_pipe_t;
 
-typedef struct nitro_socket_t* nitro_socket_t_p;
+typedef struct nitro_socket_t *nitro_socket_t_p;
 
 typedef struct nitro_socket_t {
     NITRO_SOCKET_TRANSPORT trans;
@@ -160,7 +160,7 @@ typedef struct nitro_socket_t {
 
     struct nitro_socket_t *prev;
     struct nitro_socket_t *next;
-    
+
     /* hash table for bound inproc sockets */
     UT_hash_handle hh;
 
@@ -169,19 +169,19 @@ typedef struct nitro_socket_t {
 
 } nitro_socket_t;
 
-nitro_socket_t * nitro_socket_bind(char *location);
-nitro_socket_t * nitro_socket_connect(char *location);
+nitro_socket_t *nitro_socket_bind(char *location);
+nitro_socket_t *nitro_socket_connect(char *location);
 void nitro_socket_close(nitro_socket_t *s);
 
-nitro_frame_t * nitro_recv(nitro_socket_t *s);
+nitro_frame_t *nitro_recv(nitro_socket_t *s);
 void nitro_send(nitro_frame_t *fr, nitro_socket_t *s);
 void nitro_pub(nitro_frame_t *fr, nitro_socket_t *s, char *key);
 void nitro_sub(nitro_socket_t *s, char *key);
 
 
-nitro_frame_t * nitro_frame_new_copy(void *data, uint32_t size);
-nitro_frame_t * nitro_frame_new(void *data, uint32_t size, nitro_free_function ff, void *baton);
-void * nitro_frame_data(nitro_frame_t *fr);
+nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size);
+nitro_frame_t *nitro_frame_new(void *data, uint32_t size, nitro_free_function ff, void *baton);
+void *nitro_frame_data(nitro_frame_t *fr);
 uint32_t nitro_frame_size(nitro_frame_t *fr);
 void nitro_frame_destroy(nitro_frame_t *fr);
 

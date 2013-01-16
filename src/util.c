@@ -7,7 +7,7 @@ void fatal(char *why) {
     fprintf(stderr, "fatal error: %s\n", why);
 }
 
-nitro_counted_buffer * nitro_counted_buffer_new(void *backing, nitro_free_function ff, void *baton) {
+nitro_counted_buffer *nitro_counted_buffer_new(void *backing, nitro_free_function ff, void *baton) {
     nitro_counted_buffer *buf;
     ZALLOC(buf);
     buf->ptr = backing;
@@ -21,14 +21,16 @@ nitro_counted_buffer * nitro_counted_buffer_new(void *backing, nitro_free_functi
 void nitro_counted_buffer_decref(nitro_counted_buffer *buf) {
     pthread_mutex_lock(&buf->lock);
     buf->count--;
+
     if (!buf->count) {
         if (buf->ff) {
             buf->ff(buf->ptr, buf->baton);
         }
+
         free(buf);
-    }
-    else
+    } else {
         pthread_mutex_unlock(&buf->lock);
+    }
 }
 
 void nitro_counted_buffer_incref(nitro_counted_buffer *buf) {
@@ -49,7 +51,6 @@ void just_free(void *data, void *unused) {
 double now_double() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-
     return ((double)tv.tv_sec +
-    ((double)tv.tv_usec / 1000000));
+            ((double)tv.tv_usec / 1000000));
 }

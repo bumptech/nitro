@@ -6,27 +6,33 @@ static int nitro_errno;
 
 char *nitro_errmsg(NITRO_ERROR error) {
     switch (error) {
-        case NITRO_ERR_ERRNO:
-            return strerror(errno);
-            break;
-        case NITRO_ERR_ALREADY_RUNNING:
-            return "nitro is already running; cannot call nitro_start twice";
-            break;
-        case NITRO_ERR_NOT_RUNNING:
-            return "nitro is not running";
-            break;
-        case NITRO_ERR_TCP_LOC_NOCOLON:
-            return "TCP socket location did not contain a colon";
-            break;
-        case NITRO_ERR_TCP_LOC_BADPORT:
-            return "TCP socket location did not contain an integer port number";
-            break;
-        case NITRO_ERR_PARSE_BAD_TRANSPORT:
-            return "invalid transport type for socket";
-            break;
-        default:
-            assert(0);
-            break;
+    case NITRO_ERR_ERRNO:
+        return strerror(errno);
+        break;
+
+    case NITRO_ERR_ALREADY_RUNNING:
+        return "nitro is already running; cannot call nitro_start twice";
+        break;
+
+    case NITRO_ERR_NOT_RUNNING:
+        return "nitro is not running";
+        break;
+
+    case NITRO_ERR_TCP_LOC_NOCOLON:
+        return "TCP socket location did not contain a colon";
+        break;
+
+    case NITRO_ERR_TCP_LOC_BADPORT:
+        return "TCP socket location did not contain an integer port number";
+        break;
+
+    case NITRO_ERR_PARSE_BAD_TRANSPORT:
+        return "invalid transport type for socket";
+        break;
+
+    default:
+        assert(0);
+        break;
     }
 
     return NULL;
