@@ -36,6 +36,7 @@
 #include "nitro.h"
 #include "nitro-private.h"
 
+// XXX move to the_runtime
 static nitro_socket_t *bound_inproc_socks;
 
 void inproc_socket_sub(nitro_socket_t *s, char *key) {
@@ -73,6 +74,7 @@ static nitro_pipe_t *new_inproc_pipe(nitro_socket_t *orig_socket, nitro_socket_t
 }
 
 nitro_socket_t *nitro_bind_inproc(char *location) {
+    // XXX not thread safe -- global lock on the_runtime
     nitro_socket_t *s = nitro_socket_new();
     s->trans = NITRO_SOCKET_INPROC;
     s->do_sub = inproc_socket_sub;
@@ -85,9 +87,11 @@ nitro_socket_t *nitro_bind_inproc(char *location) {
 }
 
 nitro_socket_t *nitro_connect_inproc(char *location) {
+    // XXX not thread safe -- need some global lock on the_runtime
     nitro_socket_t *s = nitro_socket_new();
     s->trans = NITRO_SOCKET_INPROC;
     s->do_sub = inproc_socket_sub;
+    s->outbound = 1;
     nitro_socket_t *result;
     HASH_FIND(hh, bound_inproc_socks, location, strlen(location), result);
     /* XXX YOU SUCK FOR LOOKING UP SOMETHING WRONG */
@@ -113,11 +117,19 @@ nitro_socket_t *nitro_connect_inproc(char *location) {
 }
 
 void nitro_close_inproc(nitro_socket_t *s) {
-    nitro_pipe_t *start, *p, *tmp;
+    nitro_pipe_t *p, *tmp;
 
-    for (start = p = s->pipes; p != start; p = tmp) {
+    // destroy_pipe will NULL out s->pipes
+    // when all are gone
+    for (p = s->pipes; s->pipes;) {
         tmp = p->next;
         destroy_pipe(p);
+
+        p = tmp;
+    }
+
+    if (!s->outbound) {
+        HASH_DEL(bound_inproc_socks, s);
     }
 
     nitro_socket_destroy(s);
