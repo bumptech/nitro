@@ -41,14 +41,14 @@
 nitro_runtime *the_runtime;
 
 static void *actual_run(void *unused) {
-    printf("NITRO start!\n");
+    fprintf(stderr, "NITRO start!\n");
 
     while (the_runtime->run) {
         uv_run_once(the_runtime->the_loop);
     }
 
     uv_loop_delete(the_runtime->the_loop);
-    printf("NITRO done!\n");
+    fprintf(stderr, "NITRO done!\n");
     pthread_cond_signal(&the_runtime->dc);
     return NULL;
 }
@@ -94,5 +94,6 @@ int nitro_stop() {
     pthread_cond_wait(&the_runtime->dc, &the_runtime->dm);
     pthread_mutex_unlock(&the_runtime->dm);
     free(the_runtime);
+    the_runtime = NULL;
     return 0;
 }
