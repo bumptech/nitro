@@ -18,15 +18,14 @@
 [ ] Sessions (frame query and reply api)
     [ ] manual flush so app can control
 [ ] Keep-alive and timeouts
-    [ ] How to jam keep-alives in there when
-        the outgoing buffer is full
-    [ ] Echo packet... or use tcp keepalive
+    [ ] Use TCP keepalive?
 [ ] Select-style multi-wait api
 [ ] More options (set capacity, max packet
     size, linger, etc)
 [ ] More inspection (connectedness state,
     queue lengths)
 [ ] Tests
+     [ ] Framework
 [ ] Benchmarks
 [ ] Memory checks
 [ ] Docs
