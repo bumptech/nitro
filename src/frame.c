@@ -42,8 +42,10 @@ nitro_frame_t *nitro_frame_copy(nitro_frame_t *f) {
     nitro_counted_buffer_incref(f->buffer);
     return result;
 }
+
 nitro_frame_t *nitro_frame_new(void *data, uint32_t size, nitro_free_function ff, void *baton) {
-    nitro_frame_t *f = malloc(sizeof(nitro_frame_t));
+    nitro_frame_t *f;
+    ZALLOC(f);
     nitro_counted_buffer *buffer = nitro_counted_buffer_new(data, ff, baton);
     f->buffer = buffer;
     f->size = size;
