@@ -7,12 +7,12 @@
 [x] Clean up API (remove frame etc prefixing... small project?)
 [x] Remove socket types
 [x] Inproc
-[ ] Pub/Sub
+[i] Pub/Sub
 	[x] Inproc
 	[X] TCP
-    [ ] Unsub?
-    [ ] TCP Async re-broadcast on change
-    [ ] TCP re-broadcast on timer
+    [ ] Unsub
+    [x] TCP Async re-broadcast on change
+    [x] TCP re-broadcast on timer
 [x] Close async request
 [x] Way to shut down everything?
 [ ] Sessions (frame query and reply api)
@@ -25,10 +25,11 @@
 [ ] More inspection (connectedness state,
     queue lengths)
 [ ] Tests
-     [ ] Framework
-[ ] Benchmarks
+     [x] Framework
 [ ] Object pools (frames?  keys?  pipes?)
-[ ] Memory checks
+[x] Write CAS pool
+[i] Memory checks
+[ ] Benchmarks
 [ ] Docs
 [ ] Push
 [ ] Questions -- shorten api more (no "frame" and "socket")?
@@ -36,3 +37,4 @@
 
 -- Future ideas --
 [ ] Engine Groups (abstract away multicore, share a socket)
+     [ ] Are sockets really fully thread-safe?
