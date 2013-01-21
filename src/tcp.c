@@ -341,8 +341,11 @@ static void on_tcp_connection(uv_stream_t *peer, int status) {
 }
 
 void tcp_sub_cb(uv_timer_t *handle, int status) {
-    fprintf(stderr, "send subs!\n");
-    // XXX do it
+    nitro_socket_t *s = (nitro_socket_t *)handle->data;
+    nitro_pipe_t *p;
+    CDL_FOREACH(s->pipes, p) {
+        tcp_send_sub(p, s);
+    }
 }
 
 void tcp_poll_cb(uv_async_t *handle, int status) {
@@ -472,7 +475,6 @@ void tcp_poll(uv_timer_t *handle, int status) {
 
         if (s->outbound) {
             if (!s->is_connecting) {
-                //printf("connecting!\n");
                 s->tcp_connecting_handle = malloc(sizeof(uv_tcp_t));
                 uv_tcp_init(the_runtime->the_loop, s->tcp_connecting_handle);
                 s->tcp_connecting_handle->data = s;
@@ -498,6 +500,11 @@ void tcp_poll(uv_timer_t *handle, int status) {
 
 void tcp_socket_sub(nitro_socket_t *s, char *key) {
     // create frame data
+
+    /* Start up timer */
+    uv_timer_start(&s->tcp_sub_timer,
+    tcp_sub_cb, 0, 1000);
+
     uint32_t l = 20; // sha1
     SHA1_CTX ctx;
 
@@ -535,9 +542,9 @@ nitro_socket_t *nitro_connect_tcp(char *location) {
     nitro_socket_t *s = nitro_socket_new();
     s->trans = NITRO_SOCKET_TCP;
     s->do_sub = tcp_socket_sub;
-    s->tcp_flush_handle.data = s;
     s->outbound = 1;
-    uv_async_init(the_runtime->the_loop, &s->tcp_flush_handle, tcp_flush_cb);
+    uv_timer_init(the_runtime->the_loop, &s->tcp_sub_timer);
+    s->tcp_sub_timer.data = s;
     int r = parse_tcp_location(location, &s->tcp_location);
 
     if (r) {
@@ -566,6 +573,9 @@ nitro_socket_t *nitro_bind_tcp(char *location) {
         goto errout;
     }
 
+    uv_timer_init(the_runtime->the_loop, &s->tcp_sub_timer);
+    s->tcp_sub_timer.data = s;
+
     ZALLOC(s->tcp_bound_socket);
     uv_tcp_init(the_runtime->the_loop, s->tcp_bound_socket);
     s->tcp_bound_socket->data = s;
@@ -585,12 +595,10 @@ errout:
     return NULL;
 }
 
-#include <unistd.h>
 void nitro_close_tcp(nitro_socket_t *s) {
     assert(!s->close_time);
-    sleep(1);
-    printf("requesting close\n");
     pthread_mutex_lock(&the_runtime->l_tcp_pair);
+    uv_timer_stop(&s->tcp_sub_timer);
     DL_APPEND(the_runtime->want_tcp_pair, s);
     s->close_time = now_double(); // XXX plus linger
     pthread_mutex_unlock(&the_runtime->l_tcp_pair);
