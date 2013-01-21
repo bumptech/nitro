@@ -37,6 +37,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -151,5 +152,25 @@ void SHA1Transform(u_int32_t state[5], const unsigned char buffer[64]);
 void SHA1Init(SHA1_CTX *context);
 void SHA1Update(SHA1_CTX *context, const unsigned char *data, u_int32_t len);
 void SHA1Final(unsigned char digest[20], SHA1_CTX *context);
+
+// pool.c
+typedef void (*lockfree_pool_free_func)(void *);
+typedef void (*lockfree_pool_reset_func)(void *);
+
+typedef struct lockfree_pool_t {
+    int max;
+    _Atomic (int) count;
+    lockfree_pool_free_func free_it;
+    lockfree_pool_reset_func reset_it;
+    _Atomic(void *) *cache;
+} lockfree_pool_t;
+
+
+lockfree_pool_t *lockfree_pool_init(
+    int max, lockfree_pool_free_func free_it,
+    lockfree_pool_reset_func);
+void *lockfree_pool_get(lockfree_pool_t *pool);
+void lockfree_pool_add(lockfree_pool_t *pool, void *p);
+void lockfree_pool_destroy(lockfree_pool_t *pool);
 
 #endif /* NITRO_PRIV_H */
