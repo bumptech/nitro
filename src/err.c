@@ -32,8 +32,8 @@
  * or implied, of Bump Technologies, Inc.
  *
  */
-#include <nitro.h>
-#include <nitro-private.h>
+#include "common.h"
+#include "err.h"
 
 // XXX: this is not thread safe, therefore incorrect. __thread not supported on mac
 static int nitro_errno;
@@ -58,6 +58,10 @@ char *nitro_errmsg(NITRO_ERROR error) {
 
     case NITRO_ERR_TCP_LOC_BADPORT:
         return "TCP socket location did not contain an integer port number";
+        break;
+
+    case NITRO_ERR_TCP_LOC_BADIPV4:
+        return "TCP socket location was not a valid IPv4 address (a.b.c.d)";
         break;
 
     case NITRO_ERR_PARSE_BAD_TRANSPORT:

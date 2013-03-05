@@ -16,8 +16,7 @@ A million repetitions of "a"
 /* #define SHA1HANDSOFF * Copies data before messing with it. */
 
 /* added by jamwt (moved struct definition) */
-#include "nitro.h"
-#include "nitro-private.h"
+#include "sha1.h"
 
 #define SHA1HANDSOFF
 

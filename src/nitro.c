@@ -1,7 +1,7 @@
 /*
  * Nitro
  *
- * util.c - Various utlity functions used throughout nitro
+ * api.c - Public API
  *
  *  -- LICENSE --
  *
@@ -32,32 +32,43 @@
  * or implied, of Bump Technologies, Inc.
  *
  */
-#include "common.h"
 #include "nitro.h"
-#include "util.h"
+#include "socket.h"
+#include "Stcp.h"
+#include "Sinproc.h"
 
-void fatal(char *why) {
-    fprintf(stderr, "fatal error: %s\n", why);
+nitro_socket_t *nitro_socket_bind(char *location) {
+    nitro_socket_t *s = nitro_socket_new();
+    char *next;
+    s->trans = socket_parse_location(location, &next);
+
+    SOCKET_SET_PARENT(s);
+    int r = SOCKET_CALL(s, bind, next);
+
+    if (r) {
+        // XXX destroy s
+        return NULL;
+    }
+
+    return s;
 }
 
-void just_free(void *data, void *unused) {
-    free(data);
+nitro_socket_t *nitro_socket_connect(char *location) {
+    nitro_socket_t *s = nitro_socket_new();
+    char *next;
+    s->trans = socket_parse_location(location, &next);
+
+    SOCKET_SET_PARENT(s);
+    SOCKET_CALL(s, connect, next);
+
+    return s;
 }
 
-double now_double() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return ((double)tv.tv_sec +
-            ((double)tv.tv_usec / 1000000));
+void nitro_socket_close(nitro_socket_t *s) {
+    /*SOCKET_CALL(s, close)*/
+
+    /*Scommon_socket_destroy(s);*/
 }
 
-/* a free function */
-void cbuffer_decref(void *data, void *bufptr) {
-    nitro_counted_buffer_t *buf = (nitro_counted_buffer_t *)bufptr;
-    nitro_counted_buffer_decref(buf);
-}
-
-void buffer_free(void *data, void *bufptr) {
-    nitro_buffer_t *buf = (nitro_buffer_t *)data;
-    nitro_buffer_destroy(buf);
-}
+#define nitro_send(s, fr) SOCKET_CALL(s, send, fr)
+#define nitro_recv(s, fr) SOCKET_CALL(s, recv, fr)

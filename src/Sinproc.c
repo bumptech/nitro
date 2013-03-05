@@ -1,7 +1,8 @@
 /*
  * Nitro
  *
- * util.c - Various utlity functions used throughout nitro
+ * tcp.c - TCP sockets are sockets designed to transmit frames between
+ *         different machines on a TCP/IP network
  *
  *  -- LICENSE --
  *
@@ -33,31 +34,16 @@
  *
  */
 #include "common.h"
-#include "nitro.h"
-#include "util.h"
+#include "err.h"
+#include "socket.h"
 
-void fatal(char *why) {
-    fprintf(stderr, "fatal error: %s\n", why);
+int Sinproc_socket_connect(nitro_inproc_socket_t *s, char *location) {
+    return 0;
 }
 
-void just_free(void *data, void *unused) {
-    free(data);
+int Sinproc_socket_bind(nitro_inproc_socket_t *s, char *location) {
+    return 0;
 }
+void Sinproc_socket_bind_listen(nitro_inproc_socket_t *s) {
 
-double now_double() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return ((double)tv.tv_sec +
-            ((double)tv.tv_usec / 1000000));
-}
-
-/* a free function */
-void cbuffer_decref(void *data, void *bufptr) {
-    nitro_counted_buffer_t *buf = (nitro_counted_buffer_t *)bufptr;
-    nitro_counted_buffer_decref(buf);
-}
-
-void buffer_free(void *data, void *bufptr) {
-    nitro_buffer_t *buf = (nitro_buffer_t *)data;
-    nitro_buffer_destroy(buf);
 }

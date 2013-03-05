@@ -33,68 +33,61 @@
  * or implied, of Bump Technologies, Inc.
  *
  */
-#include <unistd.h>
+#include "common.h"
 
-#include "nitro.h"
-#include "nitro-private.h"
+#include "async.h"
+#include "err.h"
+#include "runtime.h"
+#include "socket.h"
+
 
 nitro_runtime *the_runtime;
 
 static void *actual_run(void *unused) {
     fprintf(stderr, "NITRO start!\n");
 
-    while (the_runtime->run) {
-        uv_run_once(the_runtime->the_loop);
-    }
+    // handle everything!
+    ev_run(the_runtime->the_loop, 0);
 
-    uv_loop_delete(the_runtime->the_loop);
+    ev_loop_destroy(the_runtime->the_loop);
     fprintf(stderr, "NITRO done!\n");
-    pthread_cond_signal(&the_runtime->dc);
+    pthread_cond_signal(&the_runtime->c_die);
     return NULL;
 }
 
-void wake_and_die(uv_async_t *handle, int status) {
-    the_runtime->run = 0;
-}
-
-int nitro_start() {
-    int r;
+int nitro_runtime_start() {
 
     if (the_runtime) {
         return nitro_set_error(NITRO_ERR_ALREADY_RUNNING);
     }
 
     ZALLOC(the_runtime);
-    the_runtime->run = 1;
-    the_runtime->the_loop = uv_loop_new();
-    pthread_mutex_init(&the_runtime->l_tcp_pair, NULL);
-    uv_timer_init(the_runtime->the_loop, &the_runtime->tcp_timer);
-    r = uv_timer_start(&the_runtime->tcp_timer, tcp_poll, 500, 500);
-    assert(!r);
-    r = uv_async_init(the_runtime->the_loop, &the_runtime->tcp_trigger, tcp_poll_cb);
-    assert(!r);
-    r = uv_async_init(the_runtime->the_loop, &the_runtime->done_wake, wake_and_die);
-    assert(!r);
-    r = uv_async_init(the_runtime->the_loop, &the_runtime->tcp_flush, tcp_flush_cb);
-    assert(!r);
-    pthread_mutex_init(&the_runtime->dm, NULL);
-    pthread_cond_init(&the_runtime->dc, NULL);
+    the_runtime->the_loop = ev_loop_new(0); // AUTO backend
+    pthread_mutex_init(&the_runtime->l_tcp_connect, NULL);
+
+    atomic_init(&the_runtime->async_stack, NULL);
+
+    assert(atomic_load(&the_runtime->async_stack) == NULL);
+    
+    ev_async_init(&the_runtime->thread_wake, nitro_async_cb);
+    ev_async_start(the_runtime->the_loop, &the_runtime->thread_wake);
+    pthread_mutex_init(&the_runtime->l_die, NULL);
+    pthread_cond_init(&the_runtime->c_die, NULL);
     pthread_create(&the_runtime->the_thread, NULL, actual_run, NULL);
     return 0;
 }
 
-int nitro_stop() {
+int nitro_runtime_stop() {
     if (!the_runtime) {
         return nitro_set_error(NITRO_ERR_NOT_RUNNING);
     }
 
     assert(the_runtime->num_sock == 0);
-    uv_timer_stop(&the_runtime->tcp_timer);
-    uv_unref((uv_handle_t *)&the_runtime->tcp_trigger);
-    pthread_mutex_lock(&the_runtime->dm);
-    uv_async_send(&the_runtime->done_wake);
-    pthread_cond_wait(&the_runtime->dc, &the_runtime->dm);
-    pthread_mutex_unlock(&the_runtime->dm);
+    pthread_mutex_lock(&the_runtime->l_die);
+    nitro_async_t *a = nitro_async_new(NITRO_ASYNC_DIE);
+    nitro_async_schedule(a);
+    pthread_cond_wait(&the_runtime->c_die, &the_runtime->l_die);
+    pthread_mutex_unlock(&the_runtime->l_die);
     free(the_runtime);
     the_runtime = NULL;
     return 0;

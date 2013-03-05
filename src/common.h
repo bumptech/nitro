@@ -1,7 +1,7 @@
 /*
  * Nitro
  *
- * util.c - Various utlity functions used throughout nitro
+ * nitro-common.h - Common includes
  *
  *  -- LICENSE --
  *
@@ -32,32 +32,25 @@
  * or implied, of Bump Technologies, Inc.
  *
  */
-#include "common.h"
-#include "nitro.h"
-#include "util.h"
+#ifndef NITRO_COMMON_H
+#define NITRO_COMMON_H
 
-void fatal(char *why) {
-    fprintf(stderr, "fatal error: %s\n", why);
-}
+#include <arpa/inet.h>
+#include <assert.h>
+#include <errno.h>
+#include <ev.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <stdatomic.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <unistd.h>
 
-void just_free(void *data, void *unused) {
-    free(data);
-}
+#include "uthash/utlist.h"
+#include "uthash/uthash.h"
 
-double now_double() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return ((double)tv.tv_sec +
-            ((double)tv.tv_usec / 1000000));
-}
-
-/* a free function */
-void cbuffer_decref(void *data, void *bufptr) {
-    nitro_counted_buffer_t *buf = (nitro_counted_buffer_t *)bufptr;
-    nitro_counted_buffer_decref(buf);
-}
-
-void buffer_free(void *data, void *bufptr) {
-    nitro_buffer_t *buf = (nitro_buffer_t *)data;
-    nitro_buffer_destroy(buf);
-}
+#endif /* NITRO_COMMON_H */

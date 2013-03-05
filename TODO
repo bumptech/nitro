@@ -1,40 +1,4 @@
-[x] Connect timer
-[x] s/frame_send/send (only one type of send)
-[x] s/xq/nq (nano queue) (nope, nitro)
-[x] Decide on bind (okay after start)
-[x] Actual build system
-[x] Break up into multiple files
-[x] Clean up API (remove frame etc prefixing... small project?)
-[x] Remove socket types
-[x] Inproc
-[i] Pub/Sub
-	[x] Inproc
-	[X] TCP
-    [ ] Unsub
-    [x] TCP Async re-broadcast on change
-    [x] TCP re-broadcast on timer
-[x] Close async request
-[x] Way to shut down everything?
-[ ] Sessions (frame query and reply api)
-    [ ] manual flush so app can control
-[ ] Keep-alive and timeouts
-    [ ] Use TCP keepalive?
-[ ] Select-style multi-wait api
-[ ] More options (set capacity, max packet
-    size, linger, etc)
-[ ] More inspection (connectedness state,
-    queue lengths)
-[ ] Tests
-     [x] Framework
-[ ] Object pools (frames?  keys?  pipes?)
-[x] Write CAS pool
-[i] Memory checks
-[ ] Benchmarks
-[ ] Docs
-[ ] Push
-[ ] Questions -- shorten api more (no "frame" and "socket")?
-
-
--- Future ideas --
-[ ] Engine Groups (abstract away multicore, share a socket)
-     [ ] Are sockets really fully thread-safe?
+[ ] Unit test data structures
+[ ] Test basic send/recv
+[ ] Session ids, stacks, and reply
+[ ] Pub/sub

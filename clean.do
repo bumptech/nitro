@@ -1,3 +1,3 @@
 find . -name '*.o' | xargs rm
-rm -f test/nitro_test
+rm -f test/*.test
 rm -f *.a

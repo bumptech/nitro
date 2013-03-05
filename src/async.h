@@ -1,7 +1,7 @@
 /*
  * Nitro
  *
- * util.c - Various utlity functions used throughout nitro
+ * async.h - Commands to be run on the libev thread.
  *
  *  -- LICENSE --
  *
@@ -32,32 +32,39 @@
  * or implied, of Bump Technologies, Inc.
  *
  */
+
+#ifndef ASYNC_H
+#define ASYNC_H
 #include "common.h"
-#include "nitro.h"
-#include "util.h"
 
-void fatal(char *why) {
-    fprintf(stderr, "fatal error: %s\n", why);
-}
+#include "socket.h"
 
-void just_free(void *data, void *unused) {
-    free(data);
-}
+enum {
+    NITRO_ASYNC_DIE,
+    NITRO_ASYNC_BIND_LISTEN,
+    NITRO_ASYNC_TCP_FLUSH
+};
 
-double now_double() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return ((double)tv.tv_sec +
-            ((double)tv.tv_usec / 1000000));
-}
+typedef struct nitro_async_tcp_flush {
+    nitro_socket_t *socket;
+} nitro_async_tcp_flush;
 
-/* a free function */
-void cbuffer_decref(void *data, void *bufptr) {
-    nitro_counted_buffer_t *buf = (nitro_counted_buffer_t *)bufptr;
-    nitro_counted_buffer_decref(buf);
-}
+typedef struct nitro_async_bind_listen {
+    nitro_socket_t *socket;
+} nitro_async_bind_listen;
 
-void buffer_free(void *data, void *bufptr) {
-    nitro_buffer_t *buf = (nitro_buffer_t *)data;
-    nitro_buffer_destroy(buf);
-}
+typedef struct nitro_async {
+    int type;
+    union {
+        nitro_async_bind_listen bind_listen;
+        nitro_async_tcp_flush tcp_flush;
+    } u;
+    struct nitro_async *next;
+} nitro_async_t;
+
+void nitro_async_cb(struct ev_loop *loop, ev_async *a, int revents);
+nitro_async_t *nitro_async_new(int type);
+void nitro_async_schedule(nitro_async_t *a);
+
+
+#endif /* ASYNC_H */

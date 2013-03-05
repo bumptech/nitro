@@ -33,8 +33,8 @@
  * or implied, of Bump Technologies, Inc.
  *
  */
-#include "nitro.h"
-#include "nitro-private.h"
+#include "frame.h"
+#include "cbuffer.h"
 
 nitro_frame_t *nitro_frame_copy(nitro_frame_t *f) {
     nitro_frame_t *result = malloc(sizeof(nitro_frame_t));
@@ -46,10 +46,11 @@ nitro_frame_t *nitro_frame_copy(nitro_frame_t *f) {
 nitro_frame_t *nitro_frame_new(void *data, uint32_t size, nitro_free_function ff, void *baton) {
     nitro_frame_t *f;
     ZALLOC(f);
-    nitro_counted_buffer *buffer = nitro_counted_buffer_new(data, ff, baton);
+    nitro_counted_buffer_t *buffer = nitro_counted_buffer_new(data, ff, baton);
     f->buffer = buffer;
     f->size = size;
     f->prev = f->next = NULL;
+    f->type = NITRO_FRAME_DATA;
     pthread_mutex_init(&f->lock, NULL);
     return f;
 }
@@ -66,9 +67,47 @@ nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size) {
 }
 
 inline void *nitro_frame_data(nitro_frame_t *fr) {
-    return ((nitro_counted_buffer *)fr->buffer)->ptr;
+    return ((nitro_counted_buffer_t *)fr->buffer)->ptr;
 }
 
 inline uint32_t nitro_frame_size(nitro_frame_t *fr) {
     return fr->size;
+}
+
+static void nitro_frame_make_tcp_header(nitro_frame_t *fr) {
+    fr->tcp_header.protocol_version = 1;
+    fr->tcp_header.packet_type = fr->type == NITRO_FRAME_DATA ?
+        NITRO_PACKET_FRAME :
+        NITRO_PACKET_SUB;
+
+    fr->tcp_header.flags = 0;
+    fr->tcp_header.frame_size = fr->size;
+}
+
+inline struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num) {
+    *num = 2;
+    if (fr->iovec_set) {
+        return (struct iovec *)fr->iovs;
+    }
+
+    nitro_frame_make_tcp_header(fr);
+
+    fr->iovs[0].iov_base = (void*)&fr->tcp_header;
+    fr->iovs[0].iov_len = sizeof(nitro_protocol_header);
+    fr->iovs[1].iov_base = nitro_frame_data(fr);
+    fr->iovs[1].iov_len = fr->size;
+    fr->iovec_set = 1;
+
+    return (struct iovec *)fr->iovs;
+}
+
+void nitro_frame_iovs_advance(nitro_frame_t *fr, int index, int offset) {
+    int i;
+
+    for (i=0; i < index; i++) {
+        fr->iovs[i].iov_len = 0;
+    }
+
+    fr->iovs[i].iov_len -= offset;
+    fr->iovs[i].iov_base = ((char *)fr->iovs[i].iov_base) + offset;
 }

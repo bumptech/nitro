@@ -32,8 +32,8 @@
  * or implied, of Bump Technologies, Inc.
  *
  */
+#include "frame.h"
 #include "nitro.h"
-#include "nitro-private.h"
 
 void nitro_prefix_trie_search(
     nitro_prefix_trie_node *t, uint8_t *rep, uint8_t length,
@@ -120,6 +120,7 @@ void nitro_prefix_trie_add(nitro_prefix_trie_node **t,
 
 int nitro_prefix_trie_del(nitro_prefix_trie_node *t,
                           uint8_t *rep, uint8_t length, void *ptr) {
+    printf("try to delete %s with pointer %p at %s!\n", rep, ptr, t->rep);
     if (!t || t->length > length || memcmp(t->rep, rep, t->length)) {
         return 0;
     }
@@ -134,6 +135,7 @@ int nitro_prefix_trie_del(nitro_prefix_trie_node *t,
         for (m = t->members; m && ptr != m->ptr; m = m->next) {}
 
         if (m) {
+            printf("found match on delete of %s!\n", rep);
             DL_DELETE(t->members, m);
             free(m);
             return 1;

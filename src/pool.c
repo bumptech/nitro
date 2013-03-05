@@ -32,8 +32,9 @@
  * or implied, of Bump Technologies, Inc.
  *
  */
+#include "common.h"
 #include "nitro.h"
-#include "nitro-private.h"
+#include "pool.h"
 
 /* Implied: NULL on program load */
 static void *lockfree_pool_null;

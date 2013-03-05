@@ -1,7 +1,7 @@
 /*
  * Nitro
  *
- * util.c - Various utlity functions used throughout nitro
+ * buffer.c - String buffers
  *
  *  -- LICENSE --
  *
@@ -33,31 +33,60 @@
  *
  */
 #include "common.h"
-#include "nitro.h"
+#include "buffer.h"
 #include "util.h"
 
-void fatal(char *why) {
-    fprintf(stderr, "fatal error: %s\n", why);
+#define START_SIZE 1024
+
+static void nitro_buffer_grow(nitro_buffer_t *buf) {
+    while (buf->alloc < buf->size) {
+        if (!buf->alloc) {
+            buf->alloc = START_SIZE;
+        } else {
+            buf->alloc <<= 3;
+        }
+    }
+    buf->area = realloc(buf->area, buf->alloc);
 }
 
-void just_free(void *data, void *unused) {
-    free(data);
+nitro_buffer_t *nitro_buffer_new() {
+    nitro_buffer_t *buf;
+    ZALLOC(buf);
+    return buf;
 }
 
-double now_double() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return ((double)tv.tv_sec +
-            ((double)tv.tv_usec / 1000000));
+void nitro_buffer_append(nitro_buffer_t *buf, const char *s, int bytes) {
+    int old_size = buf->size;
+    buf->size += bytes;
+    if (buf->size > buf->alloc) {
+        nitro_buffer_grow(buf);
+    }
+
+    memcpy(buf->area + old_size, s, bytes);
 }
 
-/* a free function */
-void cbuffer_decref(void *data, void *bufptr) {
-    nitro_counted_buffer_t *buf = (nitro_counted_buffer_t *)bufptr;
-    nitro_counted_buffer_decref(buf);
+char *nitro_buffer_data(nitro_buffer_t *buf, int *size) {
+    *size = buf->size;
+    return buf->area;
 }
 
-void buffer_free(void *data, void *bufptr) {
-    nitro_buffer_t *buf = (nitro_buffer_t *)data;
-    nitro_buffer_destroy(buf);
+void nitro_buffer_destroy(nitro_buffer_t *buf) {
+    free(buf->area);
+    free(buf);
+}
+
+char *nitro_buffer_prepare(nitro_buffer_t *buf, int *growth) {
+    int proposed = *growth;
+    buf->size += proposed;
+    nitro_buffer_grow(buf);
+    buf->size -= proposed;
+
+    *growth = buf->alloc - buf->size;
+
+    return buf->area + buf->size;
+}
+
+void nitro_buffer_extend(nitro_buffer_t *buf, int bytes) {
+    buf->size += bytes;
+    assert(buf->size <= buf->alloc);
 }
