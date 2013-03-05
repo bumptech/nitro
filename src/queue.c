@@ -290,8 +290,8 @@ void nitro_queue_consume(nitro_queue_t *q,
     pthread_mutex_lock(&q->lock);
 
     int old_count = q->count;
-    
-    while (q->count < q->capacity) {
+
+    while (!q->capacity || q->count < q->capacity) {
         nitro_frame_t *fr = gen(baton);
         if (!fr) {
             break;
@@ -302,7 +302,7 @@ void nitro_queue_consume(nitro_queue_t *q,
 
         *q->tail = fr;
         q->tail++;
-        q->count++; 
+        q->count++;
 
         if (q->tail == q->end) {
             q->tail = q->head;
@@ -310,6 +310,6 @@ void nitro_queue_consume(nitro_queue_t *q,
     }
 
     nitro_queue_issue_callbacks(q, old_count);
-    
+
     pthread_mutex_unlock(&q->lock);
 }
