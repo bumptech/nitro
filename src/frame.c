@@ -111,3 +111,7 @@ void nitro_frame_iovs_advance(nitro_frame_t *fr, int index, int offset) {
     fr->iovs[i].iov_len -= offset;
     fr->iovs[i].iov_base = ((char *)fr->iovs[i].iov_base) + offset;
 }
+
+void nitro_frame_iovs_reset(nitro_frame_t *fr) {
+    fr->iovec_set = 0;
+}

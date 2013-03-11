@@ -63,5 +63,7 @@ inline void *nitro_frame_data(nitro_frame_t *fr);
 inline uint32_t nitro_frame_size(nitro_frame_t *fr);
 inline struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num);
 void nitro_frame_iovs_advance(nitro_frame_t *fr, int index, int offset);
+void nitro_frame_iovs_reset(nitro_frame_t *fr);
+
 
 #endif /* FRAME_H */
