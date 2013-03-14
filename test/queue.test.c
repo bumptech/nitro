@@ -6,8 +6,6 @@
 /* 
 Test Notes:
 
-1. wrapping is working for push/pull
-2. incref decref of frames
 3. destroying with frames still in
    the queue
 4. check queue count
@@ -19,6 +17,7 @@ Test Notes:
 10. pull on empty (with wakeup in another
     thread?)
 11. queue consume
+12. fd write to /tmp file
 
 */
 
@@ -69,6 +68,39 @@ int main(int argc, char **argv) {
     back = nitro_queue_pull(q);
     TEST("got world (ordering)", 
         back == world);
+
+    nitro_queue_destroy(q);
+    q = nitro_queue_new(0, 
+    test_state_callback, &tstate);
+
+    /* Wrapping */
+    TEST("pre-wrapping empty queue", nitro_queue_count(q) == 0);
+    TEST("pre-wrapping internal assumption", q->size == 1024);
+
+    int i;
+    for (i=0; i < 1023; i++) {
+        nitro_frame_t *hcopy = nitro_frame_copy(hello);
+        nitro_queue_push(q, hcopy);
+        back = nitro_queue_pull(q);
+        assert(back == hcopy);
+    }
+
+
+    nitro_queue_push(q, hello);
+    nitro_queue_push(q, world);
+
+    TEST("wrapping internals, wrap occurred",
+    q->tail < q->head);
+
+    back = nitro_queue_pull(q);
+    TEST("got hello (wrapping)", 
+        back == hello);
+    back = nitro_queue_pull(q);
+    TEST("got world (wrapping)", 
+        back == world);
+
+    TEST("wrapping internals, wrap back to even",
+    q->tail == q->head);
 
     SUMMARY(0);
     return 1;
