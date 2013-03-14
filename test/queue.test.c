@@ -21,6 +21,15 @@ Test Notes:
 
 */
 
+typedef struct my_frame_data {
+    int done;
+} my_frame_data;
+
+void my_free(void *p, void *data) {
+    my_frame_data *md = (my_frame_data *)data;
+    md->done = 1;
+}
+
 typedef struct test_state {
     int got_state_change;
     NITRO_QUEUE_STATE state_was;
@@ -101,6 +110,23 @@ int main(int argc, char **argv) {
 
     TEST("wrapping internals, wrap back to even",
     q->tail == q->head);
+
+    /* Destroy with frames in */
+
+    my_frame_data dt = {0};
+
+    world = nitro_frame_new(
+    "hello", 6, my_free, &dt);
+
+    nitro_queue_push(q, world);
+
+    TEST("delete outstanding.. not deleted",
+    dt.done == 0);
+
+    nitro_queue_destroy(q);
+
+    TEST("post-queue-delete.. frame free",
+    dt.done);
 
     SUMMARY(0);
     return 1;
