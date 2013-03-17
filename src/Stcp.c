@@ -328,7 +328,7 @@ void Stcp_pipe_out_cb(
     printf("try write!\n");
     nitro_pipe_t *p = (nitro_pipe_t *)pipe_iow->data;
 
-    int r = nitro_queue_socket_write(
+    int r = nitro_queue_fd_write(
         p->q_send,
         p->fd);
     /* handle errno on socket send */
