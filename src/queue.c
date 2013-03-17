@@ -1,3 +1,12 @@
+#ifdef __linux__
+#include <sys/uio.h>
+#ifndef IOV_MAX
+#define IOV_MAX UIO_MAXIOV
+#endif
+#else
+#include <limits.h>
+#endif
+
 #include "common.h"
 
 #include "frame.h"
@@ -79,6 +88,10 @@ nitro_frame_t *nitro_queue_pull(nitro_queue_t *q) {
     }
 
     nitro_queue_issue_callbacks(q, q->count + 1);
+
+    if (q->capacity && q->count == (q->capacity - 1)) {
+        pthread_cond_signal(&q->trigger);
+    }
     pthread_mutex_unlock(&q->lock);
     return ptr;
 }
@@ -103,21 +116,25 @@ void nitro_queue_push(nitro_queue_t *q, nitro_frame_t *f) {
 
     nitro_queue_issue_callbacks(q, q->count - 1);
 
+    if (q->count == 1) {
+        pthread_cond_signal(&q->trigger);
+    }
+
     pthread_mutex_unlock(&q->lock);
 }
 
 /* "internal" functions, mass population and eviction */
-int nitro_queue_socket_write(nitro_queue_t *q, int fd) {
+int nitro_queue_fd_write(nitro_queue_t *q, int fd) {
     /* Does gather IO to avoid copying buffers around */
+    pthread_mutex_lock(&q->lock);
     int actual_iovs = 0;
     int accum_bytes = 0;
     int ret = 0;
     nitro_frame_t **iter = q->head;
-    struct iovec vectors[2000];
+    struct iovec vectors[IOV_MAX];
 
-    pthread_mutex_lock(&q->lock);
     int old_count = q->count;
-    while (accum_bytes < (32 * 1024) && actual_iovs < 2000 
+    while (accum_bytes < (32 * 1024) && actual_iovs < IOV_MAX 
         && iter != q->tail) {
         int num;
         struct iovec *f_vs = nitro_frame_iovs(*iter, &num);
@@ -174,7 +191,6 @@ int nitro_queue_socket_write(nitro_queue_t *q, int fd) {
 
     nitro_queue_issue_callbacks(q, old_count);
 
-
 out:
     pthread_mutex_unlock(&q->lock);
     return ret;
@@ -211,8 +227,8 @@ void nitro_queue_move(nitro_queue_t *src, nitro_queue_t *dst, int max) {
             copy_left);
 
         memcpy(
-            dst->tail,
-            src->head,
+            f_dst,
+            f_src,
             copy_now * sizeof(void *));
 
         f_dst += copy_now;

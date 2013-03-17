@@ -36,7 +36,7 @@ nitro_queue_t *nitro_queue_new(int capacity,
 
 nitro_frame_t *nitro_queue_pull(nitro_queue_t *q);
 void nitro_queue_push(nitro_queue_t *q, nitro_frame_t *f);
-int nitro_queue_socket_write(nitro_queue_t *q, int fd);
+int nitro_queue_fd_write(nitro_queue_t *q, int fd);
 void nitro_queue_destroy(nitro_queue_t *q);
 inline int nitro_queue_count(nitro_queue_t *q);
 typedef nitro_frame_t *(*nitro_queue_frame_generator)(void *baton);
