@@ -2,7 +2,7 @@
 
 nitro_counted_buffer_t *nitro_counted_buffer_new(void *backing, nitro_free_function ff, void *baton) {
     nitro_counted_buffer_t *buf;
-    ZALLOC(buf);
+    buf = malloc(sizeof(nitro_counted_buffer_t));
     buf->ptr = backing;
     buf->count = 1;
     pthread_mutex_init(&buf->lock, NULL);

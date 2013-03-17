@@ -45,13 +45,11 @@ nitro_frame_t *nitro_frame_copy(nitro_frame_t *f) {
 
 nitro_frame_t *nitro_frame_new(void *data, uint32_t size, nitro_free_function ff, void *baton) {
     nitro_frame_t *f;
-    ZALLOC(f);
+    f = malloc(sizeof(nitro_frame_t));
+    bzero(f, FRAME_BZERO_SIZE);
     nitro_counted_buffer_t *buffer = nitro_counted_buffer_new(data, ff, baton);
     f->buffer = buffer;
     f->size = size;
-    f->prev = f->next = NULL;
-    f->type = NITRO_FRAME_DATA;
-    pthread_mutex_init(&f->lock, NULL);
     return f;
 }
 
