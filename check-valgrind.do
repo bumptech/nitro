@@ -1,2 +1,2 @@
-export VALGRIND="valgrind --leak-check=full"
+export VALGRIND="valgrind --leak-check=full --show-reachable=yes"
 redo check
