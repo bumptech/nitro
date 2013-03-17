@@ -1,2 +1,2 @@
-gcc -Wall -Werror -g -I../src -L.. $1.c -lnitro -lev -lpthread -o $3 $EXTRA_LDFLAGS
+gcc -O2 -Wall -Werror -g -I../src -L.. $1.c -lnitro -lev -lpthread -o $3 $EXTRA_LDFLAGS
 $VALGRIND ./$3
