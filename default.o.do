@@ -1,4 +1,3 @@
-# on mac, this gets screwed up... 
 path=`echo $1 | sed "s/\.o$//"`
 
 headers=`find src -name '*.h'`
