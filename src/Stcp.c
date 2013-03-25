@@ -68,7 +68,6 @@ static int Stcp_nonblocking_socket_new() {
     return s;
 }
 
-
 static int Stcp_parse_location(char *p_location,
                               struct sockaddr_in *addr) {
     char *location = alloca(strlen(p_location) + 1);
@@ -326,19 +325,20 @@ void Stcp_pipe_out_cb(
 {
     NITRO_THREAD_CHECK;
     printf("try write!\n");
-    nitro_pipe_t *p = (nitro_pipe_t *)pipe_iow->data;
 
-    int r = nitro_queue_fd_write(
-        p->q_send,
-        p->fd);
-    /* handle errno on socket send */
-    (void)r;
+    // XXX consume from appropriate queue chain
+//    nitro_pipe_t *p = (nitro_pipe_t *)pipe_iow->data;
+    /*int r = nitro_queue_fd_write(*/
+    /*    p->q_send,*/
+    /*    p->fd);*/
+    /*[> handle errno on socket send <]*/
+    /*(void)r;*/
 }
 
 void Stcp_pipe_in_cb(
     struct ev_loop *loop,
     ev_io *pipe_iow,
-    int revents) 
+    int revents)
 {
     /* NOTE: this is on the security critical path */
     NITRO_THREAD_CHECK;

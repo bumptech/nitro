@@ -124,7 +124,9 @@ void nitro_queue_push(nitro_queue_t *q, nitro_frame_t *f) {
 }
 
 /* "internal" functions, mass population and eviction */
-int nitro_queue_fd_write(nitro_queue_t *q, int fd) {
+int nitro_queue_fd_write(nitro_queue_t *q, int fd, 
+    nitro_frame_t *partial,
+    nitro_frame_t **remain) {
     /* Does gather IO to avoid copying buffers around */
     pthread_mutex_lock(&q->lock);
     int actual_iovs = 0;
@@ -133,16 +135,24 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd) {
     nitro_frame_t **iter = q->head;
     struct iovec vectors[IOV_MAX];
 
+    if (partial) {
+        int num;
+        struct iovec *f_vs = nitro_frame_iovs(partial, &num);
+        assert(num == 2);
+        memcpy(vectors, f_vs, 2 * sizeof(struct iovec));
+        actual_iovs += 2;
+        accum_bytes += (f_vs[0].iov_len + f_vs[1].iov_len);
+    }
+
     int old_count = q->count;
     while (accum_bytes < (32 * 1024) && actual_iovs < IOV_MAX 
         && iter != q->tail) {
         int num;
         struct iovec *f_vs = nitro_frame_iovs(*iter, &num);
         assert(num == 2);
-        vectors[actual_iovs++] = f_vs[0];
-        accum_bytes += f_vs[0].iov_len;
-        vectors[actual_iovs++] = f_vs[1];
-        accum_bytes += f_vs[1].iov_len;
+        memcpy(&(vectors[actual_iovs]), f_vs, 2 * sizeof(struct iovec));
+        accum_bytes += (f_vs[0].iov_len + f_vs[1].iov_len);
+        actual_iovs += 2;
         iter++;
         if (iter == q->end)
             iter = q->q;
@@ -166,23 +176,55 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd) {
     /* Sweep up *wholly* sent things by destroying the frames and
        advancing the queue; if a frame is left partially sent
        at the end, update its iovectors to represent the fractional
-       state */
-    int i;
-    for (i=0; i < actual_iovs; i++) {
+       state and return it as a "remainder" (but still pop it off
+       this queue) */
+    int i = 0;
+    *remain = NULL;
+    if (partial) {
+        if (vectors[i].iov_len > actual_bytes) {
+            nitro_frame_iovs_advance(partial, 0, actual_bytes);
+            *remain = partial;
+            actual_bytes = 0;
+        }
+        else {
+            actual_bytes -= vectors[i].iov_len;
+            i++;
+            if (vectors[i].iov_len > actual_bytes) {
+                nitro_frame_iovs_advance(partial, 1, actual_bytes);
+                *remain = partial;
+                actual_bytes = 0;
+            }
+            else {
+                actual_bytes -= vectors[i].iov_len;
+                i++;
+                nitro_frame_destroy(partial);
+            }
+        }
+    }
+    while (actual_bytes) {
         nitro_frame_t *fr = *q->head;
         if (vectors[i].iov_len > actual_bytes) {
             nitro_frame_iovs_advance(fr, 0, actual_bytes);
-            break;
+            *remain = fr;
+            actual_bytes = 0;
+            goto pop;
         }
         actual_bytes -= vectors[i].iov_len;
         i++;
 
         if (vectors[i].iov_len > actual_bytes) {
             nitro_frame_iovs_advance(fr, 1, actual_bytes);
-            break;
+            *remain = fr;
+            actual_bytes = 0;
+            goto pop;
         }
         actual_bytes -= vectors[i].iov_len;
+        i++;
+
+        /* Frame was completely delivered; destroy */
         nitro_frame_destroy(fr);
+
+pop:
         q->head++;
         if (q->head == q->end)
             q->head = q->q;

@@ -4,6 +4,9 @@
 #include "frame.h"
 #include "util.h"
 
+#include <fcntl.h>
+#include <sys/stat.h>
+
 /*
 Test Notes:
 
@@ -54,6 +57,42 @@ void *put_item(void *p) {
 
     nitro_queue_push(q, fr);
 
+    return NULL;
+}
+
+typedef struct pipe_pass {
+    char *out;
+    int pread;
+} pipe_pass;
+
+void *pipe_consume(void *p) {
+    pipe_pass *pp = (pipe_pass *)p;
+
+    char *ptr = pp->out;
+
+    int bytes = 0;
+    int r = 0;
+
+    int rfd = open("/dev/urandom", O_RDONLY);
+    do {
+        uint8_t ms;
+        struct timespec ts;
+        read(rfd, (void *)&ms, sizeof(uint8_t));
+        ts.tv_sec = 0;
+        ts.tv_nsec = 10000 * ms;
+        // introduce some latency to test various boundary conditions
+        nanosleep(&ts, NULL);
+        do {
+            r = read(pp->pread, ptr, 1000);
+        } while (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK));
+        if (r > 0) {
+            bytes += r;
+            ptr += r;
+        }
+    } while (r > 0 && bytes != 550000);
+    assert(bytes == 550000);
+
+    close(rfd);
     return NULL;
 }
 
@@ -504,7 +543,7 @@ int main(int argc, char **argv) {
 
     q = nitro_queue_new(0,
     test_state_callback, &tstate);
-    for (i=0; i < 5000; i++) {
+    for (i=0; i < 50000; i++) {
         nitro_queue_push(q,
             nitro_frame_new_copy(
                 "dog", 3));
@@ -525,21 +564,29 @@ int main(int argc, char **argv) {
 
     int bytes = 0;
     int total = 0;
+    nitro_frame_t *remain = NULL;
+    pthread_t reader;
+    char out[550000];
+    pipe_pass pp = {out, pread};
+    pthread_create(&reader, NULL, pipe_consume, &pp);
     do {
-        total += bytes;
+        errno = 0;
+        if (bytes > 0)
+            total += bytes;
         bytes = nitro_queue_fd_write(
-            q, pwrite);
-    } while (bytes > 0);
+            q, pwrite, remain, &remain);
+    } while (bytes > 0 || errno == EAGAIN || errno == EWOULDBLOCK);
     if (bytes < 0) {
         perror("write to pipe:");
         assert(bytes == 0);
     }
 
     TEST("(fd write) correct write byte count",
-    total == 55000);
+    total == 550000);
 
-    char out[55000];
-    read(pread, out, 55000);
+    void *t_ret;
+    /* wait for reader to finish */
+    pthread_join(reader, &t_ret);
 
     char *ptr = out;
     nitro_protocol_header target_head = {
@@ -548,7 +595,7 @@ int main(int argc, char **argv) {
         0,
         3};
 
-    for (i=0; i < 5000; i++) {
+    for (i=0; i < 50000; i++) {
         if (memcmp(ptr, &target_head, sizeof(target_head)) ||
             memcmp(ptr + sizeof(target_head), "dog", 3)) {
             break;
@@ -557,10 +604,11 @@ int main(int argc, char **argv) {
     }
 
     TEST("(fd write) read data was correct",
-    ptr == out + 55000);
+    ptr == out + 550000);
 
     close(pwrite);
     close(pread);
+
 
     nitro_queue_destroy(q);
 
