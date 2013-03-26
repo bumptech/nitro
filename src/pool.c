@@ -33,7 +33,6 @@
  *
  */
 #include "common.h"
-#include "nitro.h"
 #include "pool.h"
 
 /* Implied: NULL on program load */

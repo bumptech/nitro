@@ -35,30 +35,41 @@
 #include "pipe.h"
 #include "socket.h"
 
-void destroy_pipe(nitro_pipe_t *p) {
-//    nitro_socket_t *s = (nitro_socket_t *)p->the_socket;
+void nitro_pipe_destroy(nitro_pipe_t *p, void *ptr) {
+    nitro_universal_socket_t *s = (nitro_universal_socket_t *)ptr;
     /*pthread_mutex_lock(&s->l_sub);*/
     /*remove_pub_filters(s, p);*/
     /*pthread_mutex_unlock(&s->l_sub);*/
     /*assert(p->sub_keys == NULL);*/
 
-    /*if (p->next == p) {*/
-    /*    s->next_pipe = NULL;*/
-    /*} else {*/
-    /*    s->next_pipe = p->next;*/
-    /*}*/
+    pthread_mutex_lock(&s->l_pipes);
+    if (s->num_pipes == 1) {
+       s->next_pipe = NULL;
+    } else if (p == s->next_pipe) {
+       s->next_pipe = p->next;
+    }
+    --s->num_pipes;
+    pthread_mutex_unlock(&s->l_pipes);
 
-    /*CDL_DELETE(s->pipes, p);*/
+    CDL_DELETE(s->pipes, p);
 
-    /*if (p->registered) {*/
-    /*    HASH_DEL(s->pipes_by_session, p);*/
-    /*}*/
+    if (p->registered) {
+       HASH_DEL(s->pipes_by_session, p);
+    }
 
-    nitro_buffer_destroy(p->in_buffer);
     free(p);
 }
 
-nitro_pipe_t *nitro_pipe_new() {
+nitro_pipe_t *nitro_pipe_new(nitro_universal_socket_t *s) {
     nitro_pipe_t *p = calloc(1, sizeof(nitro_pipe_t));
+
+    pthread_mutex_lock(&s->l_pipes);
+    CDL_PREPEND(s->pipes, p);
+    if (!s->next_pipe) {
+        s->next_pipe = p;
+    }
+    ++s->num_pipes;
+    pthread_mutex_unlock(&s->l_pipes);
+
     return p;
 }

@@ -32,7 +32,6 @@
  * or implied, of Bump Technologies, Inc.
  *
  */
-#include "nitro.h"
 #include "socket.h"
 #include "Stcp.h"
 #include "Sinproc.h"
@@ -65,9 +64,7 @@ nitro_socket_t *nitro_socket_connect(char *location) {
 }
 
 void nitro_socket_close(nitro_socket_t *s) {
-    /*SOCKET_CALL(s, close)*/
-
-    /*Scommon_socket_destroy(s);*/
+    SOCKET_CALL(s, close);
 }
 
 #define nitro_send(s, fr) SOCKET_CALL(s, send, fr)

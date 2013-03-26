@@ -317,27 +317,31 @@ void nitro_queue_destroy(nitro_queue_t *q) {
 static void nitro_queue_issue_callbacks(nitro_queue_t *q, 
     int old_count) {
 
+    int old_state = (old_count == 0 ? NITRO_QUEUE_STATE_EMPTY :
+        ((q->capacity && old_count == q->capacity) ? NITRO_QUEUE_STATE_FULL :
+            NITRO_QUEUE_STATE_CONTENTS));
+
     /* 1. EMPTY to FULL|CONTENTS */
     if (old_count == 0 && q->count) {
         q->state_callback(
             (!q->capacity || q->count < q->capacity) ?
                 NITRO_QUEUE_STATE_CONTENTS :
-                NITRO_QUEUE_STATE_FULL, q->baton);
+                NITRO_QUEUE_STATE_FULL, old_state, q->baton);
     } 
     
     /* 2. FULL|CONTENTS to EMPTY */
     else if (old_count > 0 && !q->count) {
-        q->state_callback(NITRO_QUEUE_STATE_EMPTY, q->baton);
+        q->state_callback(NITRO_QUEUE_STATE_EMPTY, old_state, q->baton);
     } 
     
     else if (q->capacity) {
         /* 3. FULL to CONTENTS */
         if (old_count == q->capacity && q->count < q->capacity) {
-            q->state_callback(NITRO_QUEUE_STATE_CONTENTS, q->baton);
+            q->state_callback(NITRO_QUEUE_STATE_CONTENTS, old_state, q->baton);
         }
         /* 4. CONTENTS to FULL */
         else if (old_count < q->capacity && q->count == q->capacity) {
-            q->state_callback(NITRO_QUEUE_STATE_FULL, q->baton);
+            q->state_callback(NITRO_QUEUE_STATE_FULL, old_state, q->baton);
         }
     }
 }

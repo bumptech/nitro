@@ -29,11 +29,7 @@ NITRO_SOCKET_TRANSPORT socket_parse_location(char *location, char **next) {
     return -1;
 }
 
-void socket_feed_pipe(nitro_universal_socket_t *s,
-    nitro_pipe_t *p) {
-    nitro_queue_move(
-        s->q_waiting,
-        p->q_send,
-        nitro_queue_count(s->q_waiting)
-        / s->num_pipes);
+void nitro_socket_destroy(nitro_socket_t *s) {
+    free(s);
+    __sync_add_and_fetch(&the_runtime->num_sock, 1);
 }

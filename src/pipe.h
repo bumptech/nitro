@@ -10,18 +10,21 @@ typedef struct nitro_pipe_t *nitro_pipe_t_p;
 
 typedef struct nitro_pipe_t {
 
-    /* Main send queue */
+    /* Direct send queue */
     nitro_queue_t *q_send;
 
     /* for TCP sockets */
     ev_io ior;
     ev_io iow;
     int fd;
-
+    /* When we have partial output */
+    nitro_frame_t *partial;
 
     nitro_buffer_t *in_buffer;
 
     void *the_socket;
+
+    /* XXX for inproc, paired socket */
     void *dest_socket;
 
     struct nitro_pipe_t *prev;
@@ -35,5 +38,6 @@ typedef struct nitro_pipe_t {
 } nitro_pipe_t;
 
 nitro_pipe_t *nitro_pipe_new();
+void nitro_pipe_destroy(nitro_pipe_t *p, void *s);
 
 #endif /* PIPE_H */

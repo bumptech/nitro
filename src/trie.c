@@ -32,8 +32,8 @@
  * or implied, of Bump Technologies, Inc.
  *
  */
+#include "trie.h"
 #include "frame.h"
-#include "nitro.h"
 
 void nitro_prefix_trie_search(
     nitro_prefix_trie_node *t, uint8_t *rep, uint8_t length,

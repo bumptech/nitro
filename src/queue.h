@@ -12,7 +12,7 @@ typedef enum {
     NITRO_QUEUE_STATE_FULL
 } NITRO_QUEUE_STATE;
 
-typedef void (*nitro_queue_state_changed)(NITRO_QUEUE_STATE st, void *baton);
+typedef void (*nitro_queue_state_changed)(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, void *baton);
 
 /* Queue of Frames */
 typedef struct nitro_queue_t {

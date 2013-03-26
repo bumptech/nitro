@@ -37,15 +37,16 @@ typedef enum {
 #define SOCKET_COMMON_FIELDS\
     /* Incoming messages */\
     nitro_queue_t *q_recv;\
-    /* Queued messages when no connected socket */\
-    nitro_queue_t *q_waiting;\
+    /* Outgoing _general_ messages */\
+    nitro_queue_t *q_send;\
+    \
     /* locks for sending and receiving from other threads\
        control locks for maniuplating counts, queues, or pipes*/\
     pthread_mutex_t l_sub;\
     \
-    /* Lock for pipe management */\
-    pthread_mutex_t l_pipe;\
-    \
+    /* Pipes need to be locked during map
+       lookup, mutation by libev thread, etc */\
+    pthread_mutex_t l_pipes;\
     /* for reply-style session mapping\
        UT Hash.  Pipes that have not yet registered are not in here */\
     nitro_pipe_t *pipes_by_session;\
@@ -74,15 +75,14 @@ typedef struct nitro_tcp_socket_t {
 
     ev_io bound_io;
     int bound_fd;
-    struct sockaddr_in location;
-    int is_connecting;
-    int outbound;
-    double close_time;
-    int close_refs;
 
-    /* tcp connect list */
-    struct nitro_tcp_socket_t *prev;
-    struct nitro_tcp_socket_t *next;
+    ev_io connect_io;
+    int connect_fd;
+    ev_timer connect_timer;
+
+    _Atomic (int) send_empty;
+
+    struct sockaddr_in location;
 
     nitro_counted_buffer_t *sub_data;
     uint32_t sub_data_length;
@@ -108,11 +108,11 @@ typedef struct nitro_socket_t {
 } nitro_socket_t;
 
 nitro_socket_t *nitro_socket_new();
+void nitro_socket_destroy();
 nitro_socket_t *nitro_socket_bind(char *location);
 nitro_socket_t *nitro_socket_connect(char *location);
 void nitro_socket_close(nitro_socket_t *s);
 NITRO_SOCKET_TRANSPORT socket_parse_location(char *location, char **next);
-void socket_feed_pipe(nitro_universal_socket_t *s, nitro_pipe_t *p);
 
 
 #endif /* SOCKET_H */

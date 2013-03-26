@@ -35,7 +35,6 @@
 
 #include "async.h"
 #include "runtime.h"
-#include "nitro.h"
 #include "Stcp.h"
 #include "Sinproc.h"
 
@@ -67,8 +66,28 @@ void nitro_async_schedule(nitro_async_t *a) {
         &the_runtime->thread_wake);
 }
 
-static void nitro_async_handle(nitro_async_t *a);
-
+static void nitro_async_handle(nitro_async_t *a) {
+    switch (a->type) {
+    case NITRO_ASYNC_ENABLE_WRITES:
+        SOCKET_CALL(a->u.bind_listen.socket, enable_writes);
+        break;
+    case NITRO_ASYNC_ENABLE_READS:
+        SOCKET_CALL(a->u.bind_listen.socket, enable_reads);
+        break;
+    case NITRO_ASYNC_DIE:
+        ev_break(the_runtime->the_loop, EVBREAK_ALL);
+        break;
+    case NITRO_ASYNC_BIND_LISTEN:
+        SOCKET_CALL(a->u.bind_listen.socket, bind_listen);
+        break;
+    case NITRO_ASYNC_CONNECT:
+        SOCKET_CALL(a->u.connect.socket, start_connect);
+        break;
+    case NITRO_ASYNC_CLOSE:
+        SOCKET_CALL(a->u.close.socket, shutdown);
+        break;
+    }
+}
 
 void nitro_async_cb(struct ev_loop *loop, ev_async *a, int revents) {
     volatile nitro_async_t *head = NULL, *next = NULL;
@@ -84,19 +103,5 @@ void nitro_async_cb(struct ev_loop *loop, ev_async *a, int revents) {
         next = head->next;
         nitro_async_handle((nitro_async_t *)head);
         nitro_async_destroy((nitro_async_t *)head);
-    }
-}
-
-static void nitro_async_handle(nitro_async_t *a) {
-    switch (a->type) {
-    case NITRO_ASYNC_DIE:
-        ev_break(the_runtime->the_loop, EVBREAK_ALL);
-        break;
-    case NITRO_ASYNC_TCP_FLUSH:
-//        socket_flush(a->u.tcp_flush.socket); // XXX
-        break;
-    case NITRO_ASYNC_BIND_LISTEN:
-        SOCKET_CALL(a->u.bind_listen.socket, bind_listen);
-        break;
     }
 }

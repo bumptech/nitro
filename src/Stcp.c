@@ -41,6 +41,8 @@
 #include "runtime.h"
 #include "socket.h"
 
+/* TODO -- capacity enforcement on influx */
+
 
 #define TCP_INBUF (64 * 1024)
 
@@ -56,7 +58,17 @@ void Stcp_pipe_out_cb(
 void Stcp_pipe_in_cb(
     struct ev_loop *loop,
     ev_io *pipe_iow,
-    int revents) ;
+    int revents);
+void Stcp_socket_connect_timer_cb(
+    struct ev_loop *loop,
+    ev_timer *connect_timer,
+    int revents);
+
+/* various fw declaration */
+void Stcp_socket_disable_reads(nitro_tcp_socket_t *s);
+void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd);
+void Stcp_destroy_pipe(nitro_pipe_t *p);
+void Stcp_socket_start_connect(nitro_tcp_socket_t *s);
 
 static int Stcp_nonblocking_socket_new() {
     int s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -100,6 +112,52 @@ static int Stcp_parse_location(char *p_location,
     return 0;
 }
 
+void Stcp_socket_send_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, void *p) {
+    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p;
+
+    int is_empty = st == NITRO_QUEUE_STATE_EMPTY ?
+        1 : 0;
+
+    int old = is_empty ? 0 : 1;
+    int swapped = 0;
+
+    do {
+        swapped = atomic_compare_exchange_strong(
+            &s->send_empty,
+            &old,
+            is_empty);
+    } while (!swapped);
+
+    if (last == NITRO_QUEUE_STATE_EMPTY) {
+        assert(!is_empty);
+        nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p;
+        nitro_async_t *a = nitro_async_new(NITRO_ASYNC_ENABLE_WRITES);
+        a->u.enable_writes.socket = SOCKET_PARENT(s);
+        nitro_async_schedule(a);
+    }
+}
+
+void Stcp_socket_recv_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, void *p) {
+    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p;
+    if (st == NITRO_QUEUE_STATE_FULL) {
+        Stcp_socket_disable_reads(s);
+    }
+    else if (last == NITRO_QUEUE_STATE_FULL) {
+        /* async, we're not on nitro thread */
+        nitro_async_t *a = nitro_async_new(NITRO_ASYNC_ENABLE_READS);
+        a->u.enable_reads.socket = SOCKET_PARENT(s);
+        nitro_async_schedule(a);
+    }
+}
+
+void Stcp_create_queues(nitro_tcp_socket_t *s) {
+    s->q_send = nitro_queue_new(
+        0, Stcp_socket_send_queue_stat, (void*)s);
+    s->q_recv = nitro_queue_new(
+        0, Stcp_socket_recv_queue_stat, (void*)s);
+    atomic_init(&s->send_empty, 1);
+}
+
 int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
     int r = Stcp_parse_location(location, &s->location);
 
@@ -108,7 +166,18 @@ int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
         return r;
     }
 
-    // XXX start async connect
+    Stcp_create_queues(s);
+
+    ev_timer_init(
+        &s->connect_timer,
+        Stcp_socket_connect_timer_cb,
+        0.5, 0);
+    s->connect_timer.data = s;
+
+    nitro_async_t *a = nitro_async_new(NITRO_ASYNC_CONNECT);
+    a->u.connect.socket = SOCKET_PARENT(s);
+    nitro_async_schedule(a);
+
     return 0;
 }
 
@@ -118,6 +187,8 @@ int Stcp_socket_bind(nitro_tcp_socket_t *s, char *location) {
     if (r) {
         return r;
     }
+
+    Stcp_create_queues(s);
 
     s->bound_fd = Stcp_nonblocking_socket_new();
 
@@ -148,26 +219,118 @@ int Stcp_socket_bind(nitro_tcp_socket_t *s, char *location) {
     return 0;
 }
 
+void Stcp_socket_shutdown(nitro_tcp_socket_t *s) {
+    nitro_pipe_t *tmp1, *tmp2, *p = NULL;
+
+    CDL_FOREACH_SAFE(s->pipes,p,tmp1,tmp2) {
+        Stcp_destroy_pipe(p);
+    }
+
+    nitro_queue_destroy(s->q_send);
+    nitro_queue_destroy(s->q_recv);
+    ev_timer_stop(the_runtime->the_loop, &s->connect_timer);
+    ev_io_stop(the_runtime->the_loop, &s->connect_io);
+    ev_io_stop(the_runtime->the_loop, &s->bound_io);
+    if (s->bound_fd > 0) {
+        close(s->bound_fd);
+    }
+    if (s->connect_fd > 0) {
+        close(s->connect_fd);
+    }
+    nitro_socket_destroy(SOCKET_PARENT(s));
+}
+
 void Stcp_socket_bind_listen(nitro_tcp_socket_t *s) {
     NITRO_THREAD_CHECK;
     ev_io_start(the_runtime->the_loop, 
     &s->bound_io);
 }
 
-void Stcp_pipe_send_queue(NITRO_QUEUE_STATE st, void *baton) {
-    nitro_pipe_t *p = (nitro_pipe_t *)baton;
+void Stcp_socket_connect_timer_cb(
+    struct ev_loop *loop,
+    ev_timer *connect_timer,
+    int revents) {
+    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)connect_timer->data;
 
-    if (st == NITRO_QUEUE_STATE_EMPTY) {
-        ev_io_stop(the_runtime->the_loop,
-        &p->iow);
+    Stcp_socket_start_connect(s);
+}
+
+void Stcp_connect_cb(
+    struct ev_loop *loop,
+    ev_io *connect_io,
+    int revents) {
+    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)connect_io->data;
+
+    int t = connect(s->connect_fd,
+        (struct sockaddr *)&s->location,
+        sizeof(s->location));
+
+    if (!t || errno == EISCONN || !errno) {
+        ev_io_stop(the_runtime->the_loop, &s->connect_io);
+        s->connect_fd = -1;
+        Stcp_make_pipe(s, s->connect_fd);
+    }
+    else if (errno == EINPROGRESS || errno == EINTR || errno == EALREADY) {
+        /* do nothing, we'll get phoned home again... */
     }
     else {
-        ev_io_start(the_runtime->the_loop,
-        &p->iow);
+        close(s->connect_fd);
+        ev_timer_start(the_runtime->the_loop, &s->connect_timer);
     }
 }
 
+void Stcp_socket_start_connect(nitro_tcp_socket_t *s) {
+    NITRO_THREAD_CHECK;
+
+    s->connect_fd = Stcp_nonblocking_socket_new();
+
+    ev_io_init(&s->connect_io,
+    Stcp_connect_cb, s->connect_fd, EV_WRITE);
+    s->connect_io.data = s;
+
+    int t = connect(s->connect_fd,
+        (struct sockaddr *)&s->location,
+        sizeof(s->location));
+
+    if (t == 0 || errno == EINPROGRESS || errno == EINTR) {
+        ev_io_start(the_runtime->the_loop, &s->connect_io);
+        return ;
+    }
+    else {
+        close(s->connect_fd);
+        ev_timer_start(the_runtime->the_loop, &s->connect_timer);
+    }
+}
+
+void Stcp_pipe_send_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, void *baton) {
+    /* XXX local queue, do when doing reply,
+       pub etc.. use atomic like socket one. */
+//    nitro_pipe_t *p = (nitro_pipe_t *)baton;
+
+    if (st == NITRO_QUEUE_STATE_EMPTY) {
+        /* stop happens on poll */
+    }
+    else {
+        /* XXX send async to wake this up based on private messages */
+    }
+}
+
+void Stcp_destroy_pipe(nitro_pipe_t *p) {
+    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p->the_socket;
+    ev_io_stop(the_runtime->the_loop, &p->iow);
+    ev_io_stop(the_runtime->the_loop, &p->ior);
+    nitro_buffer_destroy(p->in_buffer);
+    nitro_queue_destroy(p->q_send);
+    close(p->fd);
+    if (p->partial) {
+        nitro_frame_destroy(p->partial);
+    }
+    nitro_pipe_destroy(p,
+        SOCKET_UNIVERSAL(s));
+}
+
 void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd) {
+    NITRO_THREAD_CHECK;
     nitro_pipe_t *p = nitro_pipe_new();
     p->fd = fd;
     p->in_buffer = nitro_buffer_new();
@@ -184,9 +347,49 @@ void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd) {
     // eventually, use socket settings
     // for capacity
     p->q_send = nitro_queue_new(0,
-    Stcp_pipe_send_queue, p);
+    Stcp_pipe_send_queue_stat, p);
 
-    socket_feed_pipe(SOCKET_UNIVERSAL(s), p);
+    ev_io_start(the_runtime->the_loop,
+    &p->iow);
+    ev_io_start(the_runtime->the_loop,
+    &p->ior);
+
+}
+
+void Stcp_socket_enable_writes(nitro_tcp_socket_t *s) {
+    NITRO_THREAD_CHECK;
+    nitro_pipe_t *p;
+
+    for(p=s->pipes; p; p = p->next) {
+        ev_io_start(the_runtime->the_loop,
+        &p->iow);
+    }
+}
+
+void Stcp_socket_enable_reads(nitro_tcp_socket_t *s) {
+    NITRO_THREAD_CHECK;
+    nitro_pipe_t *p;
+
+    for(p=s->pipes; p; p = p->next) {
+        ev_io_start(the_runtime->the_loop,
+        &p->ior);
+    }
+}
+
+void Stcp_socket_disable_reads(nitro_tcp_socket_t *s) {
+    NITRO_THREAD_CHECK;
+    nitro_pipe_t *p;
+
+    for(p=s->pipes; p; p = p->next) {
+        ev_io_stop(the_runtime->the_loop,
+        &p->ior);
+    }
+}
+
+void Stcp_socket_close(nitro_tcp_socket_t *s) {
+    nitro_async_t *a = nitro_async_new(NITRO_ASYNC_CLOSE);
+    a->u.close.socket = SOCKET_PARENT(s);
+    nitro_async_schedule(a);
 }
 
 typedef struct tcp_frame_parse_state {
@@ -273,20 +476,19 @@ void Stcp_parse_socket_buffer(nitro_pipe_t *p) {
         if (to_copy) {
             int writable = TCP_INBUF > to_copy ? TCP_INBUF : to_copy;
             char *write = nitro_buffer_prepare(p->in_buffer, &writable);
-            
+
             memcpy(write, parse_state.cursor, to_copy);
             nitro_buffer_extend(p->in_buffer, to_copy);
         }
     }
 }
 
-
 /* LIBEV CALLBACKS */
 
 void Stcp_bind_callback(
     struct ev_loop *loop,
     ev_io *bind_io,
-    int revents) 
+    int revents)
 {
     NITRO_THREAD_CHECK;
     printf("should accept!\n");
@@ -316,23 +518,57 @@ void Stcp_bind_callback(
                 assert(0); // unusual error on accept()
         }
     }
+    Stcp_make_pipe(s, fd);
 }
 
 void Stcp_pipe_out_cb(
     struct ev_loop *loop,
     ev_io *pipe_iow,
-    int revents) 
+    int revents)
 {
     NITRO_THREAD_CHECK;
     printf("try write!\n");
+    nitro_pipe_t *p = (nitro_pipe_t *)pipe_iow->data;
 
-    // XXX consume from appropriate queue chain
-//    nitro_pipe_t *p = (nitro_pipe_t *)pipe_iow->data;
-    /*int r = nitro_queue_fd_write(*/
-    /*    p->q_send,*/
-    /*    p->fd);*/
-    /*[> handle errno on socket send <]*/
-    /*(void)r;*/
+    int r;
+    int tried = 0;
+
+    /* Local queue takes precedence */
+    if (nitro_queue_count(p->q_send)) {
+        tried = 1;
+        r = nitro_queue_fd_write(
+            p->q_send,
+            p->fd, p->partial, &(p->partial));
+        if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
+            return;
+        if (r <= 0) {
+            Stcp_destroy_pipe(p);
+            return;
+        }
+    }
+
+    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p->the_socket;
+
+    /* Note -- using truncate frame as heuristic
+       to guess kernel buffer is full*/
+    if ((!tried || !p->partial) && nitro_queue_count(s->q_send)) {
+        tried = 1;
+        r = nitro_queue_fd_write(
+            s->q_send,
+            p->fd, p->partial, &(p->partial));
+        if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
+            return;
+        if (r <= 0) {
+            Stcp_destroy_pipe(p);
+            return;
+        }
+    }
+
+    if (!tried) {
+        // wait until we're enabled
+        ev_io_stop(the_runtime->the_loop,
+        pipe_iow);
+    }
 }
 
 void Stcp_pipe_in_cb(
@@ -349,15 +585,23 @@ void Stcp_pipe_in_cb(
 
     int r = read(p->fd, append_ptr, sz);
 
+    if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
+        return;
     if (r <= 0) {
-        /* okay, let's handle disconnection or errno etc */
-        // XXX handle socket errors, shutdown, do whatever.
-
-        assert(0); /* OH NOES */
+        Stcp_destroy_pipe(p);
+        return;
     }
 
     nitro_buffer_extend(p->in_buffer, r);
 
     Stcp_parse_socket_buffer(p);
 
+}
+
+void Stcp_socket_send(nitro_tcp_socket_t *s, nitro_frame_t *fr) {
+    nitro_queue_push(s->q_send, fr);
+}
+
+nitro_frame_t *Stcp_socket_recv(nitro_tcp_socket_t *s, nitro_frame_t *fr) {
+    return nitro_queue_pull(s->q_recv);
 }

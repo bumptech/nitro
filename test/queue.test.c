@@ -30,6 +30,7 @@ typedef struct test_state {
 } test_state;
 
 void test_state_callback(NITRO_QUEUE_STATE st,
+    NITRO_QUEUE_STATE last,
     void *baton) {
     test_state *tstate = (test_state *)baton;
     tstate->got_state_change = 1;

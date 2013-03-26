@@ -33,8 +33,9 @@
  *
  */
 #include "common.h"
-#include "nitro.h"
 #include "util.h"
+#include "cbuffer.h"
+#include "buffer.h"
 
 void fatal(char *why) {
     fprintf(stderr, "fatal error: %s\n", why);

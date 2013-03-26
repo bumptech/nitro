@@ -1,6 +1,7 @@
 #ifndef TRIE_H
 #define TRIE_H
 
+#include "common.h"
 
 typedef struct nitro_prefix_trie_mem {
     void *ptr;

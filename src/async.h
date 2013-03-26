@@ -42,7 +42,10 @@
 enum {
     NITRO_ASYNC_DIE,
     NITRO_ASYNC_BIND_LISTEN,
-    NITRO_ASYNC_TCP_FLUSH
+    NITRO_ASYNC_CONNECT,
+    NITRO_ASYNC_CLOSE,
+    NITRO_ASYNC_ENABLE_WRITES,
+    NITRO_ASYNC_ENABLE_READS
 };
 
 typedef struct nitro_async_tcp_flush {
@@ -53,11 +56,30 @@ typedef struct nitro_async_bind_listen {
     nitro_socket_t *socket;
 } nitro_async_bind_listen;
 
+typedef struct nitro_async_connect {
+    nitro_socket_t *socket;
+} nitro_async_connect;
+
+typedef struct nitro_async_enable_writes {
+    nitro_socket_t *socket;
+} nitro_async_enable_writes;
+
+typedef struct nitro_async_enable_reads {
+    nitro_socket_t *socket;
+} nitro_async_enable_reads;
+
+typedef struct nitro_async_close {
+    nitro_socket_t *socket;
+} nitro_async_close;
+
 typedef struct nitro_async {
     int type;
     union {
         nitro_async_bind_listen bind_listen;
-        nitro_async_tcp_flush tcp_flush;
+        nitro_async_connect connect;
+        nitro_async_enable_writes enable_writes;
+        nitro_async_enable_reads enable_reads;
+        nitro_async_close close;
     } u;
     struct nitro_async *next;
 } nitro_async_t;
