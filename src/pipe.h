@@ -37,7 +37,7 @@ typedef struct nitro_pipe_t {
     UT_hash_handle hh;
 } nitro_pipe_t;
 
-nitro_pipe_t *nitro_pipe_new();
+nitro_pipe_t *nitro_pipe_new(void *s);
 void nitro_pipe_destroy(nitro_pipe_t *p, void *s);
 
 #endif /* PIPE_H */

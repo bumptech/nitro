@@ -91,7 +91,9 @@ void lockfree_pool_add(lockfree_pool_t *pool, void *p) {
                 &lockfree_pool_null,
                 p);
             if (swapped) {
-                pool->reset_it(p);
+                if (pool->reset_it) {
+                    pool->reset_it(p);
+                }
                 return;
             }
             index--;

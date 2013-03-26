@@ -1,12 +1,3 @@
-#ifdef __linux__
-#include <sys/uio.h>
-#ifndef IOV_MAX
-#define IOV_MAX UIO_MAXIOV
-#endif
-#else
-#include <limits.h>
-#endif
-
 #include "common.h"
 
 #include "frame.h"
@@ -20,18 +11,22 @@ static void nitro_queue_grow(nitro_queue_t *q, int suggestion) {
       2. suggestion <= capacity
     */
 
+    suggestion = (q->capacity && suggestion > q->capacity) ? q->capacity : suggestion;
     int size;
-    do {
-        if (!q->size) {
-            size = INITIAL_QUEUE_SZ;
-        } else {
-            size = (q->capacity && (q->size << 3) > q->capacity) ?
-                q->capacity : (q->size << 3);
-        }
-    } while (size < suggestion);
+    if (!q->size) {
+        size = INITIAL_QUEUE_SZ;
+    } else {
+        size = (q->capacity && (q->size << 3) > q->capacity) ?
+            q->capacity : (q->size << 3);
+    }
+
+    while (size < suggestion) {
+        size <<= 3;
+    }
 
     nitro_frame_t **old_q = q->q;
     nitro_frame_t **old_head = q->head;
+    nitro_frame_t **old_end = q->end;
     q->q = realloc(q->q, size * sizeof(nitro_frame_t *));
 
     q->head = q->q + (old_head - old_q);
@@ -40,7 +35,7 @@ static void nitro_queue_grow(nitro_queue_t *q, int suggestion) {
     q->end = q->q + q->size;
 
     /* copy the wrap-around */
-    int got = (q->end - q->head);
+    int got = (old_end - old_head);
 
     /* note, can be negative */
     int extra = q->count - got;
@@ -52,7 +47,7 @@ static void nitro_queue_grow(nitro_queue_t *q, int suggestion) {
 }
 
 inline int nitro_queue_count(
-    nitro_queue_t *q) 
+    nitro_queue_t *q)
 {
     return q->count;
 }
@@ -78,6 +73,7 @@ nitro_frame_t *nitro_queue_pull(nitro_queue_t *q) {
     while (q->count == 0) {
         pthread_cond_wait(&q->trigger, &q->lock);
     }
+
 
     ptr = *q->head;
     q->head++;
@@ -145,15 +141,17 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
     }
 
     int old_count = q->count;
+    int temp_count = old_count;
     while (accum_bytes < (32 * 1024) && actual_iovs < IOV_MAX 
-        && iter != q->tail) {
+        && temp_count) {
         int num;
         struct iovec *f_vs = nitro_frame_iovs(*iter, &num);
         assert(num == 2);
         memcpy(&(vectors[actual_iovs]), f_vs, 2 * sizeof(struct iovec));
         accum_bytes += (f_vs[0].iov_len + f_vs[1].iov_len);
         actual_iovs += 2;
-        iter++;
+        ++iter;
+        --temp_count;
         if (iter == q->end)
             iter = q->q;
     }
@@ -243,29 +241,52 @@ out:
         (a < c ? a : c) :\
         (b < c ? b : c))
         
-void nitro_queue_move(nitro_queue_t *src, nitro_queue_t *dst, int max) {
-    pthread_mutex_lock(&src->lock);
+void nitro_queue_move(nitro_queue_t *src, nitro_queue_t *dst) {
     pthread_mutex_lock(&dst->lock);
+    assert(!dst->capacity);
 
-    int available = dst->capacity ? (dst->capacity - dst->count) : max;
-    int to_copy = max < available ? max : available;
-    int final_size = dst->count + to_copy;
+    /* Very quickly, let's take everything from the other queue */
+    pthread_mutex_lock(&src->lock);
+
+    int src_count = src->count;
+    nitro_frame_t **src_q = NULL;
+    nitro_frame_t **src_head = NULL;
+    nitro_frame_t **src_end = NULL;
+    if (src_count) {
+        src_q = src->q;
+        src_head = src->head;
+        src_end = src->end;
+
+        src->q = src->head = src->tail = src->end = NULL;
+        src->count = src->size = 0;
+
+        nitro_queue_issue_callbacks(src, src_count);
+    }
+
+    pthread_mutex_unlock(&src->lock);
+    /* done! */
+
+    if (!src_count) {
+        goto out;
+    }
+
+    int final_size = dst->count + src_count;
 
     if (dst->size < final_size) {
         nitro_queue_grow(dst, final_size);
     }
+
     assert(dst->size >= final_size);
 
-    int copy_left = to_copy;
+    int copy_left = src_count;
 
-    nitro_frame_t **f_dst = dst->tail, **f_src = src->head;
+    nitro_frame_t **f_dst = dst->tail, **f_src = src_head;
     int dst_old_count = dst->count;
-    int src_old_count = src->count;
 
     while (1) {
         int copy_now = MIN3(
             (dst->end - f_dst),
-            (src->end - f_src),
+            (src_end - f_src),
             copy_left);
 
         memcpy(
@@ -277,30 +298,26 @@ void nitro_queue_move(nitro_queue_t *src, nitro_queue_t *dst, int max) {
         f_src += copy_now;
         copy_left -= copy_now;
 
-        if (!copy_left) {
-            break;
-        }
-
         if (f_dst == dst->end) {
             f_dst = dst->q;
         }
-        if (f_src == src->end) {
-            f_src = src->q;
+        if (f_src == src_end) {
+            f_src = src_q;
+        }
+
+        if (!copy_left) {
+            break;
         }
     }
 
     dst->tail = f_dst;
-    dst->count += to_copy;
+    dst->count += src_count;
 
     nitro_queue_issue_callbacks(dst, dst_old_count);
-
-    src->head = f_src;
-    src->count -= to_copy;
-
-    nitro_queue_issue_callbacks(src, src_old_count);
-
+    /* we now own this, so let's dealloc it */
+    free(src_q);
+out:
     pthread_mutex_unlock(&dst->lock);
-    pthread_mutex_unlock(&src->lock);
 }
 
 void nitro_queue_destroy(nitro_queue_t *q) {
@@ -316,6 +333,9 @@ void nitro_queue_destroy(nitro_queue_t *q) {
 
 static void nitro_queue_issue_callbacks(nitro_queue_t *q, 
     int old_count) {
+    if (!q->state_callback) {
+        return;
+    }
 
     int old_state = (old_count == 0 ? NITRO_QUEUE_STATE_EMPTY :
         ((q->capacity && old_count == q->capacity) ? NITRO_QUEUE_STATE_FULL :
@@ -367,11 +387,15 @@ void nitro_queue_consume(nitro_queue_t *q,
         q->count++;
 
         if (q->tail == q->end) {
-            q->tail = q->head;
+            q->tail = q->q;
         }
     }
 
     nitro_queue_issue_callbacks(q, old_count);
+
+    if (old_count == 0 && q->count > 0) {
+        pthread_cond_signal(&q->trigger);
+    }
 
     pthread_mutex_unlock(&q->lock);
 }

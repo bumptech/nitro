@@ -220,6 +220,21 @@ int main(int argc, char **argv) {
     test_state_callback, &tstate);
     assert(q->size == 1024);
 
+    /* get the alignment off */
+    for (i=0; i < 100; i++) {
+        nitro_queue_push(q,
+            nitro_frame_new_copy((void*)&i, sizeof(int)));
+    }
+
+    for (i=0; i < 100; i++) {
+        back = nitro_queue_pull(q);
+        nitro_frame_destroy(back);
+    }
+
+    TEST("resize misalign reset", nitro_queue_count(q) == 0 &&
+    q->head > q->q);
+
+    /* okay, now cause resize */
     for (i=0; i < 1050; i++) {
         nitro_queue_push(q,
             nitro_frame_new_copy((void*)&i, sizeof(int)));
@@ -247,7 +262,7 @@ int main(int argc, char **argv) {
     test_state_callback, &tstate);
 
     nitro_queue_move(
-    q, dst, 0);
+    q, dst);
     TEST("move(0->0) src empty",
     nitro_queue_count(q) == 0);
     TEST("move(0->0) dest empty",
@@ -263,7 +278,7 @@ int main(int argc, char **argv) {
 
     TEST("load 5 into src",
     nitro_queue_count(q) == 5);
-    nitro_queue_move(q, dst, 5);
+    nitro_queue_move(q, dst);
     TEST("move(0->0) src empty",
     nitro_queue_count(q) == 0);
     TEST("move(0->0) dest 5",
@@ -277,60 +292,6 @@ int main(int argc, char **argv) {
     }
 
     TEST("order after move", i == 5);
-
-    nitro_queue_destroy(q);
-    nitro_queue_destroy(dst);
-
-    /* move M:N -> N */
-    q = nitro_queue_new(0,
-    test_state_callback, &tstate);
-    dst = nitro_queue_new(0,
-    test_state_callback, &tstate);
-
-    /* zero through 5 into src */
-    for (i=0; i < 5; i++) {
-        nitro_queue_push(q,
-            nitro_frame_new_copy(
-            (void *)&i, sizeof(int)));
-    }
-
-    /* 5 through 10 into dst */
-    for (; i < 10; i++) {
-        nitro_queue_push(dst,
-            nitro_frame_new_copy(
-            (void *)&i, sizeof(int)));
-    }
-    TEST("load 5 into src",
-    nitro_queue_count(q) == 5);
-    TEST("load 5 into dst",
-    nitro_queue_count(dst) == 5);
-    nitro_queue_move(q, dst, 3);
-    TEST("(3/5->5) 2 src",
-    nitro_queue_count(q) == 2);
-    TEST("(3/5->5) 8 dst",
-    nitro_queue_count(dst) == 8);
-
-    for (i=3; i < 5; i++) {
-        back = nitro_queue_pull(q);
-        if ( *((int*)nitro_frame_data(back)) != i)
-            break;
-        nitro_frame_destroy(back);
-    }
-    TEST("(3/5->5) ordering src", i == 5);
-    for (i=5; i < 10; i++) {
-        back = nitro_queue_pull(dst);
-        if ( *((int*)nitro_frame_data(back)) != i)
-            break;
-        nitro_frame_destroy(back);
-    }
-    TEST("(3/5->5) ordering dst (1)", i == 10);
-    for (i=0; i < 3; i++) {
-        back = nitro_queue_pull(dst);
-        if ( *((int*)nitro_frame_data(back)) != i)
-            break;
-        nitro_frame_destroy(back);
-    }
-    TEST("(3/5->5) ordering dst (2)", i == 3);
 
     nitro_queue_destroy(q);
     nitro_queue_destroy(dst);
@@ -374,12 +335,12 @@ int main(int argc, char **argv) {
     TEST("(ugly move) count 324 dst",
     nitro_queue_count(dst) == 324);
 
-    nitro_queue_move(q, dst, 700);
+    nitro_queue_move(q, dst);
     TEST("(ugly move post) count 0 src",
     nitro_queue_count(q) == 0);
     TEST("(ugly move post) count 1024 dst",
     nitro_queue_count(dst) == 1024);
-    assert(q->size == 1024); /* no resizing! */
+    assert(dst->size == 1024); /* no resizing! */
     TEST("(ugly move post) head == tail",
     dst->head == dst->tail);
 
@@ -428,7 +389,7 @@ int main(int argc, char **argv) {
     TEST("(resize move) count 324 dst",
     nitro_queue_count(dst) == 324);
     assert(dst->size == 1024);
-    nitro_queue_move(q, dst, nitro_queue_count(q));
+    nitro_queue_move(q, dst);
     TEST("(resize post-move) size dst is sum",
     nitro_queue_count(dst) == 1324);
     assert(dst->size > 1024);

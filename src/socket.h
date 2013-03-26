@@ -73,14 +73,14 @@ typedef struct nitro_tcp_socket_t *nitro_tcp_socket_t_p;
 typedef struct nitro_tcp_socket_t {
     SOCKET_COMMON_FIELDS
 
+    nitro_queue_t *q_sock;
+
     ev_io bound_io;
     int bound_fd;
 
     ev_io connect_io;
     int connect_fd;
     ev_timer connect_timer;
-
-    _Atomic (int) send_empty;
 
     struct sockaddr_in location;
 

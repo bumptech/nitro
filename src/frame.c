@@ -44,12 +44,17 @@ nitro_frame_t *nitro_frame_copy(nitro_frame_t *f) {
 }
 
 nitro_frame_t *nitro_frame_new(void *data, uint32_t size, nitro_free_function ff, void *baton) {
+    nitro_counted_buffer_t *buffer = nitro_counted_buffer_new(data, ff, baton);
+    return nitro_frame_new_prealloc(data, size, buffer);
+}
+
+nitro_frame_t *nitro_frame_new_prealloc(void *data, uint32_t size, nitro_counted_buffer_t *buffer) {
     nitro_frame_t *f;
     f = malloc(sizeof(nitro_frame_t));
     bzero(f, FRAME_BZERO_SIZE);
-    nitro_counted_buffer_t *buffer = nitro_counted_buffer_new(data, ff, baton);
     f->buffer = buffer;
     f->size = size;
+    f->data = data;
     return f;
 }
 
@@ -65,7 +70,7 @@ nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size) {
 }
 
 inline void *nitro_frame_data(nitro_frame_t *fr) {
-    return ((nitro_counted_buffer_t *)fr->buffer)->ptr;
+    return fr->data;
 }
 
 inline uint32_t nitro_frame_size(nitro_frame_t *fr) {

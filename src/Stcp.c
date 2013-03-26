@@ -41,9 +41,8 @@
 #include "runtime.h"
 #include "socket.h"
 
-/* TODO -- capacity enforcement on influx */
 
-
+#define COPY_THRESHOLD 20000
 #define TCP_INBUF (64 * 1024)
 
 /* EV callbacks, declaration */
@@ -77,6 +76,10 @@ static int Stcp_nonblocking_socket_new() {
     int r = ioctl(s, FIONBIO, &flag);
     assert(r == 0);
 
+    /* TCP NOWAIT */
+    int state = 1;
+    setsockopt(s, IPPROTO_TCP, TCP_NODELAY, &state, sizeof(state));
+
     return s;
 }
 
@@ -98,8 +101,6 @@ static int Stcp_parse_location(char *p_location,
         return nitro_set_error(NITRO_ERR_TCP_LOC_BADPORT);
     }
 
-    printf("location is: %s\n", location);
-
     bzero(addr, sizeof(struct sockaddr_in));
     addr->sin_family = AF_INET;
     addr->sin_port = htons(port);
@@ -113,23 +114,7 @@ static int Stcp_parse_location(char *p_location,
 }
 
 void Stcp_socket_send_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, void *p) {
-    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p;
-
-    int is_empty = st == NITRO_QUEUE_STATE_EMPTY ?
-        1 : 0;
-
-    int old = is_empty ? 0 : 1;
-    int swapped = 0;
-
-    do {
-        swapped = atomic_compare_exchange_strong(
-            &s->send_empty,
-            &old,
-            is_empty);
-    } while (!swapped);
-
     if (last == NITRO_QUEUE_STATE_EMPTY) {
-        assert(!is_empty);
         nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p;
         nitro_async_t *a = nitro_async_new(NITRO_ASYNC_ENABLE_WRITES);
         a->u.enable_writes.socket = SOCKET_PARENT(s);
@@ -155,7 +140,8 @@ void Stcp_create_queues(nitro_tcp_socket_t *s) {
         0, Stcp_socket_send_queue_stat, (void*)s);
     s->q_recv = nitro_queue_new(
         0, Stcp_socket_recv_queue_stat, (void*)s);
-    atomic_init(&s->send_empty, 1);
+    s->q_sock = nitro_queue_new(
+        0, NULL, NULL);
 }
 
 int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
@@ -200,7 +186,6 @@ int Stcp_socket_bind(nitro_tcp_socket_t *s, char *location) {
     if (bind(s->bound_fd, 
         (struct sockaddr *)&s->location, 
         sizeof(s->location))){
-        printf("bind error!\n");
         return nitro_set_error(NITRO_ERR_ERRNO);
     }
 
@@ -228,6 +213,7 @@ void Stcp_socket_shutdown(nitro_tcp_socket_t *s) {
 
     nitro_queue_destroy(s->q_send);
     nitro_queue_destroy(s->q_recv);
+    nitro_queue_destroy(s->q_sock);
     ev_timer_stop(the_runtime->the_loop, &s->connect_timer);
     ev_io_stop(the_runtime->the_loop, &s->connect_io);
     ev_io_stop(the_runtime->the_loop, &s->bound_io);
@@ -267,8 +253,8 @@ void Stcp_connect_cb(
 
     if (!t || errno == EISCONN || !errno) {
         ev_io_stop(the_runtime->the_loop, &s->connect_io);
-        s->connect_fd = -1;
         Stcp_make_pipe(s, s->connect_fd);
+        s->connect_fd = -1;
     }
     else if (errno == EINPROGRESS || errno == EINTR || errno == EALREADY) {
         /* do nothing, we'll get phoned home again... */
@@ -322,6 +308,7 @@ void Stcp_destroy_pipe(nitro_pipe_t *p) {
     nitro_buffer_destroy(p->in_buffer);
     nitro_queue_destroy(p->q_send);
     close(p->fd);
+    // XXX why is this partial set, crash?
     if (p->partial) {
         nitro_frame_destroy(p->partial);
     }
@@ -331,7 +318,7 @@ void Stcp_destroy_pipe(nitro_pipe_t *p) {
 
 void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd) {
     NITRO_THREAD_CHECK;
-    nitro_pipe_t *p = nitro_pipe_new();
+    nitro_pipe_t *p = nitro_pipe_new(SOCKET_UNIVERSAL(s));
     p->fd = fd;
     p->in_buffer = nitro_buffer_new();
     p->the_socket = s;
@@ -360,7 +347,7 @@ void Stcp_socket_enable_writes(nitro_tcp_socket_t *s) {
     NITRO_THREAD_CHECK;
     nitro_pipe_t *p;
 
-    for(p=s->pipes; p; p = p->next) {
+    CDL_FOREACH(s->pipes, p) {
         ev_io_start(the_runtime->the_loop,
         &p->iow);
     }
@@ -370,7 +357,7 @@ void Stcp_socket_enable_reads(nitro_tcp_socket_t *s) {
     NITRO_THREAD_CHECK;
     nitro_pipe_t *p;
 
-    for(p=s->pipes; p; p = p->next) {
+    CDL_FOREACH(s->pipes, p) {
         ev_io_start(the_runtime->the_loop,
         &p->ior);
     }
@@ -380,7 +367,7 @@ void Stcp_socket_disable_reads(nitro_tcp_socket_t *s) {
     NITRO_THREAD_CHECK;
     nitro_pipe_t *p;
 
-    for(p=s->pipes; p; p = p->next) {
+    CDL_FOREACH(s->pipes, p) {
         ev_io_stop(the_runtime->the_loop,
         &p->ior);
     }
@@ -435,18 +422,18 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
 
     if (!st->cbuf) {
         /* it is official, we will consume data... */
+
+        /* first incref is for the socket itself, not done copying yet */
         st->cbuf = nitro_counted_buffer_new(
         st->buf, buffer_free, NULL);
     }
-    else {
-        nitro_counted_buffer_incref(st->cbuf);
-    }
+    /* incref for the eventual recipient */
+    nitro_counted_buffer_incref(st->cbuf);
 
-    nitro_frame_t *fr = 
-        nitro_frame_new(
+    nitro_frame_t *fr =
+        nitro_frame_new_prealloc(
             st->cursor + sizeof(nitro_protocol_header),
-            hd->frame_size,
-            cbuffer_decref, st->cbuf);
+            hd->frame_size, st->cbuf);
 
     st->cursor += (sizeof(nitro_protocol_header) + hd->frame_size);
     return fr;
@@ -480,6 +467,8 @@ void Stcp_parse_socket_buffer(nitro_pipe_t *p) {
             memcpy(write, parse_state.cursor, to_copy);
             nitro_buffer_extend(p->in_buffer, to_copy);
         }
+        /* release our copy of the backing buffer */
+        nitro_counted_buffer_decref(parse_state.cbuf);
     }
 }
 
@@ -491,7 +480,6 @@ void Stcp_bind_callback(
     int revents)
 {
     NITRO_THREAD_CHECK;
-    printf("should accept!\n");
     nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)bind_io->data;
 
     struct sockaddr addr;
@@ -520,18 +508,18 @@ void Stcp_bind_callback(
     }
     Stcp_make_pipe(s, fd);
 }
-
+#define OKAY_ERRNO (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR || errno == EINPROGRESS || errno == EALREADY)
 void Stcp_pipe_out_cb(
     struct ev_loop *loop,
     ev_io *pipe_iow,
     int revents)
 {
     NITRO_THREAD_CHECK;
-    printf("try write!\n");
     nitro_pipe_t *p = (nitro_pipe_t *)pipe_iow->data;
 
-    int r;
+    int r = 0;
     int tried = 0;
+
 
     /* Local queue takes precedence */
     if (nitro_queue_count(p->q_send)) {
@@ -539,9 +527,9 @@ void Stcp_pipe_out_cb(
         r = nitro_queue_fd_write(
             p->q_send,
             p->fd, p->partial, &(p->partial));
-        if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
+        if (r < 0 && OKAY_ERRNO)
             return;
-        if (r <= 0) {
+        if (r < 0) {
             Stcp_destroy_pipe(p);
             return;
         }
@@ -549,16 +537,23 @@ void Stcp_pipe_out_cb(
 
     nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p->the_socket;
 
+    /* Move some frames over to our socket buffer to reduce the contention
+       on the lock */
+    if (nitro_queue_count(s->q_send) > COPY_THRESHOLD ||
+        !nitro_queue_count(s->q_sock)) {
+        nitro_queue_move(s->q_send, s->q_sock);
+    }
+
     /* Note -- using truncate frame as heuristic
        to guess kernel buffer is full*/
-    if ((!tried || !p->partial) && nitro_queue_count(s->q_send)) {
+    if ((!tried || !p->partial) && nitro_queue_count(s->q_sock)) {
         tried = 1;
         r = nitro_queue_fd_write(
-            s->q_send,
+            s->q_sock,
             p->fd, p->partial, &(p->partial));
-        if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
+        if (r < 0 && OKAY_ERRNO)
             return;
-        if (r <= 0) {
+        if (r < 0) {
             Stcp_destroy_pipe(p);
             return;
         }
@@ -580,6 +575,7 @@ void Stcp_pipe_in_cb(
     NITRO_THREAD_CHECK;
     nitro_pipe_t *p = (nitro_pipe_t *)pipe_iow->data;
 
+
     int sz = TCP_INBUF;
     char *append_ptr = nitro_buffer_prepare(p->in_buffer, &sz);
 
@@ -599,9 +595,9 @@ void Stcp_pipe_in_cb(
 }
 
 void Stcp_socket_send(nitro_tcp_socket_t *s, nitro_frame_t *fr) {
-    nitro_queue_push(s->q_send, fr);
+    nitro_queue_push(s->q_send, nitro_frame_copy(fr));
 }
 
-nitro_frame_t *Stcp_socket_recv(nitro_tcp_socket_t *s, nitro_frame_t *fr) {
+nitro_frame_t *Stcp_socket_recv(nitro_tcp_socket_t *s) {
     return nitro_queue_pull(s->q_recv);
 }

@@ -54,6 +54,7 @@ typedef struct nitro_frame_t {
     /* END bzero() region */
 
     nitro_counted_buffer_t *buffer;
+    void *data;
     uint32_t size;
 
     // TCP
@@ -64,6 +65,7 @@ typedef struct nitro_frame_t {
 
 nitro_frame_t *nitro_frame_copy(nitro_frame_t *f);
 nitro_frame_t *nitro_frame_new(void *data, uint32_t size, nitro_free_function ff, void *baton);
+nitro_frame_t *nitro_frame_new_prealloc(void *data, uint32_t size, nitro_counted_buffer_t *buffer);
 void nitro_frame_destroy(nitro_frame_t *f);
 nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size);
 inline void *nitro_frame_data(nitro_frame_t *fr);

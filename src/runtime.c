@@ -40,8 +40,11 @@
 #include "runtime.h"
 #include "socket.h"
 
-
 nitro_runtime *the_runtime;
+
+void handle_pipe(int sig) {
+    /* NOOP - writev will ignore the EINT */
+}
 
 static void *actual_run(void *unused) {
     fprintf(stderr, "NITRO start!\n");
@@ -62,6 +65,7 @@ int nitro_runtime_start() {
     }
 
     ZALLOC(the_runtime);
+    signal(SIGPIPE, handle_pipe); /* ignore sigpipe */
     the_runtime->the_loop = ev_loop_new(0); // AUTO backend
     pthread_mutex_init(&the_runtime->l_tcp_connect, NULL);
 

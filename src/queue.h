@@ -1,6 +1,15 @@
 #ifndef QUEUE_H
 #define QUEUE_H
 
+#ifdef __linux__
+#include <sys/uio.h>
+#ifndef IOV_MAX
+#define IOV_MAX UIO_MAXIOV
+#endif
+#else
+#include <limits.h>
+#endif
+
 #include "common.h"
 #include "frame.h"
 
@@ -42,7 +51,7 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
 void nitro_queue_destroy(nitro_queue_t *q);
 inline int nitro_queue_count(nitro_queue_t *q);
 typedef nitro_frame_t *(*nitro_queue_frame_generator)(void *baton);
-void nitro_queue_move(nitro_queue_t *src, nitro_queue_t *dst, int max);
+void nitro_queue_move(nitro_queue_t *src, nitro_queue_t *dst);
 
 void nitro_queue_consume(nitro_queue_t *q, 
     nitro_queue_frame_generator gen,

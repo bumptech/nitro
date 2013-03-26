@@ -60,7 +60,8 @@ void nitro_pipe_destroy(nitro_pipe_t *p, void *ptr) {
     free(p);
 }
 
-nitro_pipe_t *nitro_pipe_new(nitro_universal_socket_t *s) {
+nitro_pipe_t *nitro_pipe_new(void *ptr) {
+    nitro_universal_socket_t *s = (nitro_universal_socket_t *)ptr;
     nitro_pipe_t *p = calloc(1, sizeof(nitro_pipe_t));
 
     pthread_mutex_lock(&s->l_pipes);

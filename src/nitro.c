@@ -67,5 +67,3 @@ void nitro_socket_close(nitro_socket_t *s) {
     SOCKET_CALL(s, close);
 }
 
-#define nitro_send(s, fr) SOCKET_CALL(s, send, fr)
-#define nitro_recv(s, fr) SOCKET_CALL(s, recv, fr)

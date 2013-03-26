@@ -40,6 +40,7 @@
 #include <errno.h>
 #include <ev.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdio.h>

@@ -1,4 +1,5 @@
 import struct
+import time
 
 
 body = struct.pack("<BBBBI", 
@@ -6,11 +7,19 @@ body = struct.pack("<BBBBI",
 
 body = body * 10000
 
-print repr(body[:50])
+want = len(body)
+
+#print repr(body[:50])
 
 import socket
 s = socket.socket()
 s.connect(("localhost", 4444))
+
+t = time.time()
 s.sendall(body)
 
-print repr(s.recv(65536))
+r = 0
+while r < want:
+    some = s.recv(65536)
+    r += len(some)
+print time.time() - t

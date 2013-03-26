@@ -69,7 +69,7 @@ void nitro_async_schedule(nitro_async_t *a) {
 static void nitro_async_handle(nitro_async_t *a) {
     switch (a->type) {
     case NITRO_ASYNC_ENABLE_WRITES:
-        SOCKET_CALL(a->u.bind_listen.socket, enable_writes);
+        SOCKET_CALL(a->u.enable_writes.socket, enable_writes);
         break;
     case NITRO_ASYNC_ENABLE_READS:
         SOCKET_CALL(a->u.bind_listen.socket, enable_reads);
