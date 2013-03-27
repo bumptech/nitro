@@ -66,13 +66,16 @@ typedef struct nitro_frame_t {
 nitro_frame_t *nitro_frame_copy(nitro_frame_t *f);
 nitro_frame_t *nitro_frame_new(void *data, uint32_t size, nitro_free_function ff, void *baton);
 nitro_frame_t *nitro_frame_new_prealloc(void *data, uint32_t size, nitro_counted_buffer_t *buffer);
-void nitro_frame_destroy(nitro_frame_t *f);
 nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size);
 inline void *nitro_frame_data(nitro_frame_t *fr);
 inline uint32_t nitro_frame_size(nitro_frame_t *fr);
 inline struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num);
 void nitro_frame_iovs_advance(nitro_frame_t *fr, int index, int offset);
 void nitro_frame_iovs_reset(nitro_frame_t *fr);
+#define nitro_frame_destroy(f) {\
+    nitro_counted_buffer_decref((f)->buffer);\
+    free(f);\
+}
 
 
 #endif /* FRAME_H */

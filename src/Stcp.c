@@ -41,8 +41,6 @@
 #include "runtime.h"
 #include "socket.h"
 
-
-#define COPY_THRESHOLD 20000
 #define TCP_INBUF (64 * 1024)
 
 /* EV callbacks, declaration */
@@ -140,8 +138,6 @@ void Stcp_create_queues(nitro_tcp_socket_t *s) {
         0, Stcp_socket_send_queue_stat, (void*)s);
     s->q_recv = nitro_queue_new(
         0, Stcp_socket_recv_queue_stat, (void*)s);
-    s->q_sock = nitro_queue_new(
-        0, NULL, NULL);
 }
 
 int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
@@ -213,7 +209,6 @@ void Stcp_socket_shutdown(nitro_tcp_socket_t *s) {
 
     nitro_queue_destroy(s->q_send);
     nitro_queue_destroy(s->q_recv);
-    nitro_queue_destroy(s->q_sock);
     ev_timer_stop(the_runtime->the_loop, &s->connect_timer);
     ev_io_stop(the_runtime->the_loop, &s->connect_io);
     ev_io_stop(the_runtime->the_loop, &s->bound_io);
@@ -388,22 +383,26 @@ typedef struct tcp_frame_parse_state {
 static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
     tcp_frame_parse_state *st = (tcp_frame_parse_state *)baton;
 
+
     int size;
-    char *start = nitro_buffer_data(st->buf, &size);
+    nitro_buffer_t const *buf = st->buf;
+    char const *start = nitro_buffer_data((nitro_buffer_t *)buf, &size);
 
     if (!st->cursor) {
-        st->cursor = start;
+        st->cursor = (char *)start;
     }
 
-    int taken = st->cursor - start;
+    char const *cursor = st->cursor;
+
+    int taken = cursor - start;
     int left = size - taken;
 
     if (left < sizeof(nitro_protocol_header)) {
         return NULL;
     }
 
-    nitro_protocol_header *hd = 
-    (nitro_protocol_header *)st->cursor;
+    nitro_protocol_header const *hd = 
+    (nitro_protocol_header *)cursor;
     left -= sizeof(nitro_protocol_header);
 
     // XXX error on protocol version
@@ -425,15 +424,17 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
 
         /* first incref is for the socket itself, not done copying yet */
         st->cbuf = nitro_counted_buffer_new(
-        st->buf, buffer_free, NULL);
+        (nitro_buffer_t *)buf, buffer_free, NULL);
     }
+    nitro_counted_buffer_t const *cbuf = st->cbuf;
+    
     /* incref for the eventual recipient */
-    nitro_counted_buffer_incref(st->cbuf);
+    nitro_counted_buffer_incref((nitro_counted_buffer_t *)cbuf);
 
     nitro_frame_t *fr =
         nitro_frame_new_prealloc(
-            st->cursor + sizeof(nitro_protocol_header),
-            hd->frame_size, st->cbuf);
+            (char *)cursor + sizeof(nitro_protocol_header),
+            hd->frame_size, (nitro_counted_buffer_t *)cbuf);
 
     st->cursor += (sizeof(nitro_protocol_header) + hd->frame_size);
     return fr;
@@ -537,19 +538,12 @@ void Stcp_pipe_out_cb(
 
     nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p->the_socket;
 
-    /* Move some frames over to our socket buffer to reduce the contention
-       on the lock */
-    if (nitro_queue_count(s->q_send) > COPY_THRESHOLD ||
-        !nitro_queue_count(s->q_sock)) {
-        nitro_queue_move(s->q_send, s->q_sock);
-    }
-
     /* Note -- using truncate frame as heuristic
        to guess kernel buffer is full*/
-    if ((!tried || !p->partial) && nitro_queue_count(s->q_sock)) {
+    if ((!tried || !p->partial) && nitro_queue_count(s->q_send)) {
         tried = 1;
         r = nitro_queue_fd_write(
-            s->q_sock,
+            s->q_send,
             p->fd, p->partial, &(p->partial));
         if (r < 0 && OKAY_ERRNO)
             return;

@@ -58,11 +58,6 @@ nitro_frame_t *nitro_frame_new_prealloc(void *data, uint32_t size, nitro_counted
     return f;
 }
 
-void nitro_frame_destroy(nitro_frame_t *f) {
-    nitro_counted_buffer_decref(f->buffer);
-    free(f);
-}
-
 nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size) {
     char *n = malloc(size);
     memmove(n, data, size);
@@ -77,15 +72,6 @@ inline uint32_t nitro_frame_size(nitro_frame_t *fr) {
     return fr->size;
 }
 
-static void nitro_frame_make_tcp_header(nitro_frame_t *fr) {
-    fr->tcp_header.protocol_version = 1;
-    fr->tcp_header.packet_type = fr->type == NITRO_FRAME_DATA ?
-        NITRO_PACKET_FRAME :
-        NITRO_PACKET_SUB;
-
-    fr->tcp_header.flags = 0;
-    fr->tcp_header.frame_size = fr->size;
-}
 
 inline struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num) {
     *num = 2;
@@ -93,7 +79,14 @@ inline struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num) {
         return (struct iovec *)fr->iovs;
     }
 
-    nitro_frame_make_tcp_header(fr);
+    //nitro_frame_make_tcp_header(fr);
+    fr->tcp_header.protocol_version = 1;
+    fr->tcp_header.packet_type = fr->type == NITRO_FRAME_DATA ?
+        NITRO_PACKET_FRAME :
+        NITRO_PACKET_SUB;
+
+    fr->tcp_header.flags = 0;
+    fr->tcp_header.frame_size = fr->size;
 
     fr->iovs[0].iov_base = (void*)&fr->tcp_header;
     fr->iovs[0].iov_len = sizeof(nitro_protocol_header);

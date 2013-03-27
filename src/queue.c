@@ -134,10 +134,10 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
     if (partial) {
         int num;
         struct iovec *f_vs = nitro_frame_iovs(partial, &num);
-        assert(num == 2);
-        memcpy(vectors, f_vs, 2 * sizeof(struct iovec));
-        actual_iovs += 2;
-        accum_bytes += (f_vs[0].iov_len + f_vs[1].iov_len);
+        vectors[0] = f_vs[0];
+        vectors[1] = f_vs[1];
+        actual_iovs = 2;
+        accum_bytes = (f_vs[0].iov_len + f_vs[1].iov_len);
     }
 
     int old_count = q->count;
@@ -146,8 +146,8 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
         && temp_count) {
         int num;
         struct iovec *f_vs = nitro_frame_iovs(*iter, &num);
-        assert(num == 2);
-        memcpy(&(vectors[actual_iovs]), f_vs, 2 * sizeof(struct iovec));
+        vectors[actual_iovs] = f_vs[0];
+        vectors[actual_iovs+1] = f_vs[1];
         accum_bytes += (f_vs[0].iov_len + f_vs[1].iov_len);
         actual_iovs += 2;
         ++iter;

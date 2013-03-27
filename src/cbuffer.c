@@ -4,30 +4,25 @@ nitro_counted_buffer_t *nitro_counted_buffer_new(void *backing, nitro_free_funct
     nitro_counted_buffer_t *buf;
     buf = malloc(sizeof(nitro_counted_buffer_t));
     buf->ptr = backing;
-    buf->count = 1;
-    pthread_mutex_init(&buf->lock, NULL);
+    atomic_init(&buf->count, 1);
     buf->ff = ff;
     buf->baton = baton;
     return buf;
 }
 
-void nitro_counted_buffer_decref(nitro_counted_buffer_t *buf) {
-    pthread_mutex_lock(&buf->lock);
-    buf->count--;
+/*inline void nitro_counted_buffer_decref(nitro_counted_buffer_t *buf) {*/
+/*    int count = atomic_fetch_add(&buf->count, -1);*/
 
-    if (!buf->count) {
-        if (buf->ff) {
-            buf->ff(buf->ptr, buf->baton);
-        }
+/*    if (!count) {*/
+/*        if (buf->ff) {*/
+/*            buf->ff(buf->ptr, buf->baton);*/
+/*        }*/
 
-        free(buf);
-    } else {
-        pthread_mutex_unlock(&buf->lock);
-    }
-}
+/*        free(buf);*/
+/*    }*/
+/*}*/
 
-void nitro_counted_buffer_incref(nitro_counted_buffer_t *buf) {
-    pthread_mutex_lock(&buf->lock);
-    buf->count++;
-    pthread_mutex_unlock(&buf->lock);
-}
+/*inline void nitro_counted_buffer_incref(nitro_counted_buffer_t *buf) {*/
+/*    int count = atomic_fetch_add(&buf->count, 1);*/
+/*    (void)count;*/
+/*}*/
