@@ -15,16 +15,18 @@ typedef struct nitro_counted_buffer_t {
 nitro_counted_buffer_t *nitro_counted_buffer_new(void *backing, nitro_free_function ff, void *baton);
 
 #define nitro_counted_buffer_decref(buf) {\
-    if (!atomic_fetch_add(&(buf)->count, -1)) {\
-        if ((buf)->ff) {\
-            (buf)->ff((buf)->ptr, (buf)->baton);\
+    nitro_counted_buffer_t *__tmp_buf = (buf);\
+    if (atomic_fetch_sub(&__tmp_buf->count, 1) == 1) {\
+        if ((__tmp_buf)->ff) {\
+            (__tmp_buf)->ff((__tmp_buf)->ptr, (__tmp_buf)->baton);\
         }\
-        free((buf));\
+        free((__tmp_buf));\
     }\
 }
 
 #define nitro_counted_buffer_incref(buf) {\
-    atomic_fetch_add(&(buf)->count, 1);\
+    nitro_counted_buffer_t *__tmp_buf = (buf);\
+    atomic_fetch_add(&(__tmp_buf)->count, 1);\
 }
 
 //inline void nitro_counted_buffer_incref(nitro_counted_buffer_t *buf);

@@ -10,5 +10,6 @@
 
 #define nitro_send(fr, s) SOCKET_CALL(s, send, fr)
 #define nitro_recv(s) SOCKET_CALL(s, recv)
+#define nitro_reply(snd, fr, s) SOCKET_CALL(s, reply, snd, fr)
 
 #endif

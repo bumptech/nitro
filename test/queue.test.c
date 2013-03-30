@@ -555,6 +555,7 @@ int main(int argc, char **argv) {
         1,
         0,
         0,
+        0,
         3};
 
     for (i=0; i < 50000; i++) {

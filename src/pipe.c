@@ -54,6 +54,10 @@ void nitro_pipe_destroy(nitro_pipe_t *p, void *ptr) {
     CDL_DELETE(s->pipes, p);
     pthread_mutex_unlock(&s->l_pipes);
 
+    if (p->remote_ident_buf) {
+        nitro_counted_buffer_decref(p->remote_ident_buf);
+    }
+
     free(p);
 }
 
@@ -68,6 +72,7 @@ nitro_pipe_t *nitro_pipe_new(void *ptr) {
     }
     ++s->num_pipes;
     pthread_mutex_unlock(&s->l_pipes);
+
 
     return p;
 }

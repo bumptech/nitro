@@ -70,3 +70,7 @@ void Sinproc_socket_send(nitro_inproc_socket_t *s, nitro_frame_t *fr) {
 nitro_frame_t *Sinproc_socket_recv(nitro_inproc_socket_t *s) {
     return NULL;
 }
+
+int Sinproc_socket_reply(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr) {
+    return -1;
+}

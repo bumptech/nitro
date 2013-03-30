@@ -19,7 +19,8 @@ typedef struct nitro_pipe_t {
     int fd;
     /* When we have partial output */
     nitro_frame_t *partial;
-    uint8_t remote_ident[SOCKET_IDENT_LENGTH];
+    uint8_t *remote_ident;
+    nitro_counted_buffer_t *remote_ident_buf;
     char us_handshake;
     char them_handshake;
     char registered;

@@ -43,18 +43,20 @@ void nitro_socket_destroy(nitro_socket_t *s) {
 
 void socket_register_pipe(nitro_universal_socket_t *s, nitro_pipe_t *p) {
     pthread_mutex_lock(&s->l_pipes);
-    HASH_ADD(hh, s->pipes_by_session, 
-        remote_ident, SOCKET_IDENT_LENGTH, p);
+    HASH_ADD_KEYPTR(hh, s->pipes_by_session, 
+        p->remote_ident, SOCKET_IDENT_LENGTH, p);
+    
+    nitro_pipe_t *p2 = socket_lookup_pipe(s, p->remote_ident);
+    assert(p2);
     p->registered = 1;
     pthread_mutex_unlock(&s->l_pipes);
 }
 
 nitro_pipe_t *socket_lookup_pipe(nitro_universal_socket_t *s, uint8_t *ident) {
+    // assumed -- lock held
     nitro_pipe_t *p;
-    pthread_mutex_lock(&s->l_pipes);
     HASH_FIND(hh, s->pipes_by_session, 
         ident, SOCKET_IDENT_LENGTH, p);
-    pthread_mutex_unlock(&s->l_pipes);
     return p;
 }
 

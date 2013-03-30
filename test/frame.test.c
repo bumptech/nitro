@@ -75,8 +75,10 @@ int main(int argc, char **argv) {
     char *big_output =
     "this is a big frame of data we're going to send";
 
+    int big_length = strlen(big_output) + 1;
+
     fr = nitro_frame_new_copy(
-    big_output, strlen(big_output) + 1);
+    big_output, big_length);
 
     int num;
     struct iovec *ios = nitro_frame_iovs(fr, &num);
@@ -85,8 +87,10 @@ int main(int argc, char **argv) {
     // test 1.  let's "consume" part of first
     int s1 = ios[0].iov_len;
     uint8_t *p1 = ios[0].iov_base;
+    int done;
 
-    nitro_frame_iovs_advance(fr, 0, 3);
+    int r = nitro_frame_iovs_advance(fr, 0, 3, &done);
+    
     ios = nitro_frame_iovs(fr, &num);
     int s2 = ios[0].iov_len;
     uint8_t *p2 = ios[0].iov_base;
@@ -96,7 +100,7 @@ int main(int argc, char **argv) {
     p2 - p1 == 3);
 
     // test 2. more of first
-    nitro_frame_iovs_advance(fr, 0, 3);
+    r = nitro_frame_iovs_advance(fr, 0, 3, &done);
     ios = nitro_frame_iovs(fr, &num);
     s2 = ios[0].iov_len;
     p2 = ios[0].iov_base;
@@ -107,14 +111,17 @@ int main(int argc, char **argv) {
 
 
     // test 3. start of second
-    nitro_frame_iovs_advance(fr, 1, 0);
+    r = nitro_frame_iovs_advance(fr, 0, 10, &done);
+    TEST("iovs advance (3) only took two, !done",
+    !done && (r == 2));
+    r = nitro_frame_iovs_advance(fr, 1, 0, &done);
     ios = nitro_frame_iovs(fr, &num);
     TEST("iovs advance (3) still two iov",
     num == 2)
     s1 = ios[1].iov_len;
     p1 = ios[1].iov_base;
 
-    nitro_frame_iovs_advance(fr, 1, 4);
+    r = nitro_frame_iovs_advance(fr, 1, 4, &done);
     ios = nitro_frame_iovs(fr, &num);
     s2 = ios[1].iov_len;
     p2 = ios[1].iov_base;
@@ -124,11 +131,16 @@ int main(int argc, char **argv) {
     p2 - p1 == 4);
     TEST("iovs advance (4) empty iov1 size",
     ios[0].iov_len == 0);
+    
+    r = nitro_frame_iovs_advance(fr, 1, 40000, &done);
+    TEST("iovs advance final clip test",
+    (r == big_length - 4) && done);
 
     nitro_frame_iovs_reset(fr);
     ios = nitro_frame_iovs(fr, &num);
     TEST("iovs reset, iov1 size back",
     ios[0].iov_len > 0);
+
 
     nitro_frame_destroy(fr);
 

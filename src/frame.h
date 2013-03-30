@@ -29,7 +29,7 @@ typedef struct nitro_protocol_header {
 } nitro_protocol_header;
 
 #define FRAME_BZERO_SIZE \
-    ((sizeof(void *) * 3) + \
+    ((sizeof(void *) * 4) + \
     (sizeof(char) * 4))
 
 typedef struct nitro_frame_t {
@@ -42,13 +42,14 @@ typedef struct nitro_frame_t {
     nitro_key_t *key;
     /* num idents to send on end of buffer */
     nitro_counted_buffer_t *ident_buffer;
+    nitro_counted_buffer_t *sender_buffer;
     void *ident_data;
 
     uint8_t num_ident;
     char iovec_set;
     char type;
     /* send self ident? */
-    char skip_self;
+    char push_sender;
 
     /* END bzero() region */
 
@@ -56,9 +57,11 @@ typedef struct nitro_frame_t {
     void *data;
     uint32_t size;
 
+    uint8_t *sender;
+
     // TCP
     nitro_protocol_header tcp_header;
-    struct iovec iovs[3];
+    struct iovec iovs[4];
 
 } nitro_frame_t;
 
@@ -69,14 +72,22 @@ nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size);
 inline void *nitro_frame_data(nitro_frame_t *fr);
 inline uint32_t nitro_frame_size(nitro_frame_t *fr);
 inline struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num);
-void nitro_frame_iovs_advance(nitro_frame_t *fr, int index, int offset);
+inline int nitro_frame_iovs_advance(nitro_frame_t *fr, int index, int offset, int *done);
 void nitro_frame_iovs_reset(nitro_frame_t *fr);
+void nitro_frame_set_sender(nitro_frame_t *f,
+    uint8_t *sender, nitro_counted_buffer_t *buf);
+void nitro_frame_clone_stack(nitro_frame_t *fr, nitro_frame_t *to);
+
 #define nitro_frame_destroy(f) {\
-    nitro_counted_buffer_decref((f)->buffer);\
-    if ((f)->ident_buffer) {\
-        nitro_counted_buffer_decref((f)->ident_buffer);\
+    nitro_frame_t *__tmp_f = (f);\
+    nitro_counted_buffer_decref(__tmp_f->buffer);\
+    if (__tmp_f->ident_buffer) {\
+        nitro_counted_buffer_decref(__tmp_f->ident_buffer);\
     }\
-    free(f);\
+    if (__tmp_f->sender_buffer) {\
+        nitro_counted_buffer_decref(__tmp_f->sender_buffer);\
+    }\
+    free(__tmp_f);\
 }
 
 

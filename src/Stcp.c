@@ -284,15 +284,11 @@ void Stcp_socket_start_connect(nitro_tcp_socket_t *s) {
 }
 
 void Stcp_pipe_send_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, void *baton) {
-    /* XXX local queue, do when doing reply,
-       pub etc.. use atomic like socket one. */
-//    nitro_pipe_t *p = (nitro_pipe_t *)baton;
-
-    if (st == NITRO_QUEUE_STATE_EMPTY) {
-        /* stop happens on poll */
-    }
-    else {
-        /* XXX send async to wake this up based on private messages */
+    if (last == NITRO_QUEUE_STATE_EMPTY) {
+        nitro_pipe_t *p = (nitro_pipe_t *)baton;
+        nitro_async_t *a = nitro_async_new(NITRO_ASYNC_ENABLE_WRITES);
+        a->u.enable_writes.pipe = p;
+        nitro_async_schedule(a);
     }
 }
 
@@ -336,6 +332,12 @@ void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd) {
     ev_io_start(the_runtime->the_loop,
     &p->ior);
 
+}
+
+void Stcp_pipe_enable_write(nitro_pipe_t *p) {
+    NITRO_THREAD_CHECK;
+    ev_io_start(the_runtime->the_loop,
+    &p->iow);
 }
 
 void Stcp_socket_enable_writes(nitro_tcp_socket_t *s) {
@@ -425,9 +427,12 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
             if (hd->packet_type == NITRO_FRAME_HELLO) {
                 // XXX better error
                 assert(hd->frame_size == SOCKET_IDENT_LENGTH);
+                st->p->remote_ident = malloc(SOCKET_IDENT_LENGTH);
                 memcpy(st->p->remote_ident,
                     (char *)cursor + sizeof(nitro_protocol_header),
                     SOCKET_IDENT_LENGTH);
+                st->p->remote_ident_buf = nitro_counted_buffer_new(
+                    st->p->remote_ident, just_free, NULL);
                 socket_register_pipe(SOCKET_UNIVERSAL(st->s), st->p);
                 st->p->them_handshake = 1;
             }
@@ -449,7 +454,8 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
             fr = nitro_frame_new_prealloc(
                     (char *)cursor + sizeof(nitro_protocol_header),
                     hd->frame_size, (nitro_counted_buffer_t *)cbuf);
-
+            nitro_frame_set_sender(fr,
+            st->p->remote_ident, st->p->remote_ident_buf);
         }
         st->cursor += (sizeof(nitro_protocol_header) + hd->frame_size);
     }
@@ -620,4 +626,21 @@ void Stcp_socket_send(nitro_tcp_socket_t *s, nitro_frame_t *fr) {
 
 nitro_frame_t *Stcp_socket_recv(nitro_tcp_socket_t *s) {
     return nitro_queue_pull(s->q_recv);
+}
+
+int Stcp_socket_reply(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr) {
+    int ret = -1;
+    pthread_mutex_lock(&s->l_pipes);
+    nitro_pipe_t *p = socket_lookup_pipe(
+        SOCKET_UNIVERSAL(s), snd->sender);
+
+    if (p) {
+        nitro_frame_t *out = nitro_frame_copy(fr);
+        nitro_frame_clone_stack(snd, out);
+        nitro_queue_push(p->q_send, out);
+        ret = 0;
+    }
+
+    pthread_mutex_unlock(&s->l_pipes);
+    return ret;
 }

@@ -62,6 +62,7 @@ typedef struct nitro_async_connect {
 
 typedef struct nitro_async_enable_writes {
     nitro_socket_t *socket;
+    nitro_pipe_t *pipe;
 } nitro_async_enable_writes;
 
 typedef struct nitro_async_enable_reads {
