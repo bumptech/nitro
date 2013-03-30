@@ -1,5 +1,9 @@
 platform=`uname`
 
+export HERE=`pwd`
+export NACL_LIB=$(dirname `find $HERE/nacl-* -name "libnacl.a"`)
+export NACL_INC=$(dirname `find $HERE/nacl-* -name crypto_box.h`)
+
 EXTRA_LDFLAGS=""
 if test $platform == "Darwin"; then 
     echo " ---> Configured for Darwin">&2;
