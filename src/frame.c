@@ -40,6 +40,8 @@ nitro_frame_t *nitro_frame_copy(nitro_frame_t *f) {
     nitro_frame_t *result = malloc(sizeof(nitro_frame_t));
     memcpy(result, f, sizeof(nitro_frame_t));
     nitro_counted_buffer_incref(f->buffer);
+    if (f->ident_buffer)
+        nitro_counted_buffer_incref(f->ident_buffer);
     return result;
 }
 
@@ -58,6 +60,28 @@ nitro_frame_t *nitro_frame_new_prealloc(void *data, uint32_t size, nitro_counted
     return f;
 }
 
+void nitro_frame_set_stack(nitro_frame_t *f, void *data,
+    nitro_counted_buffer_t *buf, uint8_t num) {
+    f->ident_buffer = buf;
+    nitro_counted_buffer_incref(buf);
+    f->num_ident = num;
+    f->ident_data = data;
+}
+
+void nitro_frame_stack_pop(nitro_frame_t *f) {
+    if (f->num_ident > 0) {
+        --f->num_ident;
+    }
+}
+
+// for forwarding
+/*void nitro_frame_stack_push(nitro_frame_t *f, void *data,*/
+/*    nitro_counted_buffer_t *buf, uint8_t num) {*/
+/*    if (f->num_ident > 0) {*/
+/*        --f->num_ident;*/
+/*    }*/
+/*}*/
+
 nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size) {
     char *n = malloc(size);
     memmove(n, data, size);
@@ -74,17 +98,16 @@ inline uint32_t nitro_frame_size(nitro_frame_t *fr) {
 
 
 inline struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num) {
-    *num = 2;
     if (fr->iovec_set) {
+        *num = fr->iovec_set;
         return (struct iovec *)fr->iovs;
     }
 
     //nitro_frame_make_tcp_header(fr);
     fr->tcp_header.protocol_version = 1;
-    fr->tcp_header.packet_type = fr->type == NITRO_FRAME_DATA ?
-        NITRO_PACKET_FRAME :
-        NITRO_PACKET_SUB;
+    fr->tcp_header.packet_type = fr->type;
 
+    fr->tcp_header.num_ident = fr->num_ident;
     fr->tcp_header.flags = 0;
     fr->tcp_header.frame_size = fr->size;
 
@@ -92,7 +115,15 @@ inline struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num) {
     fr->iovs[0].iov_len = sizeof(nitro_protocol_header);
     fr->iovs[1].iov_base = nitro_frame_data(fr);
     fr->iovs[1].iov_len = fr->size;
-    fr->iovec_set = 1;
+    if (fr->num_ident) {
+        fr->iovs[2].iov_base = fr->ident_data;
+        fr->iovs[2].iov_len = fr->num_ident * SOCKET_IDENT_LENGTH;
+        fr->iovec_set = 3;
+    }
+    else {
+        fr->iovec_set = 2;
+    }
+    *num = fr->iovec_set;
 
     return (struct iovec *)fr->iovs;
 }

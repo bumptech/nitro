@@ -19,6 +19,10 @@ typedef struct nitro_pipe_t {
     int fd;
     /* When we have partial output */
     nitro_frame_t *partial;
+    uint8_t remote_ident[SOCKET_IDENT_LENGTH];
+    char us_handshake;
+    char them_handshake;
+    char registered;
 
     nitro_buffer_t *in_buffer;
 
@@ -29,7 +33,6 @@ typedef struct nitro_pipe_t {
 
     struct nitro_pipe_t *prev;
     struct nitro_pipe_t *next;
-    int registered;
 
     nitro_key_t *sub_keys;
     uint8_t last_sub_hash[20];

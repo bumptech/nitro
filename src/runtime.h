@@ -19,6 +19,8 @@ typedef struct nitro_runtime {
 
     ev_async thread_wake;
 
+    int random_fd;
+
     uint32_t num_sock;
 
 } nitro_runtime;

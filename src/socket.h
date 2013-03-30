@@ -58,6 +58,9 @@ typedef enum {
     \
     /* Subscription trie */\
     nitro_prefix_trie_node *subs;\
+    /* Socket identity/crypto */\
+    uint8_t ident[SOCKET_IDENT_LENGTH];\
+    uint8_t pkey[crypto_box_SECRETKEYBYTES];\
     \
     /* Local "want subscription" list */\
     nitro_key_t *sub_keys;\
@@ -111,6 +114,9 @@ nitro_socket_t *nitro_socket_bind(char *location);
 nitro_socket_t *nitro_socket_connect(char *location);
 void nitro_socket_close(nitro_socket_t *s);
 NITRO_SOCKET_TRANSPORT socket_parse_location(char *location, char **next);
+void socket_register_pipe(nitro_universal_socket_t *s, nitro_pipe_t *p);
+nitro_pipe_t *socket_lookup_pipe(nitro_universal_socket_t *s, uint8_t *ident);
+void socket_unregister_pipe(nitro_universal_socket_t *s, nitro_pipe_t *p);
 
 
 #endif /* SOCKET_H */

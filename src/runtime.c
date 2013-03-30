@@ -72,6 +72,8 @@ int nitro_runtime_start() {
     atomic_init(&the_runtime->async_stack, NULL);
 
     assert(atomic_load(&the_runtime->async_stack) == NULL);
+
+    the_runtime->random_fd = open("/dev/urandom", O_RDONLY);
     
     ev_async_init(&the_runtime->thread_wake, nitro_async_cb);
     ev_async_start(the_runtime->the_loop, &the_runtime->thread_wake);
@@ -90,6 +92,7 @@ int nitro_runtime_stop() {
     pthread_mutex_lock(&the_runtime->l_die);
     nitro_async_t *a = nitro_async_new(NITRO_ASYNC_DIE);
     nitro_async_schedule(a);
+    close(the_runtime->random_fd);
     pthread_cond_wait(&the_runtime->c_die, &the_runtime->l_die);
     pthread_mutex_unlock(&the_runtime->l_die);
     free(the_runtime);

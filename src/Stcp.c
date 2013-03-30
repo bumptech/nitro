@@ -378,11 +378,13 @@ typedef struct tcp_frame_parse_state {
     nitro_buffer_t *buf;
     nitro_counted_buffer_t *cbuf;
     char *cursor;
+    nitro_pipe_t *p;
+    nitro_tcp_socket_t *s;
 } tcp_frame_parse_state;
 
 static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
     tcp_frame_parse_state *st = (tcp_frame_parse_state *)baton;
-
+    nitro_frame_t *fr = NULL;
 
     int size;
     nitro_buffer_t const *buf = st->buf;
@@ -392,60 +394,76 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
         st->cursor = (char *)start;
     }
 
-    char const *cursor = st->cursor;
+    while (!fr) {
 
-    int taken = cursor - start;
-    int left = size - taken;
+        char const *cursor = st->cursor;
 
-    if (left < sizeof(nitro_protocol_header)) {
-        return NULL;
+        int taken = cursor - start;
+        int left = size - taken;
+
+        if (left < sizeof(nitro_protocol_header)) {
+            break;
+        }
+
+        nitro_protocol_header const *hd = 
+        (nitro_protocol_header *)cursor;
+        left -= sizeof(nitro_protocol_header);
+
+        // XXX error on protocol version
+        // XXX this is BAD, crashy!
+        // XXX maximum packet size, config based?
+        // other safety/security/anti-dos audit
+        // ... probably the socket closes on
+        // rule violations
+
+        assert(hd->protocol_version == 1);
+        if (left < hd->frame_size) {
+            break;
+        }
+        if (hd->packet_type != NITRO_FRAME_DATA) {
+            /* It's a control frame; handle appropriately */
+            if (hd->packet_type == NITRO_FRAME_HELLO) {
+                // XXX better error
+                assert(hd->frame_size == SOCKET_IDENT_LENGTH);
+                memcpy(st->p->remote_ident,
+                    (char *)cursor + sizeof(nitro_protocol_header),
+                    SOCKET_IDENT_LENGTH);
+                socket_register_pipe(SOCKET_UNIVERSAL(st->s), st->p);
+                st->p->them_handshake = 1;
+            }
+        } else {
+            // XXX again, assert is not right here
+            assert(st->p->them_handshake);
+            if (!st->cbuf) {
+                /* it is official, we will consume data... */
+
+                /* first incref is for the socket itself, not done copying yet */
+                st->cbuf = nitro_counted_buffer_new(
+                (nitro_buffer_t *)buf, buffer_free, NULL);
+            }
+            nitro_counted_buffer_t const *cbuf = st->cbuf;
+            
+            /* incref for the eventual recipient */
+            nitro_counted_buffer_incref((nitro_counted_buffer_t *)cbuf);
+
+            fr = nitro_frame_new_prealloc(
+                    (char *)cursor + sizeof(nitro_protocol_header),
+                    hd->frame_size, (nitro_counted_buffer_t *)cbuf);
+
+        }
+        st->cursor += (sizeof(nitro_protocol_header) + hd->frame_size);
     }
-
-    nitro_protocol_header const *hd = 
-    (nitro_protocol_header *)cursor;
-    left -= sizeof(nitro_protocol_header);
-
-    // XXX error on protocol version
-    // or other formatting
-    // XXX this is BAD, crashy!
-    // XXX maximum packet size, config based?
-    // other safety/security/anti-dos audit
-    // ... probably the socket closes on
-    // rule violations
-    assert(hd->protocol_version == 1);
-    assert(hd->packet_type == NITRO_PACKET_FRAME);
-
-    if (left < hd->frame_size) {
-        return NULL;
-    }
-
-    if (!st->cbuf) {
-        /* it is official, we will consume data... */
-
-        /* first incref is for the socket itself, not done copying yet */
-        st->cbuf = nitro_counted_buffer_new(
-        (nitro_buffer_t *)buf, buffer_free, NULL);
-    }
-    nitro_counted_buffer_t const *cbuf = st->cbuf;
-    
-    /* incref for the eventual recipient */
-    nitro_counted_buffer_incref((nitro_counted_buffer_t *)cbuf);
-
-    nitro_frame_t *fr =
-        nitro_frame_new_prealloc(
-            (char *)cursor + sizeof(nitro_protocol_header),
-            hd->frame_size, (nitro_counted_buffer_t *)cbuf);
-
-    st->cursor += (sizeof(nitro_protocol_header) + hd->frame_size);
     return fr;
 }
 
 void Stcp_parse_socket_buffer(nitro_pipe_t *p) {
     /* now we parse */
+    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p->the_socket;
+
     tcp_frame_parse_state parse_state = {0};
     parse_state.buf = p->in_buffer;
-
-    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p->the_socket;
+    parse_state.p = p;
+    parse_state.s = s;
 
     nitro_queue_consume(s->q_recv,
         Stcp_parse_next_frame,
@@ -484,7 +502,7 @@ void Stcp_bind_callback(
     nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)bind_io->data;
 
     struct sockaddr addr;
-    socklen_t len;
+    socklen_t len = sizeof(struct sockaddr);
 
     int fd = accept(s->bound_fd,
     &addr, &len);
@@ -517,10 +535,20 @@ void Stcp_pipe_out_cb(
 {
     NITRO_THREAD_CHECK;
     nitro_pipe_t *p = (nitro_pipe_t *)pipe_iow->data;
+    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p->the_socket;
 
     int r = 0;
     int tried = 0;
 
+    if (!p->us_handshake) {
+        tried = 1;
+        assert(nitro_queue_count(p->q_send) == 0);
+        nitro_frame_t *hello = nitro_frame_new_copy(
+        s->ident, SOCKET_IDENT_LENGTH);
+        hello->type = NITRO_FRAME_HELLO;
+        nitro_queue_push(p->q_send, hello);
+        p->us_handshake = 1;
+    }
 
     /* Local queue takes precedence */
     if (nitro_queue_count(p->q_send)) {
@@ -535,8 +563,6 @@ void Stcp_pipe_out_cb(
             return;
         }
     }
-
-    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p->the_socket;
 
     /* Note -- using truncate frame as heuristic
        to guess kernel buffer is full*/
