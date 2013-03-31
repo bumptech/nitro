@@ -5,6 +5,10 @@ export NACL_LIB=$(dirname `find $HERE/nacl-* -name "libnacl.a"`)
 export NACL_INC=$(dirname `find $HERE/nacl-* -name crypto_box.h`)
 
 EXTRA_LDFLAGS=""
+
+if [ -z "$CC" ]; then
+    export CC="gcc";
+fi
 if test $platform == "Darwin"; then 
     echo " ---> Configured for Darwin">&2;
     EXTRA_LDFLAGS="-framework CoreServices -framework CoreFoundation $EXTRA_LDFLAGS"
