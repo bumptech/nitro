@@ -85,7 +85,7 @@ nitro_frame_t *nitro_queue_pull(nitro_queue_t *q) {
     nitro_queue_issue_callbacks(q, q->count + 1);
 
     if (q->capacity && q->count == (q->capacity - 1)) {
-        pthread_cond_signal(&q->trigger);
+        pthread_cond_broadcast(&q->trigger);
     }
     pthread_mutex_unlock(&q->lock);
     return ptr;
@@ -112,7 +112,7 @@ void nitro_queue_push(nitro_queue_t *q, nitro_frame_t *f) {
     nitro_queue_issue_callbacks(q, q->count - 1);
 
     if (q->count == 1) {
-        pthread_cond_signal(&q->trigger);
+        pthread_cond_broadcast(&q->trigger);
     }
 
     pthread_mutex_unlock(&q->lock);
@@ -378,7 +378,7 @@ void nitro_queue_consume(nitro_queue_t *q,
     nitro_queue_issue_callbacks(q, old_count);
 
     if (old_count == 0 && q->count > 0) {
-        pthread_cond_signal(&q->trigger);
+        pthread_cond_broadcast(&q->trigger);
     }
 
     pthread_mutex_unlock(&q->lock);
