@@ -58,7 +58,6 @@ void nitro_prefix_trie_add(nitro_prefix_trie_node **t,
     nitro_prefix_trie_node *n, *on;
 
     if (!*t) {
-        printf("add: create\n");
         ZALLOC(*t);
 
         if (length) {
@@ -71,7 +70,6 @@ void nitro_prefix_trie_add(nitro_prefix_trie_node **t,
     on = n = *t;
 
     if (n->length < length && !memcmp(n->rep, rep, n->length)) {
-        printf("add: recurse %s %d %s\n", rep, n->length, n->rep);
         uint8_t c = rep[n->length];
         nitro_prefix_trie_add(&n->subs[c], rep, length, ptr);
     } else {
@@ -81,8 +79,6 @@ void nitro_prefix_trie_add(nitro_prefix_trie_node **t,
         m->ptr = ptr;
 
         if (n->length == length && !memcmp(n->rep, rep, length)) {
-            printf("add: match %d %d %s %s\n",
-                   n->length, length, n->rep, rep);
             DL_APPEND(n->members, m);
         } else {
             ZALLOC(n);
@@ -93,14 +89,11 @@ void nitro_prefix_trie_add(nitro_prefix_trie_node **t,
 
             if (n->length < on->length && !memcmp(on->rep, n->rep, n->length)) {
                 *t = n;
-                printf("add: insertion\n");
                 n->subs[on->rep[length]] = on;
             } else if (n->length > on->length && !memcmp(on->rep, n->rep, on->length)) {
                 *t = on;
-                printf("add: other insertion\n");
                 on->subs[n->rep[on->length]] = n;
             } else {
-                printf("add: intermediate\n");
                 int i;
 
                 for (i = 0; i < length && on->rep[i] == n->rep[i]; i++) {}
@@ -120,9 +113,8 @@ void nitro_prefix_trie_add(nitro_prefix_trie_node **t,
 
 int nitro_prefix_trie_del(nitro_prefix_trie_node *t,
                           uint8_t *rep, uint8_t length, void *ptr) {
-    printf("try to delete %s with pointer %p at %s!\n", rep, ptr, t->rep);
     if (!t || t->length > length || memcmp(t->rep, rep, t->length)) {
-        return 0;
+        return -1;
     }
 
     if (t->length < length) {
@@ -135,14 +127,13 @@ int nitro_prefix_trie_del(nitro_prefix_trie_node *t,
         for (m = t->members; m && ptr != m->ptr; m = m->next) {}
 
         if (m) {
-            printf("found match on delete of %s!\n", rep);
             DL_DELETE(t->members, m);
             free(m);
-            return 1;
+            return 0;
         }
     }
 
-    return 0;
+    return -1;
 }
 
 void nitro_prefix_trie_destroy(nitro_prefix_trie_node *t) {
