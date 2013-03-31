@@ -1,5 +1,5 @@
-[ ] Automated tests for basic send/recv
-[ ] Automated tests for reply and fw stacks
+[x] Automated tests for basic send/recv
+[x] Automated tests for reply and fw stacks
 [ ] Unit test trie
 [ ] Pub/sub
 [ ] Socket Options
