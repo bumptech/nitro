@@ -1,4 +1,15 @@
-[ ] Unit test data structures
-[ ] Test basic send/recv
-[ ] Session ids, stacks, and reply
+[ ] Automated tests for basic send/recv
+[ ] Automated tests for reply and fw stacks
+[ ] Unit test trie
 [ ] Pub/sub
+[ ] Socket Options
+[ ] STCP
+[ ] Async help... eventfd etc, nonblock send/recv
+[ ] Inproc
+[ ] Shutdown clean
+[ ] Leak check
+[ ] Socket Diagnostics (HUP report, stats, etc)
+[ ] Python bindings
+[ ] Haskell bindings
+[ ] Security/robustness on TCP upstream.  
+    .. aka Close on error instead of assert()
