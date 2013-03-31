@@ -17,6 +17,7 @@ void print_stack(nitro_frame_t *f) {
     } else {
         fprintf(stderr, "[");
         print_id(f->sender);
+        fprintf(stderr, "]\n");
     }
     int i;
     for (i=0; i < f->num_ident; i++) {
