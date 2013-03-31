@@ -77,6 +77,10 @@ void nitro_frame_iovs_reset(nitro_frame_t *fr);
 void nitro_frame_set_sender(nitro_frame_t *f,
     uint8_t *sender, nitro_counted_buffer_t *buf);
 void nitro_frame_clone_stack(nitro_frame_t *fr, nitro_frame_t *to);
+void nitro_frame_set_stack(nitro_frame_t *f, void *data,
+    nitro_counted_buffer_t *buf, uint8_t num);
+inline void nitro_frame_stack_push_sender(nitro_frame_t *f);
+inline void nitro_frame_stack_pop(nitro_frame_t *f);
 
 #define nitro_frame_destroy(f) {\
     nitro_frame_t *__tmp_f = (f);\

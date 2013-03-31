@@ -419,7 +419,8 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
         // rule violations
 
         assert(hd->protocol_version == 1);
-        if (left < hd->frame_size) {
+        int ident_size = hd->num_ident * SOCKET_IDENT_LENGTH;
+        if (left < hd->frame_size + ident_size) {
             break;
         }
         if (hd->packet_type != NITRO_FRAME_DATA) {
@@ -456,8 +457,14 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                     hd->frame_size, (nitro_counted_buffer_t *)cbuf);
             nitro_frame_set_sender(fr,
             st->p->remote_ident, st->p->remote_ident_buf);
+            if (hd->num_ident) {
+                nitro_counted_buffer_incref((nitro_counted_buffer_t *)cbuf);
+                nitro_frame_set_stack(fr,
+                st->cursor + (sizeof(nitro_protocol_header) + hd->frame_size),
+                (nitro_counted_buffer_t *)cbuf, hd->num_ident);
+            }
         }
-        st->cursor += (sizeof(nitro_protocol_header) + hd->frame_size);
+        st->cursor += (sizeof(nitro_protocol_header) + hd->frame_size + ident_size);
     }
     return fr;
 }
@@ -637,6 +644,39 @@ int Stcp_socket_reply(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t *
     if (p) {
         nitro_frame_t *out = nitro_frame_copy(fr);
         nitro_frame_clone_stack(snd, out);
+        nitro_queue_push(p->q_send, out);
+        ret = 0;
+    }
+
+    pthread_mutex_unlock(&s->l_pipes);
+    return ret;
+}
+
+int Stcp_socket_relay_fw(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr) {
+    nitro_frame_t *out = nitro_frame_copy(fr);
+    nitro_frame_clone_stack(snd, out);
+    nitro_frame_set_sender(out, snd->sender, snd->sender_buffer);
+    nitro_frame_stack_push_sender(out);
+    nitro_queue_push(s->q_send, out);
+
+    return 0;
+}
+
+int Stcp_socket_relay_bk(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr) {
+    int ret = -1;
+    pthread_mutex_lock(&s->l_pipes);
+
+    assert(snd->num_ident);
+    uint8_t *top_of_stack = snd->ident_data + (
+        (snd->num_ident - 1) * SOCKET_IDENT_LENGTH);
+
+    nitro_pipe_t *p = socket_lookup_pipe(
+        SOCKET_UNIVERSAL(s), top_of_stack);
+
+    if (p) {
+        nitro_frame_t *out = nitro_frame_copy(fr);
+        nitro_frame_clone_stack(snd, out);
+        nitro_frame_stack_pop(out);
         nitro_queue_push(p->q_send, out);
         ret = 0;
     }

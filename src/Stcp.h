@@ -16,5 +16,7 @@ void Stcp_socket_send(nitro_tcp_socket_t *s, nitro_frame_t *fr);
 nitro_frame_t *Stcp_socket_recv(nitro_tcp_socket_t *s);
 int Stcp_socket_reply(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr);
 void Stcp_pipe_enable_write(nitro_pipe_t *p);
+int Stcp_socket_relay_fw(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr);
+int Stcp_socket_relay_bk(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr);
 
 #endif /* NITRO_STCP_H */

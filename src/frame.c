@@ -92,13 +92,13 @@ void nitro_frame_set_sender(nitro_frame_t *f,
     nitro_counted_buffer_incref(buf);
 }
 
-void nitro_frame_stack_pop(nitro_frame_t *f) {
+inline void nitro_frame_stack_pop(nitro_frame_t *f) {
     if (f->num_ident > 0) {
         --(f->num_ident);
     }
 }
 
-void nitro_frame_stack_push_sender(nitro_frame_t *f) {
+inline void nitro_frame_stack_push_sender(nitro_frame_t *f) {
     f->push_sender = 1;
 }
 
