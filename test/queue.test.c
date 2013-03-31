@@ -78,7 +78,8 @@ void *pipe_consume(void *p) {
     do {
         uint8_t ms;
         struct timespec ts;
-        read(rfd, (void *)&ms, sizeof(uint8_t));
+        int b = read(rfd, (void *)&ms, sizeof(uint8_t));
+        assert(b == sizeof(uint8_t));
         ts.tv_sec = 0;
         ts.tv_nsec = 10000 * ms;
         // introduce some latency to test various boundary conditions

@@ -17,7 +17,7 @@ static int test_count;
 #define PRINTNAME(name) {\
     snprintf(buffer, 5000, "   {%s:%d:\"%s\"} ", __FILE__, __LINE__, name);\
     l = strlen(buffer);\
-    fprintf(stderr, buffer);\
+    fprintf(stderr, "%s", buffer);\
     while (65 - l > 0) {\
         fprintf(stderr, ".");\
         l++;\
