@@ -82,6 +82,7 @@ typedef struct nitro_tcp_socket_t {
     ev_io connect_io;
     int connect_fd;
     ev_timer connect_timer;
+    int outbound;
 
     struct sockaddr_in location;
 

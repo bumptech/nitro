@@ -147,6 +147,7 @@ int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
         /* Note - error detail set by parse_tcp_location */
         return r;
     }
+    s->outbound = 1;
 
     Stcp_create_queues(s);
 
@@ -165,6 +166,7 @@ int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
 
 int Stcp_socket_bind(nitro_tcp_socket_t *s, char *location) {
     int r = Stcp_parse_location(location, &s->location);
+    s->outbound = 0;
 
     if (r) {
         return r;
@@ -232,6 +234,7 @@ void Stcp_socket_connect_timer_cb(
     ev_timer *connect_timer,
     int revents) {
     nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)connect_timer->data;
+    ev_timer_stop(the_runtime->the_loop, connect_timer);
 
     Stcp_socket_start_connect(s);
 }
@@ -255,6 +258,8 @@ void Stcp_connect_cb(
         /* do nothing, we'll get phoned home again... */
     }
     else {
+        /* let's restart the timer */
+        ev_io_stop(the_runtime->the_loop, &s->connect_io);
         close(s->connect_fd);
         ev_timer_start(the_runtime->the_loop, &s->connect_timer);
     }
@@ -269,13 +274,13 @@ void Stcp_socket_start_connect(nitro_tcp_socket_t *s) {
     Stcp_connect_cb, s->connect_fd, EV_WRITE);
     s->connect_io.data = s;
 
+
     int t = connect(s->connect_fd,
         (struct sockaddr *)&s->location,
         sizeof(s->location));
 
     if (t == 0 || errno == EINPROGRESS || errno == EINTR) {
         ev_io_start(the_runtime->the_loop, &s->connect_io);
-        return ;
     }
     else {
         close(s->connect_fd);
@@ -299,12 +304,15 @@ void Stcp_destroy_pipe(nitro_pipe_t *p) {
     nitro_buffer_destroy(p->in_buffer);
     nitro_queue_destroy(p->q_send);
     close(p->fd);
-    // XXX why is this partial set, crash?
     if (p->partial) {
         nitro_frame_destroy(p->partial);
     }
     nitro_pipe_destroy(p,
         SOCKET_UNIVERSAL(s));
+
+    if (s->outbound) {
+        ev_timer_start(the_runtime->the_loop, &s->connect_timer);
+    }
 }
 
 void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd) {
