@@ -34,6 +34,14 @@ Do this:
 
     $ redo check
 
+Build Note
+----------
+
+If you need to specify a different gcc executable
+besides just `gcc`, you can define $CC in the environment:
+
+    CC=gcc-4.7 redo
+
 Examples
 --------
 
