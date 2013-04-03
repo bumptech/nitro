@@ -14,9 +14,9 @@ You need:
  2. gcc-4.7 ( Ubuntu 12.04 does not have this by default! )
  3. libev development libraries installed
 
-Do this:
+Then:
 
- 1. Create a build of nacl on your machine (nacl tarball included)
+**Create a build of nacl on your machine (nacl tarball included)**
 
     $ tar jxvf nacl-20110221.tar.bz2
     $ cd nacl-20110221
@@ -26,11 +26,11 @@ Do this:
 
     $ cd ..
 
- 2. Build nitro
+**Build Nitro**
 
     $ redo
 
- 3. Run the nitro test suite
+**Run the Nitro test suite**
 
     $ redo check
 
@@ -57,7 +57,7 @@ Status
 
 Nitro is alpha software.  Submit bug reports, please!  There is no
 global installer, so check out the `examples/*.do` files to see
-waht a build looks like.
+what a build looks like.
 
 Author
 ------
