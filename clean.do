@@ -1,3 +1,5 @@
-find . -name '*.o' | xargs rm
+find src -name '*.o' | xargs rm -f
+find test -name '*.o' | xargs rm -f
+find examples -name '*.o' | xargs rm -f
 rm -f test/*.test
 rm -f *.a
