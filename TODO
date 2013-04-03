@@ -11,7 +11,7 @@
 [ ] Shutdown clean
 [ ] Error handling in various places we return -1, use err.c for nice messages
 [ ] Leak check
-[ ] Socket Diagnostics (HUP report, stats, etc)
+[ ] Socket Diagnostics (HUP report, stats, query queue sizes, etc)
 [ ] Python bindings
 [ ] Haskell bindings
 [ ] Security/robustness on TCP upstream.  
@@ -19,3 +19,5 @@
 [ ] Kill all XXX
 [ ] Re-run style
 [ ] Verify file headers are present and correct in src/*.{c,h}
+[ ] Namespace all ifndefs in headers
+[ ] Verify non-exports are static
