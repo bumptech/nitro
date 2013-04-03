@@ -13,5 +13,8 @@
 #define nitro_reply(snd, fr, s) SOCKET_CALL(s, reply, snd, fr)
 #define nitro_relay_fw(snd, fr, s) SOCKET_CALL(s, relay_fw, snd, fr)
 #define nitro_relay_bk(snd, fr, s) SOCKET_CALL(s, relay_bk, snd, fr)
+#define nitro_sub(s, k, l) SOCKET_CALL(s, sub, k, l)
+#define nitro_unsub(s, k, l) SOCKET_CALL(s, unsub, k, l)
+#define nitro_pub(fr, k, l, s) SOCKET_CALL(s, pub, fr, k, l)
 
 #endif

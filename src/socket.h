@@ -40,10 +40,6 @@ typedef enum {
     /* Outgoing _general_ messages */\
     nitro_queue_t *q_send;\
     \
-    /* locks for sending and receiving from other threads\
-       control locks for maniuplating counts, queues, or pipes*/\
-    pthread_mutex_t l_sub;\
-    \
     /* Pipes need to be locked during map
        lookup, mutation by libev thread, etc */\
     pthread_mutex_t l_pipes;\
@@ -64,6 +60,7 @@ typedef enum {
     \
     /* Local "want subscription" list */\
     nitro_key_t *sub_keys;\
+    uint64_t sub_keys_state;\
     /* Parent socket */\
     void *parent;\
 
@@ -82,6 +79,7 @@ typedef struct nitro_tcp_socket_t {
     ev_io connect_io;
     int connect_fd;
     ev_timer connect_timer;
+    ev_timer sub_send_timer;
     int outbound;
 
     struct sockaddr_in location;

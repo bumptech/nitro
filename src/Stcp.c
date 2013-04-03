@@ -60,6 +60,10 @@ void Stcp_socket_connect_timer_cb(
     struct ev_loop *loop,
     ev_timer *connect_timer,
     int revents);
+void Stcp_socket_check_sub(
+    struct ev_loop *loop,
+    ev_timer *connect_timer,
+    int revents);
 
 /* various fw declaration */
 void Stcp_socket_disable_reads(nitro_tcp_socket_t *s);
@@ -152,6 +156,12 @@ int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
     Stcp_create_queues(s);
 
     ev_timer_init(
+        &s->sub_send_timer,
+        Stcp_socket_check_sub,
+        1.0, 1.0);
+    s->sub_send_timer.data = s;
+
+    ev_timer_init(
         &s->connect_timer,
         Stcp_socket_connect_timer_cb,
         0.5, 0);
@@ -173,6 +183,11 @@ int Stcp_socket_bind(nitro_tcp_socket_t *s, char *location) {
     }
 
     Stcp_create_queues(s);
+    ev_timer_init(
+        &s->sub_send_timer,
+        Stcp_socket_check_sub,
+        1.0, 1.0);
+    s->sub_send_timer.data = s;
 
     s->bound_fd = Stcp_nonblocking_socket_new();
 
@@ -227,6 +242,42 @@ void Stcp_socket_bind_listen(nitro_tcp_socket_t *s) {
     NITRO_THREAD_CHECK;
     ev_io_start(the_runtime->the_loop, 
     &s->bound_io);
+}
+
+void Stcp_pipe_send_sub(nitro_tcp_socket_t *s,
+    nitro_pipe_t *p) {
+    // NOTE: assumed l_pipes is held
+
+    nitro_counted_buffer_incref(s->sub_data);
+    nitro_frame_t *fr = nitro_frame_new_prealloc(
+        s->sub_data->ptr,
+        s->sub_data_length,
+        s->sub_data);
+    fr->type = NITRO_FRAME_SUB;
+
+    nitro_queue_push(p->q_send, fr);
+}
+
+void Stcp_scan_subs(nitro_tcp_socket_t *s) {
+    // NOTE: assumed l_pipes is held
+    nitro_pipe_t *p;
+
+    CDL_FOREACH(s->pipes, p) {
+        if (p->sub_state_sent != s->sub_keys_state) {
+            Stcp_pipe_send_sub(s, p);
+        }
+    }
+}
+
+void Stcp_socket_check_sub(
+    struct ev_loop *loop,
+    ev_timer *connect_timer,
+    int revents) {
+    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)connect_timer->data;
+
+    pthread_mutex_lock(&s->l_pipes);
+    Stcp_scan_subs(s);
+    pthread_mutex_unlock(&s->l_pipes);
 }
 
 void Stcp_socket_connect_timer_cb(
@@ -392,6 +443,113 @@ typedef struct tcp_frame_parse_state {
     nitro_tcp_socket_t *s;
 } tcp_frame_parse_state;
 
+
+static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
+    uint64_t state, uint8_t *data, size_t size, nitro_counted_buffer_t *buf) {
+
+    /* We don't need the lock for this part */
+    nitro_key_t *old = p->sub_keys;
+    p->sub_keys = NULL;
+
+    while (1) {
+        if (size < sizeof(uint8_t)) {
+            break;
+        }
+
+        uint8_t length = *(uint8_t *)data;
+
+        size -= sizeof(uint8_t);
+        if (size < length)
+            break;
+        data += sizeof(uint8_t);
+
+        nitro_key_t *key = nitro_key_new(data, length, buf);
+        DL_APPEND(p->sub_keys, key);
+
+        size -= length;
+        data += length;
+    }
+
+    /* Okay, now let's modify the shared trie */
+    DL_SORT(p->sub_keys, nitro_key_compare);
+
+    // XXX asserts on del()
+
+    nitro_key_t *tkey;
+    DL_FOREACH(p->sub_keys, tkey) {
+        char buf[4];
+        bzero(buf, 4);
+        memcpy(buf, tkey->data, 3);
+        fprintf(stderr, " ~ %s\n", buf);
+    }
+
+    pthread_mutex_lock(&s->l_pipes);
+
+    nitro_key_t *walk_old = old, *tmp=NULL, *walk_new = p->sub_keys;
+
+    while (1) {
+        if (walk_old == NULL) {
+            if (walk_new == NULL) {
+                /* end of both lists */
+                break;
+            }
+            fprintf(stderr, "add new at end\n");
+
+            nitro_prefix_trie_add(&s->subs,
+                walk_new->data, walk_new->length,
+                p);
+
+            walk_new = walk_new->next;
+        } else if (walk_new == NULL) {
+            /* End of new, walk old and remove */
+            nitro_prefix_trie_del(s->subs,
+                walk_old->data, walk_old->length,
+                p);
+            tmp = walk_old;
+            walk_old = walk_old->next;
+            nitro_key_destroy(tmp);
+            fprintf(stderr, "rm old at end\n");
+        }
+
+        else {
+            /* they're both still in progress */
+            int comp = nitro_key_compare(walk_old, walk_new);
+            if (comp < 0) {
+                /* new has jumped ahead, old key is missing */
+                nitro_prefix_trie_del(s->subs,
+                    walk_old->data, walk_old->length,
+                    p);
+
+                tmp = walk_old;
+                walk_old = walk_old->next;
+                nitro_key_destroy(tmp);
+                fprintf(stderr, "rm old at skip\n");
+
+            } else if (comp > 0) {
+                /* old has jumped ahead, need to add key */
+                nitro_prefix_trie_add(&s->subs,
+                    walk_new->data, walk_new->length,
+                    p);
+
+                walk_new = walk_new->next;
+                fprintf(stderr, "add new at skip\n");
+            } else {
+                /* key still exists.. move both forward, don't alter trie */
+                tmp = walk_old;
+                walk_old = walk_old->next;
+                nitro_key_destroy(tmp);
+
+                walk_new = walk_new->next;
+                fprintf(stderr, "same -- skip both\n");
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&s->l_pipes);
+
+    p->sub_state_recv = state;
+}
+
 static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
     tcp_frame_parse_state *st = (tcp_frame_parse_state *)baton;
     nitro_frame_t *fr = NULL;
@@ -444,6 +602,20 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                     st->p->remote_ident, just_free, NULL);
                 socket_register_pipe(SOCKET_UNIVERSAL(st->s), st->p);
                 st->p->them_handshake = 1;
+            } else if (hd->packet_type == NITRO_FRAME_SUB) {
+                assert(hd->frame_size >= sizeof(uint64_t));
+                uint64_t state = *(uint64_t *)(st->cursor + sizeof(nitro_protocol_header));
+                if (st->p->sub_state_recv != state) {
+                    if (!st->cbuf) {
+                        /* we need to retain the backing buffer for the sub data */
+
+                        st->cbuf = nitro_counted_buffer_new(
+                        NULL, buffer_free, (void *)buf);
+                    } else {fprintf(stderr, "nope, got it already\n");}
+                    Stcp_socket_parse_subs(st->s, st->p, state,
+                        (uint8_t *)(st->cursor + sizeof(nitro_protocol_header) + sizeof(uint64_t)),
+                        hd->frame_size - sizeof(uint64_t), st->cbuf);
+                }
             }
         } else {
             // XXX again, assert is not right here
@@ -453,10 +625,10 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
 
                 /* first incref is for the socket itself, not done copying yet */
                 st->cbuf = nitro_counted_buffer_new(
-                (nitro_buffer_t *)buf, buffer_free, NULL);
+                NULL, buffer_free, (void *)buf);
             }
             nitro_counted_buffer_t const *cbuf = st->cbuf;
-            
+
             /* incref for the eventual recipient */
             nitro_counted_buffer_incref((nitro_counted_buffer_t *)cbuf);
 
@@ -490,14 +662,15 @@ void Stcp_parse_socket_buffer(nitro_pipe_t *p) {
         Stcp_parse_next_frame,
         &parse_state);
 
-    if (parse_state.cbuf) {
+    int size;
+    char *start = nitro_buffer_data(p->in_buffer, &size);
+    if (parse_state.cursor != start) {
         /* if this buffer contained at least one whole frame,
         we're going to disown it and create another one
         with whatever fractional data remain (if any) */
 
-        int size;
-        char *start = nitro_buffer_data(p->in_buffer, &size);
         int to_copy = size - (parse_state.cursor - start);
+        nitro_buffer_t *tmp = p->in_buffer;
         p->in_buffer = nitro_buffer_new();
 
         if (to_copy) {
@@ -508,7 +681,12 @@ void Stcp_parse_socket_buffer(nitro_pipe_t *p) {
             nitro_buffer_extend(p->in_buffer, to_copy);
         }
         /* release our copy of the backing buffer */
-        nitro_counted_buffer_decref(parse_state.cbuf);
+        if (parse_state.cbuf) {
+            nitro_counted_buffer_decref(parse_state.cbuf);
+        }
+        else {
+            nitro_buffer_destroy(tmp);
+        }
     }
 }
 
@@ -568,6 +746,12 @@ void Stcp_pipe_out_cb(
         s->ident, SOCKET_IDENT_LENGTH);
         hello->type = NITRO_FRAME_HELLO;
         nitro_queue_push(p->q_send, hello);
+
+        pthread_mutex_lock(&s->l_pipes);
+        if (s->sub_data) {
+            Stcp_pipe_send_sub(s, p);
+        }
+        pthread_mutex_unlock(&s->l_pipes);
         p->us_handshake = 1;
     }
 
@@ -691,4 +875,146 @@ int Stcp_socket_relay_bk(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_
 
     pthread_mutex_unlock(&s->l_pipes);
     return ret;
+}
+
+static void Stcp_socket_reindex_subs(nitro_tcp_socket_t *s) {
+
+    nitro_key_t *key;
+    ++s->sub_keys_state;
+    fprintf(stderr, "state changed to: %llu\n", (unsigned long long) s->sub_keys_state);
+    ev_timer_start(the_runtime->the_loop,
+        &s->sub_send_timer);
+    if (s->sub_data) {
+        nitro_counted_buffer_decref(s->sub_data);
+    }
+    nitro_buffer_t *buf = 
+        nitro_buffer_new();
+
+    nitro_buffer_append(
+        buf,
+        (const char *)(&s->sub_keys_state),
+        sizeof(uint64_t));
+
+    DL_FOREACH(s->sub_keys, key) {
+        nitro_buffer_append(
+        buf,
+        (const char *)(&key->length),
+        sizeof(uint8_t));
+        nitro_buffer_append(
+        buf,
+        (const char *)key->data,
+        key->length);
+    }
+
+    s->sub_data = nitro_counted_buffer_new(
+        buf->area, buffer_free, buf);
+    s->sub_data_length = buf->size;
+    Stcp_scan_subs(s);
+
+}
+
+int Stcp_socket_sub(nitro_tcp_socket_t *s,
+    uint8_t *k, size_t length) {
+    uint8_t *cp = memdup(k, length);
+
+    nitro_counted_buffer_t *buf = 
+        nitro_counted_buffer_new(
+            cp, just_free, NULL);
+
+    nitro_key_t *key = nitro_key_new(cp, length,
+        buf);
+
+    int ret = 0;
+    pthread_mutex_lock(&s->l_pipes);
+    nitro_key_t *search;
+
+    DL_FOREACH(s->sub_keys, search) {
+        if (!nitro_key_compare(search, key)) {
+            ret = -1;
+            break;
+        }
+    }
+
+    if (!ret) {
+        DL_APPEND(s->sub_keys, key);
+        Stcp_socket_reindex_subs(s);
+    }
+
+    pthread_mutex_unlock(&s->l_pipes);
+
+    return ret;
+}
+
+int Stcp_socket_unsub(nitro_tcp_socket_t *s,
+    uint8_t *k, size_t length) {
+
+    nitro_counted_buffer_t *buf =
+        nitro_counted_buffer_new(
+            k, free_nothing, NULL);
+
+    nitro_key_t *tmp = nitro_key_new(
+        k, length, buf);
+
+    int ret = -1;
+
+    pthread_mutex_lock(&s->l_pipes);
+    nitro_key_t *search = NULL;
+
+    DL_FOREACH(s->sub_keys, search) {
+        if (!nitro_key_compare(search, tmp)) {
+            ret = 0;
+            break;
+        }
+    }
+
+    nitro_key_destroy(tmp);
+
+    if (search) {
+        DL_DELETE(s->sub_keys, search);
+        nitro_key_destroy(search);
+        Stcp_socket_reindex_subs(s);
+    }
+
+    pthread_mutex_unlock(&s->l_pipes);
+
+    return ret;
+}
+
+typedef struct Stcp_pub_state {
+    int count;
+    nitro_frame_t *fr;
+} Stcp_pub_state;
+
+static void Stcp_deliver_pub_frame(
+    uint8_t *pfx, uint8_t length, nitro_prefix_trie_mem *mems,
+    void *ptr) {
+    // XXX use nonblocking push
+
+    Stcp_pub_state *st = (Stcp_pub_state *)ptr;
+
+    nitro_prefix_trie_mem *m;
+
+    DL_FOREACH(mems, m) {
+        nitro_pipe_t *p = (nitro_pipe_t *)m->ptr;
+
+        nitro_queue_push(p->q_send, nitro_frame_copy(st->fr));
+        ++st->count;
+    }
+}
+
+int Stcp_socket_pub(nitro_tcp_socket_t *s,
+    nitro_frame_t *fr, uint8_t *k, size_t length) {
+
+    Stcp_pub_state st = {0};
+
+    st.fr = fr;
+
+    pthread_mutex_lock(&s->l_pipes);
+
+    nitro_prefix_trie_search(s->subs,
+        k, length, Stcp_deliver_pub_frame, &st);
+
+    pthread_mutex_unlock(&s->l_pipes);
+
+    return st.count;
 }

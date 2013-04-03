@@ -17,6 +17,9 @@ typedef struct nitro_pipe_t {
     ev_io ior;
     ev_io iow;
     int fd;
+    uint64_t sub_state_sent;
+    uint64_t sub_state_recv;
+
     /* When we have partial output */
     nitro_frame_t *partial;
     uint8_t *remote_ident;
@@ -36,7 +39,6 @@ typedef struct nitro_pipe_t {
     struct nitro_pipe_t *next;
 
     nitro_key_t *sub_keys;
-    uint8_t last_sub_hash[20];
 
     UT_hash_handle hh;
 } nitro_pipe_t;

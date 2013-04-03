@@ -14,11 +14,13 @@
 
 /* Used for publishing */
 typedef struct nitro_key_t {
-    char key[NITRO_KEY_LENGTH];
+    uint8_t *data;
+    uint8_t length;
+    nitro_counted_buffer_t *buf;
+
     struct nitro_key_t *prev;
     struct nitro_key_t *next;
 } nitro_key_t;
-
 
 typedef struct nitro_protocol_header {
     char protocol_version;
@@ -94,5 +96,9 @@ inline void nitro_frame_stack_pop(nitro_frame_t *f);
     free(__tmp_f);\
 }
 
+nitro_key_t *nitro_key_new(uint8_t *data, uint8_t length, 
+    nitro_counted_buffer_t *buf);
+int nitro_key_compare(nitro_key_t *k1, nitro_key_t *k2);
+void nitro_key_destroy(nitro_key_t *k);
 
 #endif /* FRAME_H */

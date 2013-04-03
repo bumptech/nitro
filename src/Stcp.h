@@ -18,5 +18,11 @@ int Stcp_socket_reply(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t *
 void Stcp_pipe_enable_write(nitro_pipe_t *p);
 int Stcp_socket_relay_fw(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr);
 int Stcp_socket_relay_bk(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr);
+int Stcp_socket_sub(nitro_tcp_socket_t *s,
+    uint8_t *k, size_t length);
+int Stcp_socket_unsub(nitro_tcp_socket_t *s,
+    uint8_t *k, size_t length);
+int Stcp_socket_pub(nitro_tcp_socket_t *s,
+    nitro_frame_t *fr, uint8_t *k, size_t length);
 
 #endif /* NITRO_STCP_H */

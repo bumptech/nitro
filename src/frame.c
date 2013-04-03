@@ -192,3 +192,31 @@ inline int nitro_frame_iovs_advance(nitro_frame_t *fr, int index, int offset, in
 void nitro_frame_iovs_reset(nitro_frame_t *fr) {
     fr->iovec_set = 0;
 }
+
+nitro_key_t *nitro_key_new(uint8_t *data, uint8_t length, 
+    nitro_counted_buffer_t *buf) {
+    nitro_key_t *k; 
+    ZALLOC(k);
+    nitro_counted_buffer_incref(buf);
+
+    k->data = data;
+    k->length = length;
+    k->buf = buf;
+
+    return k;
+}
+
+int nitro_key_compare(nitro_key_t *k1, nitro_key_t *k2) {
+    if (k1->length < k2->length) {
+        return -1;
+    } else if (k1->length > k2->length) {
+        return 1;
+    } else {
+        return memcmp(k1->data, k2->data, k1->length);
+    }
+}
+
+void nitro_key_destroy(nitro_key_t *k) {
+    nitro_counted_buffer_decref(k->buf);
+    free(k);
+}

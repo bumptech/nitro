@@ -45,6 +45,8 @@ void just_free(void *data, void *unused) {
     free(data);
 }
 
+void free_nothing(void *unused1, void *unused2) {}
+
 double now_double() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -59,6 +61,12 @@ void cbuffer_decref(void *data, void *bufptr) {
 }
 
 void buffer_free(void *data, void *bufptr) {
-    nitro_buffer_t *buf = (nitro_buffer_t *)data;
+    nitro_buffer_t *buf = (nitro_buffer_t *)bufptr;
     nitro_buffer_destroy(buf);
+}
+
+uint8_t *memdup(uint8_t *src, size_t size) {
+    uint8_t *out = malloc(size);
+    memcpy(out, src, size);
+    return out;
 }
