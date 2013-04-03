@@ -2,9 +2,11 @@
 [x] Automated tests for reply and fw stacks
 [x] Unit test trie
 [x] Pub/sub
+[ ] Pub/sub unit tests
+[ ] Nonblock send/recv -- change all internal uses to use this
 [ ] Socket Options
 [ ] STCP
-[ ] Async help... eventfd etc, nonblock send/recv
+[ ] Async help... eventfd etc
 [ ] Inproc
 [ ] Shutdown clean
 [ ] Error handling in various places we return -1, use err.c for nice messages
@@ -14,3 +16,6 @@
 [ ] Haskell bindings
 [ ] Security/robustness on TCP upstream.  
     .. aka Close on error instead of assert()
+[ ] Kill all XXX
+[ ] Re-run style
+[ ] Verify file headers are present and correct in src/*.{c,h}
