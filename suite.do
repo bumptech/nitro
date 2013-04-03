@@ -4,3 +4,4 @@ redo examples/basic
 redo examples/sender
 redo examples/targeted
 redo examples/proxied
+redo examples/pubsub
