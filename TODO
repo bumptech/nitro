@@ -1,12 +1,13 @@
 [x] Automated tests for basic send/recv
 [x] Automated tests for reply and fw stacks
-[ ] Unit test trie
-[ ] Pub/sub
+[x] Unit test trie
+[x] Pub/sub
 [ ] Socket Options
 [ ] STCP
 [ ] Async help... eventfd etc, nonblock send/recv
 [ ] Inproc
 [ ] Shutdown clean
+[ ] Error handling in various places we return -1, use err.c for nice messages
 [ ] Leak check
 [ ] Socket Diagnostics (HUP report, stats, etc)
 [ ] Python bindings
