@@ -9,7 +9,7 @@ void Sinproc_socket_bind_listen(nitro_inproc_socket_t *s);
 void Sinproc_socket_enable_writes(nitro_inproc_socket_t *s);
 void Sinproc_socket_enable_reads(nitro_inproc_socket_t *s);
 void Sinproc_socket_start_connect(nitro_inproc_socket_t *s);
-void Sinproc_socket_shutdown(nitro_inproc_socket_t *s);
+void Sinproc_socket_start_shutdown(nitro_inproc_socket_t *s);
 void Sinproc_socket_close(nitro_inproc_socket_t *s);
 
 int Sinproc_socket_send(nitro_inproc_socket_t *s, nitro_frame_t *fr, int flags);

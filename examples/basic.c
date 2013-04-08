@@ -6,7 +6,7 @@
 int main(int argc, char **argv) {
     nitro_runtime_start();
 
-    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4444");
+    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4444", NULL);
     if (!s) {
         printf("error on bind: %s\n", nitro_errmsg(nitro_error()));
         exit(1);

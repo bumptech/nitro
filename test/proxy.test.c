@@ -8,7 +8,7 @@ struct t_1 {
 
 void *recipient(void *p) {
     char *bind_loc = (char *)p;
-    nitro_socket_t *s = nitro_socket_bind(bind_loc);
+    nitro_socket_t *s = nitro_socket_bind(bind_loc, NULL);
     if (!s) {
         printf("error on bind: %s\n", nitro_errmsg(nitro_error()));
         exit(1);
@@ -27,9 +27,9 @@ void *recipient(void *p) {
 
 void *proxy(void *ptr) {
     nitro_socket_t *outs[2];
-    nitro_socket_t *inp = nitro_socket_bind("tcp://127.0.0.1:4443");
-    outs[0] = nitro_socket_connect("tcp://127.0.0.1:4444");
-    outs[1] = nitro_socket_connect("tcp://127.0.0.1:4445");
+    nitro_socket_t *inp = nitro_socket_bind("tcp://127.0.0.1:4443", NULL);
+    outs[0] = nitro_socket_connect("tcp://127.0.0.1:4444", NULL);
+    outs[1] = nitro_socket_connect("tcp://127.0.0.1:4445", NULL);
 
     int p;
     int i;
@@ -60,7 +60,7 @@ void *sender(void *p) {
 
     int id = i;
 
-    nitro_socket_t *s = nitro_socket_connect("tcp://127.0.0.1:4443");
+    nitro_socket_t *s = nitro_socket_connect("tcp://127.0.0.1:4443", NULL);
     if (!s) {
         printf("error on connect: %s\n", nitro_errmsg(nitro_error()));
         exit(1);

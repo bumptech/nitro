@@ -36,8 +36,8 @@
 #include "Stcp.h"
 #include "Sinproc.h"
 
-nitro_socket_t *nitro_socket_bind(char *location) {
-    nitro_socket_t *s = nitro_socket_new();
+nitro_socket_t *nitro_socket_bind(char *location, nitro_sockopt_t *opt) {
+    nitro_socket_t *s = nitro_socket_new(opt);
     char *next;
     s->trans = socket_parse_location(location, &next);
 
@@ -52,8 +52,8 @@ nitro_socket_t *nitro_socket_bind(char *location) {
     return s;
 }
 
-nitro_socket_t *nitro_socket_connect(char *location) {
-    nitro_socket_t *s = nitro_socket_new();
+nitro_socket_t *nitro_socket_connect(char *location, nitro_sockopt_t *opt) {
+    nitro_socket_t *s = nitro_socket_new(opt);
     char *next;
     s->trans = socket_parse_location(location, &next);
 

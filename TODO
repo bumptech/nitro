@@ -3,7 +3,7 @@
 [x] Unit test trie
 [x] Pub/sub
 [ ] Pub/sub unit tests
-[ ] Nonblock send/recv -- change all internal uses to use this
+[x] Nonblock send/recv -- change all internal uses to use this
 [ ] Socket Options
 [ ] STCP
 [ ] Async help... eventfd etc

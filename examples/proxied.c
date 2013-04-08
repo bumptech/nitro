@@ -27,7 +27,7 @@ void print_stack(nitro_frame_t *f) {
 }
 
 void recipient() {
-    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4444");
+    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4444", NULL);
     if (!s) {
         printf("error on bind: %s\n", nitro_errmsg(nitro_error()));
         exit(1);
@@ -43,8 +43,8 @@ void recipient() {
 }
 
 void *proxy(void *ptr) {
-    nitro_socket_t *inp = nitro_socket_bind("tcp://127.0.0.1:4445");
-    nitro_socket_t *outp = nitro_socket_connect("tcp://127.0.0.1:4444");
+    nitro_socket_t *inp = nitro_socket_bind("tcp://127.0.0.1:4445", NULL);
+    nitro_socket_t *outp = nitro_socket_connect("tcp://127.0.0.1:4444", NULL);
 
     int p;
     while (1) {
@@ -62,7 +62,7 @@ void *proxy(void *ptr) {
 
 void *sender(void *p) {
     int id = *(int*)p;
-    nitro_socket_t *s = nitro_socket_connect("tcp://127.0.0.1:4445");
+    nitro_socket_t *s = nitro_socket_connect("tcp://127.0.0.1:4445", NULL);
     if (!s) {
         printf("error on connect: %s\n", nitro_errmsg(nitro_error()));
         exit(1);

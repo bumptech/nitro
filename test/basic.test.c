@@ -8,7 +8,7 @@ struct t_1 {
 
 void *r_1(void *p) {
     struct t_1 *res = (struct t_1 *)p;
-    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4444");
+    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4444", NULL);
 
     int i;
 
@@ -31,7 +31,7 @@ void *r_1(void *p) {
 
 void *s_1(void *p) {
     struct t_1 *res = (struct t_1 *)p;
-    nitro_socket_t *s = nitro_socket_connect("tcp://127.0.0.1:4444");
+    nitro_socket_t *s = nitro_socket_connect("tcp://127.0.0.1:4444", NULL);
 
     int i;
 
@@ -94,7 +94,7 @@ void *r_2(void *p) {
 }
 
 void *s_2(void *p) {
-    nitro_socket_t *s = nitro_socket_connect("tcp://127.0.0.1:4445");
+    nitro_socket_t *s = nitro_socket_connect("tcp://127.0.0.1:4445", NULL);
     sleep(1);
 
     int i;
@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
     atomic_init(&acc2.tot, 0);
 
     int i = 0;
-    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4445");
+    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4445", NULL);
     acc2.s = s;
     for (i=0; i < 10; i++) {
         pthread_create(&(acc2.kids[i]), NULL, r_2, &acc2);

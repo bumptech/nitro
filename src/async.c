@@ -88,7 +88,7 @@ static void nitro_async_handle(nitro_async_t *a) {
         SOCKET_CALL(a->u.connect.socket, start_connect);
         break;
     case NITRO_ASYNC_CLOSE:
-        SOCKET_CALL(a->u.close.socket, shutdown);
+        SOCKET_CALL(a->u.close.socket, start_shutdown);
         break;
     }
 }

@@ -6,6 +6,7 @@
 #include "buffer.h"
 #include "cbuffer.h"
 #include "frame.h"
+#include "opt.h"
 #include "pipe.h"
 #include "queue.h"
 #include "trie.h"
@@ -35,10 +36,13 @@ typedef enum {
 
 
 #define SOCKET_COMMON_FIELDS\
+    /* Socket Options */\
+    nitro_sockopt_t *opt;\
     /* Incoming messages */\
     nitro_queue_t *q_recv;\
     /* Outgoing _general_ messages */\
     nitro_queue_t *q_send;\
+    ev_timer close_timer;\
     \
     /* Pipes need to be locked during map
        lookup, mutation by libev thread, etc */\
@@ -55,9 +59,6 @@ typedef enum {
     /* Subscription trie */\
     nitro_prefix_trie_node *subs;\
     /* Socket identity/crypto */\
-    uint8_t ident[SOCKET_IDENT_LENGTH];\
-    uint8_t pkey[crypto_box_SECRETKEYBYTES];\
-    \
     /* Local "want subscription" list */\
     nitro_key_t *sub_keys;\
     uint64_t sub_keys_state;\
@@ -109,8 +110,8 @@ typedef struct nitro_socket_t {
 
 nitro_socket_t *nitro_socket_new();
 void nitro_socket_destroy();
-nitro_socket_t *nitro_socket_bind(char *location);
-nitro_socket_t *nitro_socket_connect(char *location);
+nitro_socket_t *nitro_socket_bind(char *location, nitro_sockopt_t *opt);
+nitro_socket_t *nitro_socket_connect(char *location, nitro_sockopt_t *opt);
 void nitro_socket_close(nitro_socket_t *s);
 NITRO_SOCKET_TRANSPORT socket_parse_location(char *location, char **next);
 void socket_register_pipe(nitro_universal_socket_t *s, nitro_pipe_t *p);

@@ -3,19 +3,24 @@
 #include "runtime.h"
 #include "crypto.h"
 
-nitro_socket_t *nitro_socket_new() {
+nitro_socket_t *nitro_socket_new(nitro_sockopt_t *opt) {
     nitro_socket_t *sock;
     ZALLOC(sock);
 
     nitro_universal_socket_t *us = &sock->stype.univ;
+    opt = opt ? opt : nitro_sockopt_new();
+    us->opt = opt;
 
-    // XXX TODO -- provided pub/sec key?  skip
-    crypto_make_keypair(us->ident, us->pkey);
+    if (!us->opt->has_ident) {
+        crypto_make_keypair(us->opt->ident, us->opt->pkey);
+        us->opt->has_ident = 1;
+    }
 
     pthread_mutex_init(&us->l_pipes, NULL);
 
  //   sock->sub_keys = NULL;
     // Change to stdatomic.h XXX
+    // Also, add to list for diagnostics XXX
     __sync_add_and_fetch(&the_runtime->num_sock, 1);
     return sock;
 
@@ -37,6 +42,8 @@ NITRO_SOCKET_TRANSPORT socket_parse_location(char *location, char **next) {
 }
 
 void nitro_socket_destroy(nitro_socket_t *s) {
+    nitro_universal_socket_t *us = &s->stype.univ;
+    free(us->opt);
     free(s);
     __sync_add_and_fetch(&the_runtime->num_sock, 1);
 }

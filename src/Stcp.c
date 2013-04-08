@@ -66,6 +66,10 @@ void Stcp_socket_check_sub(
     struct ev_loop *loop,
     ev_timer *connect_timer,
     int revents);
+void Stcp_socket_close_cb(
+    struct ev_loop *loop,
+    ev_timer *close_timer,
+    int revents);
 
 /* various fw declaration */
 void Stcp_socket_disable_reads(nitro_tcp_socket_t *s);
@@ -141,9 +145,9 @@ void Stcp_socket_recv_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, v
 
 void Stcp_create_queues(nitro_tcp_socket_t *s) {
     s->q_send = nitro_queue_new(
-        0, Stcp_socket_send_queue_stat, (void*)s);
+        s->opt->hwm_out_general, Stcp_socket_send_queue_stat, (void*)s);
     s->q_recv = nitro_queue_new(
-        0, Stcp_socket_recv_queue_stat, (void*)s);
+        s->opt->hwm_in, Stcp_socket_recv_queue_stat, (void*)s);
 }
 
 int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
@@ -166,7 +170,7 @@ int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
     ev_timer_init(
         &s->connect_timer,
         Stcp_socket_connect_timer_cb,
-        0.5, 0);
+        s->opt->reconnect_interval, 0);
     s->connect_timer.data = s;
 
     nitro_async_t *a = nitro_async_new(NITRO_ASYNC_CONNECT);
@@ -219,6 +223,15 @@ int Stcp_socket_bind(nitro_tcp_socket_t *s, char *location) {
     return 0;
 }
 
+void Stcp_socket_start_shutdown(nitro_tcp_socket_t *s) {
+    ev_timer_init(
+        &s->close_timer,
+        Stcp_socket_close_cb,
+        s->opt->close_linger, 0);
+    s->close_timer.data = s;
+    ev_timer_start(the_runtime->the_loop, &s->close_timer);
+}
+
 void Stcp_socket_shutdown(nitro_tcp_socket_t *s) {
     nitro_pipe_t *tmp1, *tmp2, *p = NULL;
 
@@ -238,6 +251,14 @@ void Stcp_socket_shutdown(nitro_tcp_socket_t *s) {
         close(s->connect_fd);
     }
     nitro_socket_destroy(SOCKET_PARENT(s));
+}
+
+void Stcp_socket_close_cb(
+    struct ev_loop *loop,
+    ev_timer *close_timer,
+    int revents) {
+        nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)close_timer->data;
+        Stcp_socket_shutdown(s);
 }
 
 void Stcp_socket_bind_listen(nitro_tcp_socket_t *s) {
@@ -387,10 +408,9 @@ void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd) {
     p->fd, EV_READ);
     p->ior.data = p;
 
-    // eventually, use socket settings
-    // for capacity
-    p->q_send = nitro_queue_new(0,
-    Stcp_pipe_send_queue_stat, p);
+    p->q_send = nitro_queue_new(
+        s->opt->hwm_out_private,
+        Stcp_pipe_send_queue_stat, p);
 
     ev_io_start(the_runtime->the_loop,
     &p->iow);
@@ -583,6 +603,11 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
         (nitro_protocol_header *)cursor;
         left -= sizeof(nitro_protocol_header);
 
+        if (hd->frame_size > st->s->opt->max_message_size) {
+            assert(0);
+            // XXX handle more gracefully
+        }
+
         // XXX error on protocol version
         // XXX this is BAD, crashy!
         // XXX maximum packet size, config based?
@@ -749,7 +774,7 @@ void Stcp_pipe_out_cb(
         tried = 1;
         assert(nitro_queue_count(p->q_send) == 0);
         nitro_frame_t *hello = nitro_frame_new_copy(
-        s->ident, SOCKET_IDENT_LENGTH);
+        s->opt->ident, SOCKET_IDENT_LENGTH);
         hello->type = NITRO_FRAME_HELLO;
         r = nitro_queue_push(p->q_send, hello, 0);
 

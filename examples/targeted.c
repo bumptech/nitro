@@ -4,7 +4,7 @@
 #define MESSAGES 10000
 
 void recipient() {
-    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4444");
+    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4444", NULL);
     if (!s) {
         printf("error on bind: %s\n", nitro_errmsg(nitro_error()));
         exit(1);
@@ -21,7 +21,7 @@ void recipient() {
 
 void *sender(void *p) {
     int id = *(int*)p;
-    nitro_socket_t *s = nitro_socket_connect("tcp://127.0.0.1:4444");
+    nitro_socket_t *s = nitro_socket_connect("tcp://127.0.0.1:4444", NULL);
     if (!s) {
         printf("error on connect: %s\n", nitro_errmsg(nitro_error()));
         exit(1);
