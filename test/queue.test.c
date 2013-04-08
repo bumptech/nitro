@@ -42,7 +42,7 @@ nitro_frame_t *gframe;
 void *take_item(void *p) {
     nitro_queue_t *q = (nitro_queue_t *)p;
     sleep(1);
-    nitro_frame_t *fr = nitro_queue_pull(q);
+    nitro_frame_t *fr = nitro_queue_pull(q, 1);
 
     assert(*((int *)nitro_frame_data(fr)) == 0);
     nitro_frame_destroy(fr);
@@ -56,7 +56,7 @@ void *put_item(void *p) {
     nitro_frame_t *fr = nitro_frame_new_copy(
     (void *)&i, sizeof(int));
 
-    nitro_queue_push(q, fr);
+    nitro_queue_push(q, fr, 1);
 
     return NULL;
 }
@@ -116,13 +116,13 @@ int main(int argc, char **argv) {
     nitro_frame_t *hello = nitro_frame_new_copy(
         "hello", 6);
 
-    nitro_queue_push(q, hello);
+    nitro_queue_push(q, hello, 1);
     TEST("queue went contents", 
         tstate.got_state_change 
         && tstate.state_was == NITRO_QUEUE_STATE_CONTENTS);
     tstate.got_state_change = 0;
 
-    nitro_frame_t *back = nitro_queue_pull(q);
+    nitro_frame_t *back = nitro_queue_pull(q, 1);
     TEST("got frame back", 
         back == hello);
     TEST("queue went empty", 
@@ -134,13 +134,13 @@ int main(int argc, char **argv) {
     /* Ordering */
     nitro_frame_t *world = nitro_frame_new_copy(
         "world", 6);
-    nitro_queue_push(q, hello);
-    nitro_queue_push(q, world);
+    nitro_queue_push(q, hello, 1);
+    nitro_queue_push(q, world, 1);
 
-    back = nitro_queue_pull(q);
+    back = nitro_queue_pull(q, 1);
     TEST("got hello (ordering)", 
         back == hello);
-    back = nitro_queue_pull(q);
+    back = nitro_queue_pull(q, 1);
     TEST("got world (ordering)", 
         back == world);
 
@@ -155,23 +155,23 @@ int main(int argc, char **argv) {
     int i;
     for (i=0; i < 1023; i++) {
         nitro_frame_t *hcopy = nitro_frame_copy(hello);
-        nitro_queue_push(q, hcopy);
-        back = nitro_queue_pull(q);
+        nitro_queue_push(q, hcopy, 1);
+        back = nitro_queue_pull(q, 1);
         assert(back == hcopy);
         nitro_frame_destroy(back);
     }
 
 
-    nitro_queue_push(q, hello);
-    nitro_queue_push(q, world);
+    nitro_queue_push(q, hello, 1);
+    nitro_queue_push(q, world, 1);
 
     TEST("wrapping internals, wrap occurred",
     q->tail < q->head);
 
-    back = nitro_queue_pull(q);
+    back = nitro_queue_pull(q, 1);
     TEST("got hello (wrapping)", 
         back == hello);
-    back = nitro_queue_pull(q);
+    back = nitro_queue_pull(q, 1);
     TEST("got world (wrapping)", 
         back == world);
 
@@ -186,7 +186,7 @@ int main(int argc, char **argv) {
     world = nitro_frame_new(
     "hello", 6, my_free, &dt);
 
-    nitro_queue_push(q, world);
+    nitro_queue_push(q, world, 1);
 
     TEST("delete outstanding.. not deleted",
     dt.done == 0);
@@ -207,7 +207,7 @@ int main(int argc, char **argv) {
 
     for (i=0; i < 313; i++) {
         back = nitro_frame_copy(hello);
-        nitro_queue_push(q, back);
+        nitro_queue_push(q, back, 1);
     }
 
     nitro_frame_destroy(hello);
@@ -224,11 +224,11 @@ int main(int argc, char **argv) {
     /* get the alignment off */
     for (i=0; i < 100; i++) {
         nitro_queue_push(q,
-            nitro_frame_new_copy((void*)&i, sizeof(int)));
+            nitro_frame_new_copy((void*)&i, sizeof(int)), 1);
     }
 
     for (i=0; i < 100; i++) {
-        back = nitro_queue_pull(q);
+        back = nitro_queue_pull(q, 1);
         nitro_frame_destroy(back);
     }
 
@@ -238,13 +238,13 @@ int main(int argc, char **argv) {
     /* okay, now cause resize */
     for (i=0; i < 1050; i++) {
         nitro_queue_push(q,
-            nitro_frame_new_copy((void*)&i, sizeof(int)));
+            nitro_frame_new_copy((void*)&i, sizeof(int)), 1);
     }
 
     TEST("was resized", q->size > 1024);
 
     for (i=0; i < 1050; i++) {
-        back = nitro_queue_pull(q);
+        back = nitro_queue_pull(q, 1);
         if ( *((int*)nitro_frame_data(back)) != i)
             break;
         nitro_frame_destroy(back);
@@ -274,7 +274,7 @@ int main(int argc, char **argv) {
     for (i=0; i < 5; i++) {
         nitro_queue_push(q,
             nitro_frame_new_copy(
-            (void *)&i, sizeof(int)));
+            (void *)&i, sizeof(int)), 1);
     }
 
     TEST("load 5 into src",
@@ -286,7 +286,7 @@ int main(int argc, char **argv) {
     nitro_queue_count(dst) == 5);
 
     for (i=0; i < 5; i++) {
-        back = nitro_queue_pull(dst);
+        back = nitro_queue_pull(dst, 1);
         if ( *((int*)nitro_frame_data(back)) != i)
             break;
         nitro_frame_destroy(back);
@@ -306,29 +306,29 @@ int main(int argc, char **argv) {
     for (i=0; i < 300; i++) {
         nitro_queue_push(q,
             nitro_frame_new_copy(
-            (void *)&i, sizeof(int)));
+            (void *)&i, sizeof(int)), 1);
     }
     for (i=0; i < 300; i++) {
-        nitro_frame_destroy(nitro_queue_pull(q));
+        nitro_frame_destroy(nitro_queue_pull(q, 1));
     }
     for (i=0; i < 700; i++) {
         nitro_queue_push(q,
             nitro_frame_new_copy(
-            (void *)&i, sizeof(int)));
+            (void *)&i, sizeof(int)), 1);
     }
 
     for (i=0; i < 324; i++) {
         nitro_queue_push(dst,
             nitro_frame_new_copy(
-            (void *)&i, sizeof(int)));
+            (void *)&i, sizeof(int)), 1);
     }
     for (i=0; i < 324; i++) {
-        nitro_frame_destroy(nitro_queue_pull(dst));
+        nitro_frame_destroy(nitro_queue_pull(dst, 1));
     }
     for (i=0; i < 324; i++) {
         nitro_queue_push(dst,
             nitro_frame_new_copy(
-            (void *)&i, sizeof(int)));
+            (void *)&i, sizeof(int)), 1);
     }
 
     TEST("(ugly move) count 700 src",
@@ -346,7 +346,7 @@ int main(int argc, char **argv) {
     dst->head == dst->tail);
 
     for (i=0; i < 324; i++) {
-        back = nitro_queue_pull(dst);
+        back = nitro_queue_pull(dst, 1);
         if ( *((int*)nitro_frame_data(back)) != i)
             break;
         nitro_frame_destroy(back);
@@ -354,7 +354,7 @@ int main(int argc, char **argv) {
     TEST("(ugly move post) first 324 still there",
     i == 324);
     for (i=0; i < 700; i++) {
-        back = nitro_queue_pull(dst);
+        back = nitro_queue_pull(dst, 1);
         if ( *((int*)nitro_frame_data(back)) != i)
             break;
         nitro_frame_destroy(back);
@@ -376,13 +376,13 @@ int main(int argc, char **argv) {
     for (i=0; i < 1000; i++) {
         nitro_queue_push(q,
             nitro_frame_new_copy(
-            (void *)&i, sizeof(int)));
+            (void *)&i, sizeof(int)), 1);
     }
 
     for (i=0; i < 324; i++) {
         nitro_queue_push(dst,
             nitro_frame_new_copy(
-            (void *)&i, sizeof(int)));
+            (void *)&i, sizeof(int)), 1);
     }
 
     TEST("(resize move) count 1000 src",
@@ -396,7 +396,7 @@ int main(int argc, char **argv) {
     assert(dst->size > 1024);
 
     for (i=0; i < 324; i++) {
-        back = nitro_queue_pull(dst);
+        back = nitro_queue_pull(dst, 1);
         if ( *((int*)nitro_frame_data(back)) != i)
             break;
         nitro_frame_destroy(back);
@@ -404,7 +404,7 @@ int main(int argc, char **argv) {
     TEST("(resize post-move) first 324 still there",
     i == 324);
     for (i=0; i < 1000; i++) {
-        back = nitro_queue_pull(dst);
+        back = nitro_queue_pull(dst, 1);
         if ( *((int*)nitro_frame_data(back)) != i)
             break;
         nitro_frame_destroy(back);
@@ -425,7 +425,7 @@ int main(int argc, char **argv) {
     for (i=0; i < 5; i++) {
         nitro_queue_push(q,
             nitro_frame_new_copy(
-            (void *)&i, sizeof(int)));
+            (void *)&i, sizeof(int)), 1);
     }
 
     double d1 = now_double();
@@ -433,13 +433,13 @@ int main(int argc, char **argv) {
     pthread_create(&t1, NULL, take_item, (void*)q);
     nitro_queue_push(q,
         nitro_frame_new_copy(
-        (void *)&i, sizeof(int)));
+        (void *)&i, sizeof(int)), 1);
     double d2 = now_double();
     TEST("(capacity) got blocked on push",
     (d2 - d1 > 0.7) && (d2 - d1 < 1.5));
 
     for (i=1; i < 6; i++) {
-        back = nitro_queue_pull(q);
+        back = nitro_queue_pull(q, 1);
         if ( *((int*)nitro_frame_data(back)) != i)
             break;
         nitro_frame_destroy(back);
@@ -452,7 +452,7 @@ int main(int argc, char **argv) {
 
     d1 = now_double();
     pthread_create(&t2, NULL, put_item, (void*)q);
-    back = nitro_queue_pull(q);
+    back = nitro_queue_pull(q, 1);
     d2 = now_double();
     TEST("(capacity) got blocked on empty pull",
     (d2 - d1 > 0.7) && (d2 - d1 < 1.5));
@@ -477,7 +477,7 @@ int main(int argc, char **argv) {
     d1 = now_double();
     for (i=0; i < CONSUME_COUNT; i++) {
         nitro_queue_push(q,
-            nitro_frame_copy(gframe));
+            nitro_frame_copy(gframe), 1);
     }
     d2 = now_double();
 
@@ -509,7 +509,7 @@ int main(int argc, char **argv) {
     for (i=0; i < 50000; i++) {
         nitro_queue_push(q,
             nitro_frame_new_copy(
-                "dog", 3));
+                "dog", 3), 1);
     }
 
     int ps[2];

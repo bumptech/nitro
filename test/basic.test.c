@@ -13,14 +13,14 @@ void *r_1(void *p) {
     int i;
 
     for (i=0; i < 10000; i++) {
-        nitro_frame_t *fr = nitro_recv(s);
+        nitro_frame_t *fr = nitro_recv(s, 0);
         if (*(int*)nitro_frame_data(fr) != i) {
             break;
         }
         nitro_frame_destroy(fr);
         int back = 10000 - i;
         fr = nitro_frame_new_copy(&back, sizeof(int));
-        nitro_send(fr, s);
+        nitro_send(fr, s, 0);
         nitro_frame_destroy(fr);
     }
 
@@ -38,10 +38,10 @@ void *s_1(void *p) {
     for (i=0; i < 10000; i++) {
         nitro_frame_t *fr = nitro_frame_new_copy(&i, sizeof(int));
         fr = nitro_frame_new_copy(&i, sizeof(int));
-        nitro_send(fr, s);
+        nitro_send(fr, s, 0);
         nitro_frame_destroy(fr);
 
-        fr = nitro_recv(s);
+        fr = nitro_recv(s, 0);
         if (*(int*)nitro_frame_data(fr) != (10000 - i)) {
             break;
         }
@@ -68,7 +68,7 @@ void *r_2(void *p) {
     int me = 0;
 
     while (1) {
-        nitro_frame_t *fr = nitro_recv(s);
+        nitro_frame_t *fr = nitro_recv(s, 0);
         g = *(int*)nitro_frame_data(fr);
         res->got[g] = 1;
         nitro_frame_destroy(fr);
@@ -88,7 +88,7 @@ void *r_2(void *p) {
         }
     }
     nitro_queue_push(s->stype.univ.q_recv,
-        nitro_frame_new_copy(&g, sizeof(int)));
+        nitro_frame_new_copy(&g, sizeof(int)), 0);
 
     return NULL;
 }
@@ -102,7 +102,7 @@ void *s_2(void *p) {
     for (i=0; i < 10000; i++) {
         nitro_frame_t *fr = nitro_frame_new_copy(&i, sizeof(int));
         fr = nitro_frame_new_copy(&i, sizeof(int));
-        nitro_send(fr, s);
+        nitro_send(fr, s, 0);
         nitro_frame_destroy(fr);
     }
 
