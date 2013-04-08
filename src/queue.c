@@ -1,7 +1,9 @@
 #include "common.h"
 
+#include "err.h"
 #include "frame.h"
 #include "queue.h"
+
 
 static void nitro_queue_issue_callbacks(nitro_queue_t *q, int old_count);
 
@@ -66,11 +68,17 @@ nitro_queue_t *nitro_queue_new(int capacity,
     return q;
 }
 
-nitro_frame_t *nitro_queue_pull(nitro_queue_t *q) {
+nitro_frame_t *nitro_queue_pull(nitro_queue_t *q,
+    int wait) {
     nitro_frame_t *ptr = NULL;
     pthread_mutex_lock(&q->lock);
 
     while (q->count == 0) {
+        if (!wait) {
+            pthread_mutex_unlock(&q->lock);
+            nitro_set_error(NITRO_ERR_EAGAIN);
+            return NULL;
+        }
         pthread_cond_wait(&q->trigger, &q->lock);
     }
 
@@ -91,9 +99,14 @@ nitro_frame_t *nitro_queue_pull(nitro_queue_t *q) {
     return ptr;
 }
 
-void nitro_queue_push(nitro_queue_t *q, nitro_frame_t *f) {
+int nitro_queue_push(nitro_queue_t *q, 
+    nitro_frame_t *f, int wait) {
     pthread_mutex_lock(&q->lock);
     while (q->capacity && q->count == q->capacity) {
+        if (!wait) {
+            pthread_mutex_unlock(&q->lock);
+            return nitro_set_error(NITRO_ERR_EAGAIN);
+        }
         pthread_cond_wait(&q->trigger, &q->lock);
     }
 
@@ -116,6 +129,8 @@ void nitro_queue_push(nitro_queue_t *q, nitro_frame_t *f) {
     }
 
     pthread_mutex_unlock(&q->lock);
+
+    return 0;
 }
 
 /* "internal" functions, mass population and eviction */

@@ -43,8 +43,9 @@ typedef struct nitro_queue_t {
 nitro_queue_t *nitro_queue_new(int capacity,
     nitro_queue_state_changed queue_cb, void *baton);
 
-nitro_frame_t *nitro_queue_pull(nitro_queue_t *q);
-void nitro_queue_push(nitro_queue_t *q, nitro_frame_t *f);
+nitro_frame_t *nitro_queue_pull(nitro_queue_t *q, int wait);
+int nitro_queue_push(nitro_queue_t *q, nitro_frame_t *f,
+    int wait);
 int nitro_queue_fd_write(nitro_queue_t *q, int fd, 
     nitro_frame_t *partial,
     nitro_frame_t **remain);

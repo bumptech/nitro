@@ -41,6 +41,8 @@
 #include "runtime.h"
 #include "socket.h"
 
+#include "nitro.h"
+
 #define TCP_INBUF (64 * 1024)
 
 /* EV callbacks, declaration */
@@ -255,7 +257,11 @@ void Stcp_pipe_send_sub(nitro_tcp_socket_t *s,
         s->sub_data);
     fr->type = NITRO_FRAME_SUB;
 
-    nitro_queue_push(p->q_send, fr);
+    int r = nitro_queue_push(p->q_send, fr, 0); // NO WAIT on nitro thread
+    if (r) {
+        /* cannot get our sub frame out b/c output is full */
+        nitro_frame_destroy(fr);
+    }
 }
 
 void Stcp_scan_subs(nitro_tcp_socket_t *s) {
@@ -745,7 +751,10 @@ void Stcp_pipe_out_cb(
         nitro_frame_t *hello = nitro_frame_new_copy(
         s->ident, SOCKET_IDENT_LENGTH);
         hello->type = NITRO_FRAME_HELLO;
-        nitro_queue_push(p->q_send, hello);
+        r = nitro_queue_push(p->q_send, hello, 0);
+
+        /* Cannot get hello out because q_send full?? not okay */
+        assert(!r);
 
         pthread_mutex_lock(&s->l_pipes);
         if (s->sub_data) {
@@ -819,42 +828,61 @@ void Stcp_pipe_in_cb(
 
 }
 
-void Stcp_socket_send(nitro_tcp_socket_t *s, nitro_frame_t *fr) {
-    nitro_queue_push(s->q_send, nitro_frame_copy(fr));
+int Stcp_socket_send(nitro_tcp_socket_t *s, nitro_frame_t *fr, int flags) {
+    if (!(flags & NITRO_NOCOPY)) {
+        fr = nitro_frame_copy(fr);
+    }
+    int r = nitro_queue_push(s->q_send, fr, !(flags & NITRO_NOWAIT));
+    if (r && !(flags & NITRO_NOCOPY)) {
+        nitro_frame_destroy(fr);
+    }
+    return r;
 }
 
-nitro_frame_t *Stcp_socket_recv(nitro_tcp_socket_t *s) {
-    return nitro_queue_pull(s->q_recv);
+nitro_frame_t *Stcp_socket_recv(nitro_tcp_socket_t *s, int flags) {
+    return nitro_queue_pull(s->q_recv, !(flags & NITRO_NOWAIT));
 }
 
-int Stcp_socket_reply(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr) {
+int Stcp_socket_reply(nitro_tcp_socket_t *s, 
+    nitro_frame_t *snd, nitro_frame_t *fr, int flags) {
     int ret = -1;
     pthread_mutex_lock(&s->l_pipes);
     nitro_pipe_t *p = socket_lookup_pipe(
         SOCKET_UNIVERSAL(s), snd->sender);
 
     if (p) {
-        nitro_frame_t *out = nitro_frame_copy(fr);
+        nitro_frame_t *out = (flags & NITRO_NOCOPY) ?
+            fr : nitro_frame_copy(fr);
         nitro_frame_clone_stack(snd, out);
-        nitro_queue_push(p->q_send, out);
-        ret = 0;
+        ret = nitro_queue_push(p->q_send, out, !(flags & NITRO_NOWAIT));
+        if (ret && !(flags & NITRO_NOCOPY)) {
+            nitro_frame_destroy(out);
+        }
+    } else {
+        nitro_set_error(NITRO_ERR_NO_RECIPIENT);
     }
 
     pthread_mutex_unlock(&s->l_pipes);
     return ret;
 }
 
-int Stcp_socket_relay_fw(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr) {
-    nitro_frame_t *out = nitro_frame_copy(fr);
+int Stcp_socket_relay_fw(nitro_tcp_socket_t *s, 
+    nitro_frame_t *snd, nitro_frame_t *fr, int flags) {
+
+    nitro_frame_t *out = (flags & NITRO_NOCOPY) ? fr : nitro_frame_copy(fr);
     nitro_frame_clone_stack(snd, out);
     nitro_frame_set_sender(out, snd->sender, snd->sender_buffer);
     nitro_frame_stack_push_sender(out);
-    nitro_queue_push(s->q_send, out);
+    int r = nitro_queue_push(s->q_send, out, !(flags & NITRO_NOWAIT));
+    if (r && !(flags & NITRO_NOCOPY)) {
+        nitro_frame_destroy(out);
+    }
 
-    return 0;
+    return r;
 }
 
-int Stcp_socket_relay_bk(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr) {
+int Stcp_socket_relay_bk(nitro_tcp_socket_t *s, 
+    nitro_frame_t *snd, nitro_frame_t *fr, int flags) {
     int ret = -1;
     pthread_mutex_lock(&s->l_pipes);
 
@@ -866,11 +894,16 @@ int Stcp_socket_relay_bk(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_
         SOCKET_UNIVERSAL(s), top_of_stack);
 
     if (p) {
-        nitro_frame_t *out = nitro_frame_copy(fr);
+        nitro_frame_t *out = (flags & NITRO_NOCOPY) ? 
+            fr : nitro_frame_copy(fr);
         nitro_frame_clone_stack(snd, out);
         nitro_frame_stack_pop(out);
-        nitro_queue_push(p->q_send, out);
-        ret = 0;
+        ret = nitro_queue_push(p->q_send, out, !(flags & NITRO_NOWAIT));
+        if (ret && !(flags & NITRO_NOCOPY)) {
+            nitro_frame_destroy(out);
+        }
+    } else {
+        nitro_set_error(NITRO_ERR_NO_RECIPIENT);
     }
 
     pthread_mutex_unlock(&s->l_pipes);
@@ -997,8 +1030,17 @@ static void Stcp_deliver_pub_frame(
     DL_FOREACH(mems, m) {
         nitro_pipe_t *p = (nitro_pipe_t *)m->ptr;
 
-        nitro_queue_push(p->q_send, nitro_frame_copy(st->fr));
-        ++st->count;
+        nitro_frame_t *fr = nitro_frame_copy(st->fr);
+
+        /* we'll *try* to pub, but if queue is full, then
+           we're just gonna have to drop it (pub will not
+           block the caller) */
+        int r = nitro_queue_push(p->q_send, fr, 0);
+        if (r) {
+            nitro_frame_destroy(fr);
+        } else {
+            ++st->count;
+        }
     }
 }
 

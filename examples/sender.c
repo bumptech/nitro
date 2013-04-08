@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
 
     gettimeofday(&tstart, NULL);
     for (i=0; i < MESSAGES; ++i) {
-        nitro_send(out, s);
+        nitro_send(out, s, 0);
     }
     printf("started %d messages: %d.%d\n", MESSAGES,
         (int)tstart.tv_sec, (int)tstart.tv_usec);

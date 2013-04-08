@@ -40,6 +40,14 @@ static int nitro_errno;
 
 char *nitro_errmsg(NITRO_ERROR error) {
     switch (error) {
+    case NITRO_ERR_EAGAIN:
+        return "socket queue operation would block";
+        break;
+
+    case NITRO_ERR_NO_RECIPIENT:
+        return "specified frame recipient not found in socket table";
+        break;
+
     case NITRO_ERR_ERRNO:
         return strerror(errno);
         break;

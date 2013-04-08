@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 
     nitro_frame_destroy(fr);
 
-    fr = nitro_recv(c);
+    fr = nitro_recv(c, 0);
 
     assert(!strcmp((char *)nitro_frame_data(fr), "dog"));
 

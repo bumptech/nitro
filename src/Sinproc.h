@@ -12,11 +12,11 @@ void Sinproc_socket_start_connect(nitro_inproc_socket_t *s);
 void Sinproc_socket_shutdown(nitro_inproc_socket_t *s);
 void Sinproc_socket_close(nitro_inproc_socket_t *s);
 
-void Sinproc_socket_send(nitro_inproc_socket_t *s, nitro_frame_t *fr);
-nitro_frame_t *Sinproc_socket_recv(nitro_inproc_socket_t *s);
-int Sinproc_socket_reply(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr);
-int Sinproc_socket_relay_fw(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr);
-int Sinproc_socket_relay_bk(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr);
+int Sinproc_socket_send(nitro_inproc_socket_t *s, nitro_frame_t *fr, int flags);
+nitro_frame_t *Sinproc_socket_recv(nitro_inproc_socket_t *s, int flags);
+int Sinproc_socket_reply(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr, int flags);
+int Sinproc_socket_relay_fw(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr, int flags);
+int Sinproc_socket_relay_bk(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr, int flags);
 int Sinproc_socket_sub(nitro_inproc_socket_t *s,
     uint8_t *k, size_t length);
 int Sinproc_socket_unsub(nitro_inproc_socket_t *s,

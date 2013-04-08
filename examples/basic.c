@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
 
     int i;
     for (i=0; i < MESSAGES; ++i) {
-        nitro_frame_t *fr = nitro_recv(s);
+        nitro_frame_t *fr = nitro_recv(s, 0);
         nitro_frame_destroy(fr);
     }
     struct timeval tend;
