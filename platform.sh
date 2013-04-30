@@ -17,3 +17,6 @@ elif test $platform == "Linux"; then
     EXTRA_LDFLAGS="$NACL_LIB/libnacl.a $NACL_LIB/randombytes.o $NACL_LIB/cpucycles.o"
 fi
 export EXTRA_LDFLAGS
+
+echo "-I$HERE/src -I$NACL_INC" > NITRO_CFLAGS
+echo "-L$HERE -lnitro -lev -lpthread $EXTRA_LDFLAGS" > NITRO_LDFLAGS
