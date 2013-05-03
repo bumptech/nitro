@@ -97,13 +97,23 @@ static int Stcp_parse_location(char *p_location,
     strcpy(location, p_location);
     char *split = strchr(location, ':');
 
+
     if (!split) {
         return nitro_set_error(NITRO_ERR_TCP_LOC_NOCOLON);
     }
 
+
     *split = 0;
     errno = 0;
     int port = strtol(split + 1, NULL, 10);
+
+    char buf[50] = {0};
+    if (!strcmp(location, "*")) {
+        strcpy(buf, "0.0.0.0");
+    }
+    else {
+        strcpy(buf, location);
+    }
 
     if (errno) {
         return nitro_set_error(NITRO_ERR_TCP_LOC_BADPORT);
@@ -112,7 +122,7 @@ static int Stcp_parse_location(char *p_location,
     bzero(addr, sizeof(struct sockaddr_in));
     addr->sin_family = AF_INET;
     addr->sin_port = htons(port);
-    int r = inet_pton(AF_INET, location, 
+    int r = inet_pton(AF_INET, buf,
     (void *)&addr->sin_addr);
     if (!r) {
         return nitro_set_error(NITRO_ERR_TCP_LOC_BADIPV4);
