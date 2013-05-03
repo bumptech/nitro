@@ -19,7 +19,7 @@
     strftime(__nitro_log_date, sizeof(__nitro_log_date), "%Y-%m-%d %H:%M:%S", &__nitro_log_tm);\
     snprintf(__nitro_log_buf1, sizeof(__nitro_log_buf1), __VA_ARGS__);\
     int __nitro_log_fmt_written = snprintf(__nitro_log_buf2, sizeof(__nitro_log_buf2), "[%s.%d] %s{%s:%s}%s %s\n",\
-        __nitro_log_date, (int)(__nitro_log_tv.tv_usec * 1000),\
+        __nitro_log_date, (int)(__nitro_log_tv.tv_usec / 1000),\
         (lev == 2 ? NITRO_LOG_CRIT_PFX : (lev == 1 ? NITRO_LOG_WARN_PFX : NITRO_LOG_OK_PFX)),\
         sys, (lev == 2 ? "ERR" : (lev == 1 ? "WARN" : "INFO")),\
         NITRO_LOG_CLR_SFX, __nitro_log_buf1);\
