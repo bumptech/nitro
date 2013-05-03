@@ -7,6 +7,7 @@
 #include "err.h"
 #include "Stcp.h"
 #include "Sinproc.h"
+#include "log.h"
 
 #define NITRO_NOCOPY (1 << 0)
 #define NITRO_NOWAIT (1 << 1)
