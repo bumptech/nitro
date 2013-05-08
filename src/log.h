@@ -23,8 +23,13 @@
         (lev == 2 ? NITRO_LOG_CRIT_PFX : (lev == 1 ? NITRO_LOG_WARN_PFX : NITRO_LOG_OK_PFX)),\
         sys, (lev == 2 ? "ERR" : (lev == 1 ? "WARN" : "INFO")),\
         NITRO_LOG_CLR_SFX, __nitro_log_buf1);\
-    (void)write(2, __nitro_log_buf2, __nitro_log_fmt_written >= sizeof(__nitro_log_buf2) ? sizeof(__nitro_log_buf2) : __nitro_log_fmt_written);\
+    (void)(write(2, __nitro_log_buf2, __nitro_log_fmt_written >= sizeof(__nitro_log_buf2) ? sizeof(__nitro_log_buf2) : __nitro_log_fmt_written)+1);\
 }
+
+/* The write call above in __nitro_log has a hack with the (void)(write(...)+1)
+ * cast to ignore the return value of write in a way that doesn't anger gcc
+ * 4.6+.
+ */
 
 #define nitro_log_info(...) __nitro_log(0, __VA_ARGS__)
 #define nitro_log_warn(...) __nitro_log(1, __VA_ARGS__)
