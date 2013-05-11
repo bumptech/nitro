@@ -16,6 +16,11 @@ nitro_socket_t *nitro_socket_new(nitro_sockopt_t *opt) {
         us->opt->has_ident = 1;
     }
 
+    if (us->opt->want_eventfd) {
+        us->event_fd = eventfd(0, EFD_NONBLOCK | EFD_SEMAPHORE);
+        assert(us->event_fd >= 0);
+    }
+
     pthread_mutex_init(&us->l_pipes, NULL);
 
  //   sock->sub_keys = NULL;

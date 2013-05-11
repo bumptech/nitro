@@ -10,6 +10,7 @@ typedef struct nitro_sockopt_t {
     double close_linger;
     double reconnect_interval;
     uint32_t max_message_size;
+    int want_eventfd;
 
     int has_ident;
     uint8_t ident[SOCKET_IDENT_LENGTH];
@@ -38,5 +39,6 @@ void nitro_sockopt_set_secure_identity(nitro_sockopt_t *opt,
 void nitro_sockopt_set_secure(nitro_sockopt_t *opt, int enabled);
 void nitro_sockopt_set_required_remote_ident(nitro_sockopt_t *opt,
     uint8_t *ident, size_t ident_length);
+void nitro_sockopt_set_want_eventfd(nitro_sockopt_t *opt, int want_eventfd);
 
 #endif /* NITRO_OPT_H */

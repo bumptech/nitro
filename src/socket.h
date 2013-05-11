@@ -56,6 +56,9 @@ typedef enum {
     nitro_pipe_t *next_pipe;\
     int num_pipes;\
     \
+    /* Event fd (for integration with other event loops) */\
+    int event_fd;\
+    \
     /* Subscription trie */\
     nitro_prefix_trie_node *subs;\
     /* Socket identity/crypto */\

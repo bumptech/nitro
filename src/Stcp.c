@@ -477,6 +477,7 @@ typedef struct tcp_frame_parse_state {
     char *cursor;
     nitro_pipe_t *p;
     nitro_tcp_socket_t *s;
+    int got_data_frames;
 } tcp_frame_parse_state;
 
 
@@ -687,6 +688,10 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
         }
         st->cursor += (sizeof(nitro_protocol_header) + hd->frame_size + ident_size);
     }
+
+    if (fr) {
+        st->got_data_frames = 1;
+    }
     return fr;
 }
 
@@ -709,6 +714,13 @@ void Stcp_parse_socket_buffer(nitro_pipe_t *p) {
         /* if this buffer contained at least one whole frame,
         we're going to disown it and create another one
         with whatever fractional data remain (if any) */
+
+        /* wake up event loop if we're embedded */
+        if (parse_state.got_data_frames && s->opt->want_eventfd) {
+            uint64_t inc = 1;
+            int evwrote = write(s->event_fd, (char *)(&inc), sizeof(inc));
+            assert(evwrote == sizeof(inc));
+        }
 
         int to_copy = size - (parse_state.cursor - start);
         nitro_buffer_t *tmp = p->in_buffer;

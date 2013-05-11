@@ -18,6 +18,10 @@ void nitro_sockopt_set_hwm(nitro_sockopt_t *opt, int hwm) {
     opt->hwm_in = opt->hwm_out_general = opt->hwm_out_private = hwm;
 }
 
+void nitro_sockopt_set_want_eventfd(nitro_sockopt_t *opt, int want_eventfd) {
+    opt->want_eventfd = want_eventfd;
+}
+
 void nitro_sockopt_set_hwm_detail(nitro_sockopt_t *opt, int hwm_in,
     int hwm_out_general, int hwm_out_private) {
     opt->hwm_in = hwm_in;
