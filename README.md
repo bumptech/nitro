@@ -16,15 +16,9 @@ You need:
 
 Then:
 
-**Create a build of nacl on your machine (nacl tarball included)**
+**Build Nacl**
 
-    $ tar jxvf nacl-20110221.tar.bz2
-    $ cd nacl-20110221
-    $ ./do
-
-     .. wait 5-20 minutes ..
-
-    $ cd ..
+    $ redo nacl
 
 **Build Nitro**
 
@@ -34,6 +28,11 @@ Then:
 
     $ redo check
 
+**Install Nitro**
+
+    $ sudo redo install
+
+
 Build Note
 ----------
 
@@ -41,6 +40,21 @@ If you need to specify a different gcc executable
 besides just `gcc`, you can define $CC in the environment:
 
     CC=gcc-4.7 redo
+
+Using Nitro
+-----------
+
+Nitro uses pkg-config; so after you're installed, just do something like:
+
+    $ cat test.c
+    #include <nitro.h>
+
+    void main() {
+            nitro_runtime_start();
+    }
+    $ gcc `pkg-config --cflags nitro` test.c `pkg-config --libs nitro`
+    $ ./a.out
+    $
 
 Examples
 --------
