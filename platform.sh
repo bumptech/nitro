@@ -1,6 +1,11 @@
 platform=`uname`
 
 export HERE=`pwd`
+if [ -z "`find $HERE/nacl-* -name "libnacl.a"`" ]; then
+    echo '"redo nacl" first!' 1>&2;
+    exit 1;
+fi
+
 export NACL_LIB=$(dirname `find $HERE/nacl-* -name "libnacl.a"`)
 export NACL_INC=$(dirname `find $HERE/nacl-* -name crypto_box.h`)
 
