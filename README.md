@@ -69,9 +69,7 @@ Bindings for Python and Haskell coming soon.
 Status
 ------
 
-Nitro is alpha software.  Submit bug reports, please!  There is no
-global installer, so check out the `examples/*.do` files to see
-what a build looks like.
+Nitro is beta software.  Submit bug reports, please!
 
 Author
 ------
