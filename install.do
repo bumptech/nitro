@@ -2,6 +2,8 @@ if [[ -z $PREFIX ]]; then
     export PREFIX="/usr/local";
 fi
 
+hash pkg-config || (echo "install pkg-config first" && exit 1)
+
 export HERE=`pwd`
 export NACL_INC=$(dirname `find $HERE/nacl-* -name crypto_box.h`)
 
