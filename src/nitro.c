@@ -41,11 +41,16 @@ nitro_socket_t *nitro_socket_bind(char *location, nitro_sockopt_t *opt) {
     char *next;
     s->trans = socket_parse_location(location, &next);
 
+    if (s->trans == -1) {
+        nitro_socket_destroy(s);
+        return NULL;
+    }
+
     SOCKET_SET_PARENT(s);
     int r = SOCKET_CALL(s, bind, next);
 
     if (r) {
-        // XXX destroy s
+        nitro_socket_destroy(s);
         return NULL;
     }
 
@@ -56,6 +61,11 @@ nitro_socket_t *nitro_socket_connect(char *location, nitro_sockopt_t *opt) {
     nitro_socket_t *s = nitro_socket_new(opt);
     char *next;
     s->trans = socket_parse_location(location, &next);
+
+    if (s->trans == -1) {
+        nitro_socket_destroy(s);
+        return NULL;
+    }
 
     SOCKET_SET_PARENT(s);
     SOCKET_CALL(s, connect, next);
