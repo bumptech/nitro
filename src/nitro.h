@@ -20,5 +20,6 @@
 #define nitro_sub(s, k, l) SOCKET_CALL(s, sub, k, l)
 #define nitro_unsub(s, k, l) SOCKET_CALL(s, unsub, k, l)
 #define nitro_pub(fr, k, l, s) SOCKET_CALL(s, pub, fr, k, l)
+#define nitro_eventfd(s) ((s)->stype.univ.event_fd)
 
 #endif
