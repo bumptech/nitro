@@ -142,7 +142,13 @@ void Stcp_socket_send_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, v
 
 void Stcp_socket_recv_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, void *p) {
     nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p;
-    if (st == NITRO_QUEUE_STATE_FULL) {
+    if (s->opt->want_eventfd && st == NITRO_QUEUE_STATE_EMPTY) {
+        /* clear the "has data" bit */
+        uint64_t buf;
+        int evread = read(s->event_fd, &buf, sizeof(uint64_t));
+        assert(evread == sizeof(uint64_t));
+    }
+    else if (st == NITRO_QUEUE_STATE_FULL) {
         Stcp_socket_disable_reads(s);
     }
     else if (last == NITRO_QUEUE_STATE_FULL) {
