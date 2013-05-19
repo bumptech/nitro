@@ -72,12 +72,18 @@ void Stcp_socket_close_cb(
     ev_timer *close_timer,
     int revents);
 
-/* various fw declaration */
+/* Various FW declaration */
 void Stcp_socket_disable_reads(nitro_tcp_socket_t *s);
 void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd);
 void Stcp_destroy_pipe(nitro_pipe_t *p);
 void Stcp_socket_start_connect(nitro_tcp_socket_t *s);
 
+/*
+ * Stcp_nonblocking_socket_new
+ * ---------------------------
+ *
+ * Create a new IPv4/TCP socket and setup nonblocking I/O
+ */
 static int Stcp_nonblocking_socket_new() {
     int s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     assert(s >= 0);
@@ -92,6 +98,14 @@ static int Stcp_nonblocking_socket_new() {
     return s;
 }
 
+/*
+ * Stcp_parse_location
+ * -------------------
+ *
+ * Parse the given tcp nitro location of the form "<ip>:port",
+ * and set the result in a BSD sockaddr_in.  '*' is supported
+ * for "all interfaces" (0.0.0.0)
+ */
 static int Stcp_parse_location(char *p_location,
                               struct sockaddr_in *addr) {
     char *location = alloca(strlen(p_location) + 1);
@@ -132,6 +146,14 @@ static int Stcp_parse_location(char *p_location,
     return 0;
 }
 
+/*
+ * Stcp_socket_send_queue_stat
+ * ---------------------------
+ *
+ * Callback from queue library for when the send queue changes state
+ * EMPTY|CONTENTS|FULL.  A non-empty send queue on any pipe associated
+ * with a socket means we can enable writes for the socket
+ */
 void Stcp_socket_send_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, void *p) {
     if (last == NITRO_QUEUE_STATE_EMPTY) {
         nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p;
@@ -141,6 +163,20 @@ void Stcp_socket_send_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, v
     }
 }
 
+/*
+ * Stcp_socket_recv_queue_stat
+ * ---------------------------
+ *
+ * Callback from queue library for when a recv queue changes state
+ * EMPTY|CONTENTS|FULL.
+ *
+ * EMPTY means there is nothing to read, so clear the eventfd if one
+ * exists
+ *
+ * FULL means we need to disable reads from the network.
+ *
+ * no longer FULL (FULL = last) means we can re-eanble writes
+ */
 void Stcp_socket_recv_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, void *p) {
     nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p;
     if (s->opt->want_eventfd && st == NITRO_QUEUE_STATE_EMPTY) {
@@ -160,6 +196,11 @@ void Stcp_socket_recv_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, v
     }
 }
 
+/* Stcp_create_queues
+ * ------------------
+ *
+ * Create the global in/out queues associated with a socket
+ */
 void Stcp_create_queues(nitro_tcp_socket_t *s) {
     s->q_send = nitro_queue_new(
         s->opt->hwm_out_general, Stcp_socket_send_queue_stat, (void*)s);
@@ -167,6 +208,14 @@ void Stcp_create_queues(nitro_tcp_socket_t *s) {
         s->opt->hwm_in, Stcp_socket_recv_queue_stat, (void*)s);
 }
 
+/* Stcp_socket_connect
+ * -------------------
+ *
+ * Turn a newly-created socket into a TCP/connect socket.
+ * In addition to the usual TCP socket init, we need to schedule
+ * the connect callback to attempt connections to the remote
+ * location.
+ */
 int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
     int r = Stcp_parse_location(location, &s->location);
 
@@ -197,6 +246,11 @@ int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
     return 0;
 }
 
+/* Stcp_socket_bind
+ * ----------------
+ *
+ * Turn a newly-created socket into a TCP/bind socket.
+ */
 int Stcp_socket_bind(nitro_tcp_socket_t *s, char *location) {
     int r = Stcp_parse_location(location, &s->location);
     s->outbound = 0;
@@ -240,6 +294,14 @@ int Stcp_socket_bind(nitro_tcp_socket_t *s, char *location) {
     return 0;
 }
 
+/*
+ * Stcp_socket_start_shutdown
+ * --------------------------
+ *
+ * Schedule a socket shutdown event.  This uses a timer in order to
+ * honor "linger" settings.  When the timer expires, the socket will
+ * be closed and destroyed.
+ */
 void Stcp_socket_start_shutdown(nitro_tcp_socket_t *s) {
     ev_timer_init(
         &s->close_timer,
@@ -249,6 +311,15 @@ void Stcp_socket_start_shutdown(nitro_tcp_socket_t *s) {
     ev_timer_start(the_runtime->the_loop, &s->close_timer);
 }
 
+/*
+ * Stcp_socket_shutdown
+ * --------------------
+ *
+ * Close all pipes and destroy the socket.
+ *
+ * Typically called as a result of close_timer firing after the
+ * "linger" period has elapsed.
+ */
 void Stcp_socket_shutdown(nitro_tcp_socket_t *s) {
     nitro_pipe_t *tmp1, *tmp2, *p = NULL;
 
@@ -270,6 +341,13 @@ void Stcp_socket_shutdown(nitro_tcp_socket_t *s) {
     nitro_socket_destroy(SOCKET_PARENT(s));
 }
 
+/*
+ * Stcp_socket_close_cb
+ * --------------------
+ *
+ * Callback (shim) for when the linger has expired.
+ * Just calls through to Stcp_socket_shutdown()
+ */
 void Stcp_socket_close_cb(
     struct ev_loop *loop,
     ev_timer *close_timer,
@@ -278,12 +356,26 @@ void Stcp_socket_close_cb(
         Stcp_socket_shutdown(s);
 }
 
+/*
+ * Stcp_socket_bind_listen
+ * -----------------------
+ *
+ * Enable the libev watcher for read I/O on a bound socket
+ * for accept(), which will create a new pipe
+ */
 void Stcp_socket_bind_listen(nitro_tcp_socket_t *s) {
     NITRO_THREAD_CHECK;
     ev_io_start(the_runtime->the_loop, 
     &s->bound_io);
 }
 
+/*
+ * Stcp_pipe_send_sub
+ * ------------------
+ *
+ * Send the socket's current list of subscriptions
+ * to the other end of this pipe
+ */
 void Stcp_pipe_send_sub(nitro_tcp_socket_t *s,
     nitro_pipe_t *p) {
     // NOTE: assumed l_pipes is held
@@ -302,6 +394,13 @@ void Stcp_pipe_send_sub(nitro_tcp_socket_t *s,
     }
 }
 
+/*
+ * Stcp_scan_subs
+ * --------------
+ *
+ * For each pipe that does not have the current version
+ * of the sub list, send the current version along.
+ */
 void Stcp_scan_subs(nitro_tcp_socket_t *s) {
     // NOTE: assumed l_pipes is held
     nitro_pipe_t *p;
@@ -313,6 +412,13 @@ void Stcp_scan_subs(nitro_tcp_socket_t *s) {
     }
 }
 
+/*
+ * Stcp_socket_check_sub
+ * ---------------------
+ *
+ * Shim callback, fired on a timer, which makes sure all pipes
+ * have the correct version of the sub list
+ */
 void Stcp_socket_check_sub(
     struct ev_loop *loop,
     ev_timer *connect_timer,
@@ -324,6 +430,13 @@ void Stcp_socket_check_sub(
     pthread_mutex_unlock(&s->l_pipes);
 }
 
+/*
+ * Stcp_socket_connect_timer_cb
+ * ----------------------------
+ *
+ * Attempt a connection for a disassociated connect socket.
+ * Called by a libev timer.
+ */
 void Stcp_socket_connect_timer_cb(
     struct ev_loop *loop,
     ev_timer *connect_timer,
@@ -334,6 +447,16 @@ void Stcp_socket_connect_timer_cb(
     Stcp_socket_start_connect(s);
 }
 
+/*
+ * Stcp_connect_cb
+ * ---------------
+ *
+ * I/O callback for a socket doing connect() to a remote socket.
+ * libev calls this when the socket is writable, and we then
+ * check that the socket is, in fact, connected (and the nonblocking
+ * connect is done).  If it is, the fd is promoted to a nitro pipe,
+ * and the nitro socket leaves the connecting state.
+ */
 void Stcp_connect_cb(
     struct ev_loop *loop,
     ev_io *connect_io,
@@ -360,6 +483,14 @@ void Stcp_connect_cb(
     }
 }
 
+/*
+ * Stcp_socket_start_connect
+ * -------------------------
+ *
+ * Start attemping a nonblocking connect with a new fd
+ * for a nitro socket.  This is invoked by the connect_timer's callback,
+ * when the nitro socket is in the disconnected state.
+ */
 void Stcp_socket_start_connect(nitro_tcp_socket_t *s) {
     NITRO_THREAD_CHECK;
 
@@ -383,6 +514,16 @@ void Stcp_socket_start_connect(nitro_tcp_socket_t *s) {
     }
 }
 
+/*
+ * Stcp_pipe_send_queue_stat
+ * -------------------------
+ *
+ * The queue state change callback for a _direct_ send queue associated
+ * with a particular pipe.
+ *
+ * A move from EMPTY to any non-empty state should trigger the pipe to make
+ * sure writing is enabled (and re-enable it if necessary).
+ */
 void Stcp_pipe_send_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, void *baton) {
     if (last == NITRO_QUEUE_STATE_EMPTY) {
         nitro_pipe_t *p = (nitro_pipe_t *)baton;
@@ -392,6 +533,12 @@ void Stcp_pipe_send_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, voi
     }
 }
 
+/*
+ * Stcp_destroy_pipe
+ * -----------------
+ *
+ * Close a pipe and clean up all resources associated with it.
+ */
 void Stcp_destroy_pipe(nitro_pipe_t *p) {
     nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p->the_socket;
     ev_io_stop(the_runtime->the_loop, &p->iow);
@@ -410,6 +557,15 @@ void Stcp_destroy_pipe(nitro_pipe_t *p) {
     }
 }
 
+/*
+ * Stcp_make_pipe
+ * --------------
+ *
+ * Create a new pipe from a successfully connected fd.
+ * This fd could ahve been created via an accept (on
+ * bound nitro sockets) or via a connect() (on connected
+ * nitro sockets).
+ */
 void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd) {
     NITRO_THREAD_CHECK;
     nitro_pipe_t *p = nitro_pipe_new(SOCKET_UNIVERSAL(s));
@@ -436,12 +592,24 @@ void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd) {
 
 }
 
+/*
+ * Stcp_pipe_enable_write
+ * ----------------------
+ *
+ * Enable the libev write callback on a particular pipe.
+ */
 void Stcp_pipe_enable_write(nitro_pipe_t *p) {
     NITRO_THREAD_CHECK;
     ev_io_start(the_runtime->the_loop,
     &p->iow);
 }
 
+/*
+ * Stcp_socket_enable_writes
+ * -------------------------
+ *
+ * Enable the libev write callbacks on all connected pipes.
+ */
 void Stcp_socket_enable_writes(nitro_tcp_socket_t *s) {
     NITRO_THREAD_CHECK;
     nitro_pipe_t *p;
@@ -452,6 +620,12 @@ void Stcp_socket_enable_writes(nitro_tcp_socket_t *s) {
     }
 }
 
+/*
+ * Stcp_socket_enable_reads
+ * ------------------------
+ *
+ * Enable reads on all connected pipes.
+ */
 void Stcp_socket_enable_reads(nitro_tcp_socket_t *s) {
     NITRO_THREAD_CHECK;
     nitro_pipe_t *p;
@@ -462,6 +636,14 @@ void Stcp_socket_enable_reads(nitro_tcp_socket_t *s) {
     }
 }
 
+/*
+ * Stcp_socket_disable_reads
+ * -------------------------
+ *
+ * Disable reads on all connected pipes.
+ *
+ * (Done when recv queue is full).
+ */
 void Stcp_socket_disable_reads(nitro_tcp_socket_t *s) {
     NITRO_THREAD_CHECK;
     nitro_pipe_t *p;
@@ -472,12 +654,21 @@ void Stcp_socket_disable_reads(nitro_tcp_socket_t *s) {
     }
 }
 
+/*
+ * Stcp_socket_close
+ * -----------------
+ *
+ * Schedule a socket close after the linger time for this socket.
+ *
+ * (PUBLIC API)
+ */
 void Stcp_socket_close(nitro_tcp_socket_t *s) {
     nitro_async_t *a = nitro_async_new(NITRO_ASYNC_CLOSE);
     a->u.close.socket = SOCKET_PARENT(s);
     nitro_async_schedule(a);
 }
 
+/* state used during frame parse callbacks */
 typedef struct tcp_frame_parse_state {
     nitro_buffer_t *buf;
     nitro_counted_buffer_t *cbuf;
@@ -488,6 +679,14 @@ typedef struct tcp_frame_parse_state {
 } tcp_frame_parse_state;
 
 
+/*
+ * Stcp_socket_parse_subs
+ * ----------------------
+ *
+ * Parse subscription data and save it as the pipe's particular
+ * set of subscriptions.  Update the socket trie for routing
+ * pub messages to this pipe.
+ */
 static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
     uint64_t state, uint8_t *data, size_t size, nitro_counted_buffer_t *buf) {
 
@@ -495,6 +694,8 @@ static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
     nitro_key_t *old = p->sub_keys;
     p->sub_keys = NULL;
 
+    /* Build up a list of all the keys that came in on the SUB
+       frame from the network */
     while (1) {
         if (size < sizeof(uint8_t)) {
             break;
@@ -514,7 +715,8 @@ static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
         data += length;
     }
 
-    /* Okay, now let's modify the shared trie */
+    /* Sort the keys so that we can do a sorted walk to
+       find things added and removed vs. last iteration */
     DL_SORT(p->sub_keys, nitro_key_compare);
 
     // XXX asserts on del()
@@ -522,20 +724,25 @@ static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
 
     nitro_key_t *walk_old = old, *tmp=NULL, *walk_new = p->sub_keys;
 
+    /* Now, we're going to do a sorted walk to find new
+       and old keys that need to be added/removed from the trie */
     while (1) {
         if (walk_old == NULL) {
             if (walk_new == NULL) {
-                /* end of both lists */
+                /* End of both lists, so we're done */
                 break;
             }
 
+            /* If the old is done, but not new we can
+               assume all remaining new items need to be added */
             nitro_prefix_trie_add(&s->subs,
                 walk_new->data, walk_new->length,
                 p);
 
             walk_new = walk_new->next;
         } else if (walk_new == NULL) {
-            /* End of new, walk old and remove */
+            /* If the old has more, but the new is done, the
+               rest of the old are now gone.  Delete 'em */
             nitro_prefix_trie_del(s->subs,
                 walk_old->data, walk_old->length,
                 p);
@@ -545,10 +752,11 @@ static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
         }
 
         else {
-            /* they're both still in progress */
+            /* They're both still non-null so we ened to figure out
+               if they're the same or not. */
             int comp = nitro_key_compare(walk_old, walk_new);
             if (comp < 0) {
-                /* new has jumped ahead, old key is missing */
+                /* New has jumped ahead, old key is missing */
                 nitro_prefix_trie_del(s->subs,
                     walk_old->data, walk_old->length,
                     p);
@@ -558,14 +766,14 @@ static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
                 nitro_key_destroy(tmp);
 
             } else if (comp > 0) {
-                /* old has jumped ahead, need to add key */
+                /* Old has jumped ahead, need to add new key */
                 nitro_prefix_trie_add(&s->subs,
                     walk_new->data, walk_new->length,
                     p);
 
                 walk_new = walk_new->next;
             } else {
-                /* key still exists.. move both forward, don't alter trie */
+                /* Key still exists.. move both forward, don't alter trie */
                 tmp = walk_old;
                 walk_old = walk_old->next;
                 nitro_key_destroy(tmp);
@@ -580,6 +788,22 @@ static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
     p->sub_state_recv = state;
 }
 
+/*
+ * Stcp_parse_next_frame
+ * ---------------------
+ *
+ * This is the callback given to queue_consume().  It is invoked
+ * repeatedly until it returns NULL (and does not return a frame).
+ * This particular callback is parsing the buffer accumulated from
+ * the network and yielding each data frame as it encouters it
+ * (as well as processing control frames).  Ergo, it is *the* way
+ * messages are received and placed onto the nitro socket's recv()
+ * queue.
+ *
+ * Security note: this is the most dangerous function is nitro, since
+ * it directly processes data from the network.  Having it crash safe
+ * and buffer overrun safe is important.
+ */
 static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
     tcp_frame_parse_state *st = (tcp_frame_parse_state *)baton;
     nitro_frame_t *fr = NULL;
@@ -592,8 +816,25 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
         st->cursor = (char *)start;
     }
 
-    while (!fr) {
+    /* This loop processes one frame at a time, parsing bytes from
+       the network.  It can exit for a few reasons:
 
+       1. It has found a full, whole data frame.  Then fr != NULL,
+          and the function will return the data frame.  (Note:
+          processing control frames iterates, but does not set fr,
+          so control frames do not cause this function to yield a
+          frame onto the queue).
+       2. A protocol error occurs.  The associated pipe should be
+          closed and destroyed for protection from a noncompliant
+          client.
+       3. Not enough bytes are unconsumed in the network buffer to
+          read an entire frame header.  The loop is broken with
+          fr = NULL.  This will cause queue_consume() to stop calling.
+       4. A frame header was read, but not enough bytes remain
+          unconsumed in the network buffer to satisfy the frame size.
+          The loop is broken with fr = NULL like case (3).
+    */
+    while (!fr) {
         char const *cursor = st->cursor;
 
         int taken = cursor - start;
@@ -603,8 +844,8 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
             break;
         }
 
-        nitro_protocol_header const *hd = 
-        (nitro_protocol_header *)cursor;
+        nitro_protocol_header const *hd =
+            (nitro_protocol_header *)cursor;
         left -= sizeof(nitro_protocol_header);
 
         if (hd->frame_size > st->s->opt->max_message_size) {
@@ -629,30 +870,47 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
             if (hd->packet_type == NITRO_FRAME_HELLO) {
                 // XXX better error
                 assert(hd->frame_size == SOCKET_IDENT_LENGTH);
+                /* Copy the identity of the remote socket */
                 st->p->remote_ident = malloc(SOCKET_IDENT_LENGTH);
                 memcpy(st->p->remote_ident,
                     (char *)cursor + sizeof(nitro_protocol_header),
                     SOCKET_IDENT_LENGTH);
                 st->p->remote_ident_buf = nitro_counted_buffer_new(
                     st->p->remote_ident, just_free, NULL);
+
+                /* Register the pipe id into the routing table (for replies and pub) */
                 socket_register_pipe(SOCKET_UNIVERSAL(st->s), st->p);
+
+
+                /* Mark the handshake done */
                 st->p->them_handshake = 1;
+
             } else if (hd->packet_type == NITRO_FRAME_SUB) {
                 assert(hd->frame_size >= sizeof(uint64_t));
                 uint64_t state = *(uint64_t *)(st->cursor + sizeof(nitro_protocol_header));
+
+                /* Check the state counter to see if we've already processed this
+                   version of the pipe's sub state */
                 if (st->p->sub_state_recv != state) {
                     if (!st->cbuf) {
                         /* we need to retain the backing buffer for the sub data */
-
                         st->cbuf = nitro_counted_buffer_new(
-                        NULL, buffer_free, (void *)buf);
+                            NULL, buffer_free, (void *)buf);
                     } else {fprintf(stderr, "nope, got it already\n");}
+                    /* Parse the sub data from the socket and update the socket
+                       sub trie as appropriate */
                     Stcp_socket_parse_subs(st->s, st->p, state,
                         (uint8_t *)(st->cursor + sizeof(nitro_protocol_header) + sizeof(uint64_t)),
                         hd->frame_size - sizeof(uint64_t), st->cbuf);
                 }
             }
         } else {
+            /* Data frame.  This is meat and potatos user data.
+               Parse it and return it so that queue_consume() adds
+               it to the end of the queue */
+
+            /* NOTE: This is an especially busy corner of a nitro socket */
+
             // XXX again, assert is not right here
             assert(st->p->them_handshake);
             if (!st->cbuf) {
@@ -664,7 +922,7 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
             }
             nitro_counted_buffer_t const *cbuf = st->cbuf;
 
-            /* incref for the eventual recipient */
+            /* Incref for the eventual recipient */
             nitro_counted_buffer_incref((nitro_counted_buffer_t *)cbuf);
 
             fr = nitro_frame_new_prealloc(
@@ -672,6 +930,8 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                     hd->frame_size, (nitro_counted_buffer_t *)cbuf);
             nitro_frame_set_sender(fr,
             st->p->remote_ident, st->p->remote_ident_buf);
+
+            /* If this has a ident stack that's been routed, copy/retain it */
             if (hd->num_ident) {
                 nitro_counted_buffer_incref((nitro_counted_buffer_t *)cbuf);
                 nitro_frame_set_stack(fr,
@@ -688,6 +948,20 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
     return fr;
 }
 
+/*
+ * Stcp_parse_socket_buffer
+ * ------------------------
+ *
+ * After having received a chunk of data from the network, attempt to
+ * split it up into frames.
+ *
+ * If this function finds any whole frames it will retain the buffer as
+ * a zero-copy refcounted backing buffer for the frame data, and it creates
+ * an new empty buffer for the next recv from the network.
+ *
+ * If it does not find any whole frames, it keeps the network buffer for appending
+ * more data.
+ */
 void Stcp_parse_socket_buffer(nitro_pipe_t *p) {
     /* now we parse */
     nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p->the_socket;
@@ -704,11 +978,12 @@ void Stcp_parse_socket_buffer(nitro_pipe_t *p) {
     int size;
     char *start = nitro_buffer_data(p->in_buffer, &size);
     if (parse_state.cursor != start) {
-        /* if this buffer contained at least one whole frame,
+        /* If this buffer contained at least one whole frame,
         we're going to disown it and create another one
         with whatever fractional data remain (if any) */
 
-        /* wake up event loop if we're embedded */
+        /* If we got some data frames, and we're using an eventfd
+           for embedding, make sure it gets triggered as readable */
         if (parse_state.got_data_frames && s->opt->want_eventfd) {
             uint64_t inc = 1;
             int evwrote = write(s->event_fd, (char *)(&inc), sizeof(inc));
@@ -726,7 +1001,7 @@ void Stcp_parse_socket_buffer(nitro_pipe_t *p) {
             memcpy(write, parse_state.cursor, to_copy);
             nitro_buffer_extend(p->in_buffer, to_copy);
         }
-        /* release our copy of the backing buffer */
+        /* Release our copy of the backing buffer */
         if (parse_state.cbuf) {
             nitro_counted_buffer_decref(parse_state.cbuf);
         }
@@ -736,8 +1011,13 @@ void Stcp_parse_socket_buffer(nitro_pipe_t *p) {
     }
 }
 
-/* LIBEV CALLBACKS */
-
+/*
+ * Stcp_bind_callback
+ * ------------------
+ *
+ * Bound fd is readable on a bound nitro socket.  Time to
+ * accept() a fd and set up a new pipe.
+ */
 void Stcp_bind_callback(
     struct ev_loop *loop,
     ev_io *bind_io,
@@ -772,6 +1052,18 @@ void Stcp_bind_callback(
     }
     Stcp_make_pipe(s, fd);
 }
+
+/*
+ * Stcp_pipe_out_cb
+ * ----------------
+ *
+ * Called when libev says a pipe fd is writable.  If we have
+ * any frames ready in either the direct queue or the common
+ * queue, try to send 'em.
+ *
+ * If we have no data waiting anywhere, disable writes on this
+ * fd until things are re-enabled via a queue append.
+ */
 void Stcp_pipe_out_cb(
     struct ev_loop *loop,
     ev_io *pipe_iow,
@@ -839,6 +1131,15 @@ void Stcp_pipe_out_cb(
     }
 }
 
+/*
+ * Stcp_pipe_in_cb
+ * ---------------
+ *
+ * A pipe fd has some data ready for reading.
+ *
+ * Read it, then call the frame parsing functions on
+ * the accumulated buffer.
+ */
 void Stcp_pipe_in_cb(
     struct ev_loop *loop,
     ev_io *pipe_iow,
@@ -867,6 +1168,15 @@ void Stcp_pipe_in_cb(
 
 }
 
+/*
+ * Stcp_socket_send
+ * ----------------
+ *
+ * Send frame `fr` on socket `s`.  Effectively, this pushes the frame
+ * onto the common queue for the next pipe that comes up write ready.
+ *
+ * (PUBLIC API)
+ */
 int Stcp_socket_send(nitro_tcp_socket_t *s, nitro_frame_t *fr, int flags) {
     if (!(flags & NITRO_NOCOPY)) {
         fr = nitro_frame_copy(fr);
@@ -878,11 +1188,30 @@ int Stcp_socket_send(nitro_tcp_socket_t *s, nitro_frame_t *fr, int flags) {
     return r;
 }
 
+/*
+ * Stcp_socket_recv
+ * ----------------
+ *
+ * Receive a frame on the socket if one has been queued from the
+ * network.
+ *
+ * (PUBLIC API)
+ */
 nitro_frame_t *Stcp_socket_recv(nitro_tcp_socket_t *s, int flags) {
     return nitro_queue_pull(s->q_recv, !(flags & NITRO_NOWAIT));
 }
 
-int Stcp_socket_reply(nitro_tcp_socket_t *s, 
+/*
+ * Stcp_socket_reply
+ * -----------------
+ *
+ * Reply to frame `snd` with frame `fr` on socket `s`.
+ *
+ * Internally, this means look up a pipe in the routing
+ * table that sent frame `snd`, and put frame `fr` on its
+ * private outbound queue.
+ */
+int Stcp_socket_reply(nitro_tcp_socket_t *s,
     nitro_frame_t *snd, nitro_frame_t *fr, int flags) {
     int ret = -1;
     pthread_mutex_lock(&s->l_pipes);
@@ -905,6 +1234,16 @@ int Stcp_socket_reply(nitro_tcp_socket_t *s,
     return ret;
 }
 
+/*
+ * Stcp_socket_relay_fw
+ * --------------------
+ *
+ * Relay a packet to another node.
+ *
+ * This is like a normal send, routing stack from `snd`
+ * is retained so that the packet can find its way back
+ * to the origin through all intermediate hops (if necessary).
+ */
 int Stcp_socket_relay_fw(nitro_tcp_socket_t *s, 
     nitro_frame_t *snd, nitro_frame_t *fr, int flags) {
 
@@ -920,6 +1259,18 @@ int Stcp_socket_relay_fw(nitro_tcp_socket_t *s,
     return r;
 }
 
+/*
+ * Stcp_socket_relay_bk
+ * --------------------
+ *
+ * Relay a packet back to a node which is earlier in
+ * the routing stack.
+ *
+ * This is like relay_fw, but instead of sending a packet
+ * _deeper_ and increasing the routing stack, it is relaying
+ * a reply _shallower_ and decreasing the routing stack so
+ * the reply finds the original sender() (even over several hops).
+ */
 int Stcp_socket_relay_bk(nitro_tcp_socket_t *s, 
     nitro_frame_t *snd, nitro_frame_t *fr, int flags) {
     int ret = -1;
@@ -949,6 +1300,13 @@ int Stcp_socket_relay_bk(nitro_tcp_socket_t *s,
     return ret;
 }
 
+/*
+ * Stcp_socket_reindex_subs
+ * ------------------------
+ *
+ * When a new subscription is added to this socket, re-build the pre-calculated
+ * outgoing SUB frame for sending to all conected peers.
+ */
 static void Stcp_socket_reindex_subs(nitro_tcp_socket_t *s) {
 
     nitro_key_t *key;
@@ -982,9 +1340,20 @@ static void Stcp_socket_reindex_subs(nitro_tcp_socket_t *s) {
         buf->area, buffer_free, buf);
     s->sub_data_length = buf->size;
     Stcp_scan_subs(s);
-
 }
 
+/*
+ * Stcp_socket_sub
+ * ---------------
+ *
+ * Add a new subscription to this socket's subscription list.
+ *
+ * This subscription list will be relayed to the peer socket so
+ * that pub() messages sent on that socket that match the subscription
+ * patterns will find their way back.
+ *
+ * (PUBLIC API)
+ */
 int Stcp_socket_sub(nitro_tcp_socket_t *s,
     uint8_t *k, size_t length) {
     uint8_t *cp = memdup(k, length);
@@ -1017,6 +1386,16 @@ int Stcp_socket_sub(nitro_tcp_socket_t *s,
     return ret;
 }
 
+/*
+ * Stcp_socket_unsub
+ *
+ * Remove a subscription from the socket's subscription list.
+ *
+ * (see Stcp_socket_sub for more info about the significance of this
+ * list.
+ *
+ * (PUBLIC API)
+ */
 int Stcp_socket_unsub(nitro_tcp_socket_t *s,
     uint8_t *k, size_t length) {
 
@@ -1052,15 +1431,25 @@ int Stcp_socket_unsub(nitro_tcp_socket_t *s,
     return ret;
 }
 
+/* State during trie walk for socket delivery */
 typedef struct Stcp_pub_state {
     int count;
     nitro_frame_t *fr;
 } Stcp_pub_state;
 
+/*
+ * Stcp_deliver_pub_frame
+ * ----------------------
+ *
+ * Callback given to trie walk function by pub() function;
+ * will be invoked for all prefixes that match.
+ *
+ * It walks the list of pipes subscribed to that prefix
+ * and puts the message on the direct queue for each.
+ */
 static void Stcp_deliver_pub_frame(
     uint8_t *pfx, uint8_t length, nitro_prefix_trie_mem *mems,
     void *ptr) {
-    // XXX use nonblocking push
 
     Stcp_pub_state *st = (Stcp_pub_state *)ptr;
 
@@ -1083,6 +1472,16 @@ static void Stcp_deliver_pub_frame(
     }
 }
 
+/*
+ * Stcp_socket_pub
+ * ---------------
+ *
+ * Use the socket sub trie to find all prefixes that
+ * are matching subscriptions to key `k`.  Deliver the
+ * frame `fr` to each of them.
+ *
+ * (PUBLIC API)
+ */
 int Stcp_socket_pub(nitro_tcp_socket_t *s,
     nitro_frame_t *fr, uint8_t *k, size_t length) {
 
