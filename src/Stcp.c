@@ -518,15 +518,6 @@ static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
     DL_SORT(p->sub_keys, nitro_key_compare);
 
     // XXX asserts on del()
-
-    nitro_key_t *tkey;
-    DL_FOREACH(p->sub_keys, tkey) {
-        char buf[4];
-        bzero(buf, 4);
-        memcpy(buf, tkey->data, 3);
-        fprintf(stderr, " ~ %s\n", buf);
-    }
-
     pthread_mutex_lock(&s->l_pipes);
 
     nitro_key_t *walk_old = old, *tmp=NULL, *walk_new = p->sub_keys;
@@ -537,7 +528,6 @@ static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
                 /* end of both lists */
                 break;
             }
-            fprintf(stderr, "add new at end\n");
 
             nitro_prefix_trie_add(&s->subs,
                 walk_new->data, walk_new->length,
@@ -552,7 +542,6 @@ static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
             tmp = walk_old;
             walk_old = walk_old->next;
             nitro_key_destroy(tmp);
-            fprintf(stderr, "rm old at end\n");
         }
 
         else {
@@ -567,7 +556,6 @@ static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
                 tmp = walk_old;
                 walk_old = walk_old->next;
                 nitro_key_destroy(tmp);
-                fprintf(stderr, "rm old at skip\n");
 
             } else if (comp > 0) {
                 /* old has jumped ahead, need to add key */
@@ -576,7 +564,6 @@ static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
                     p);
 
                 walk_new = walk_new->next;
-                fprintf(stderr, "add new at skip\n");
             } else {
                 /* key still exists.. move both forward, don't alter trie */
                 tmp = walk_old;
@@ -584,7 +571,6 @@ static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
                 nitro_key_destroy(tmp);
 
                 walk_new = walk_new->next;
-                fprintf(stderr, "same -- skip both\n");
             }
         }
     }
