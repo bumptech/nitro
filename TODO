@@ -4,8 +4,11 @@
 [x] Pub/sub
 [ ] Pub/sub unit tests
 [x] Nonblock send/recv -- change all internal uses to use this
-[ ] Socket Options
+[x] Socket Options
 [ ] STCP
+    - how to pause writes until we have remote ident
+    - how to "re-parse" the clear-text content elegantly
+      post-decryption
 [ ] Async help... eventfd etc
 [ ] Inproc
 [ ] Shutdown clean
