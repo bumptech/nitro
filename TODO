@@ -9,7 +9,7 @@
     - how to pause writes until we have remote ident
     - how to "re-parse" the clear-text content elegantly
       post-decryption
-[ ] Async help... eventfd etc
+[x] Async help... eventfd etc
 [ ] Inproc
 [ ] Shutdown clean
 [ ] Error handling in various places we return -1, use err.c for nice messages
