@@ -44,6 +44,7 @@
 #include "nitro.h"
 
 #define TCP_INBUF (64 * 1024)
+#define OKAY_ERRNO (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR || errno == EINPROGRESS || errno == EALREADY)
 
 /* EV callbacks, declaration */
 void Stcp_bind_callback(
@@ -785,7 +786,6 @@ void Stcp_bind_callback(
     }
     Stcp_make_pipe(s, fd);
 }
-#define OKAY_ERRNO (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR || errno == EINPROGRESS || errno == EALREADY)
 void Stcp_pipe_out_cb(
     struct ev_loop *loop,
     ev_io *pipe_iow,
