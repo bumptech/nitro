@@ -52,6 +52,9 @@ static void *actual_run(void *unused) {
     // handle everything!
     ev_run(the_runtime->the_loop, 0);
 
+    // we ended?  clean up
+    ev_async_stop(the_runtime->the_loop, &the_runtime->thread_wake);
+
     ev_loop_destroy(the_runtime->the_loop);
     fprintf(stderr, "NITRO done!\n");
     pthread_cond_signal(&the_runtime->c_die);
@@ -70,11 +73,12 @@ int nitro_runtime_start() {
     pthread_mutex_init(&the_runtime->l_tcp_connect, NULL);
 
     atomic_init(&the_runtime->async_stack, NULL);
+    atomic_init(&the_runtime->num_sock, 0);
 
     assert(atomic_load(&the_runtime->async_stack) == NULL);
 
     the_runtime->random_fd = open("/dev/urandom", O_RDONLY);
-    
+
     ev_async_init(&the_runtime->thread_wake, nitro_async_cb);
     ev_async_start(the_runtime->the_loop, &the_runtime->thread_wake);
     pthread_mutex_init(&the_runtime->l_die, NULL);
@@ -88,13 +92,16 @@ int nitro_runtime_stop() {
         return nitro_set_error(NITRO_ERR_NOT_RUNNING);
     }
 
-    assert(the_runtime->num_sock == 0);
+    fprintf(stderr, "socket count: %d\n", atomic_load(&the_runtime->num_sock));
+    assert(atomic_load(&the_runtime->num_sock) == 0);
     pthread_mutex_lock(&the_runtime->l_die);
     nitro_async_t *a = nitro_async_new(NITRO_ASYNC_DIE);
     nitro_async_schedule(a);
     close(the_runtime->random_fd);
     pthread_cond_wait(&the_runtime->c_die, &the_runtime->l_die);
     pthread_mutex_unlock(&the_runtime->l_die);
+    void *res;
+    pthread_join(the_runtime->the_thread, &res);
     free(the_runtime);
     the_runtime = NULL;
     return 0;

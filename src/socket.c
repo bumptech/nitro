@@ -23,10 +23,8 @@ nitro_socket_t *nitro_socket_new(nitro_sockopt_t *opt) {
 
     pthread_mutex_init(&us->l_pipes, NULL);
 
- //   sock->sub_keys = NULL;
-    // Change to stdatomic.h XXX
-    // Also, add to list for diagnostics XXX
-    __sync_add_and_fetch(&the_runtime->num_sock, 1);
+    // XXX add socket to list for diagnostics
+    atomic_fetch_add(&the_runtime->num_sock, 1);
     return sock;
 }
 
@@ -49,7 +47,7 @@ void nitro_socket_destroy(nitro_socket_t *s) {
     nitro_universal_socket_t *us = &s->stype.univ;
     free(us->opt);
     free(s);
-    __sync_add_and_fetch(&the_runtime->num_sock, 1);
+    atomic_fetch_sub(&the_runtime->num_sock, 1);
 }
 
 void socket_register_pipe(nitro_universal_socket_t *s, nitro_pipe_t *p) {
@@ -74,8 +72,7 @@ nitro_pipe_t *socket_lookup_pipe(nitro_universal_socket_t *s, uint8_t *ident) {
 void socket_unregister_pipe(nitro_universal_socket_t *s, nitro_pipe_t *p) {
     pthread_mutex_lock(&s->l_pipes);
     if (p->registered) {
-        HASH_DELETE(hh, s->pipes_by_session, 
-            p);
+        HASH_DELETE(hh, s->pipes_by_session, p);
         p->registered = 0;
     }
     pthread_mutex_unlock(&s->l_pipes);

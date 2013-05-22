@@ -14,7 +14,7 @@ void *r_1(void *p) {
     nitro_socket_t *s = NULL;
     switch (mode) {
     case 0:
-        s = nitro_socket_bind("tcp://127.0.0.1:4444", NULL);
+        s = nitro_socket_bind("tcp://127.0.0.1:4444", opt);
         break;
     case 1:
         nitro_sockopt_set_secure(opt, 1);
@@ -38,6 +38,8 @@ void *r_1(void *p) {
 
     res->r_c = i;
 
+    nitro_socket_close(s);
+
     return NULL;
 }
 
@@ -47,7 +49,7 @@ void *s_1(void *p) {
     nitro_socket_t *s = NULL;
     switch (mode) {
     case 0:
-        s = nitro_socket_connect("tcp://127.0.0.1:4444", NULL);
+        s = nitro_socket_connect("tcp://127.0.0.1:4444", opt);
         break;
     case 1:
         nitro_sockopt_set_secure(opt, 1);
@@ -70,6 +72,7 @@ void *s_1(void *p) {
     }
 
     res->s_c = i;
+    nitro_socket_close(s);
 
     return NULL;
 }
@@ -115,7 +118,17 @@ void *r_2(void *p) {
 }
 
 void *s_2(void *p) {
-    nitro_socket_t *s = nitro_socket_connect("tcp://127.0.0.1:4445", NULL);
+    nitro_sockopt_t *opt = nitro_sockopt_new();
+    nitro_socket_t *s = NULL;
+    switch (mode) {
+    case 0:
+        s = nitro_socket_connect("tcp://127.0.0.1:4445", opt);
+        break;
+    case 1:
+        nitro_sockopt_set_secure(opt, 1);
+        s = nitro_socket_connect("tcp://127.0.0.1:4445", opt);
+        break;
+    }
     sleep(1);
 
     int i;
@@ -126,6 +139,7 @@ void *s_2(void *p) {
         nitro_frame_destroy(fr);
     }
 
+    nitro_socket_close(s);
 
     return NULL;
 }
@@ -156,7 +170,18 @@ int main(int argc, char **argv) {
     atomic_init(&acc2.tot, 0);
 
     int i = 0;
-    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4445", NULL);
+    nitro_sockopt_t *opt = nitro_sockopt_new();
+    nitro_socket_t *s = NULL;
+    switch (mode) {
+    case 0:
+        s = nitro_socket_bind("tcp://127.0.0.1:4445", opt);
+        break;
+    case 1:
+        nitro_sockopt_set_secure(opt, 1);
+        s = nitro_socket_bind("tcp://127.0.0.1:4445", opt);
+        break;
+    }
+
     acc2.s = s;
     for (i=0; i < 10; i++) {
         pthread_create(&(acc2.kids[i]), NULL, r_2, &acc2);
@@ -179,6 +204,11 @@ int main(int argc, char **argv) {
         TEST("r_2(q share) thread load shared",
             acc2.each[i] > 0);
     }
+
+    nitro_socket_close(s);
+    sleep(3);
+
+    nitro_runtime_stop();
 
     SUMMARY(0);
     return 1;
