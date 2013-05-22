@@ -23,6 +23,6 @@ int Stcp_socket_sub(nitro_tcp_socket_t *s,
 int Stcp_socket_unsub(nitro_tcp_socket_t *s,
     uint8_t *k, size_t length);
 int Stcp_socket_pub(nitro_tcp_socket_t *s,
-    nitro_frame_t *fr, uint8_t *k, size_t length);
+    nitro_frame_t *fr, const uint8_t *k, size_t length);
 
 #endif /* NITRO_STCP_H */

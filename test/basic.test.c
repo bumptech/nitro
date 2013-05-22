@@ -1,6 +1,8 @@
 #include "test.h"
 #include "nitro.h"
 
+static int mode;
+
 struct t_1 {
     int r_c;
     int s_c;
@@ -8,7 +10,17 @@ struct t_1 {
 
 void *r_1(void *p) {
     struct t_1 *res = (struct t_1 *)p;
-    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4444", NULL);
+    nitro_sockopt_t *opt = nitro_sockopt_new();
+    nitro_socket_t *s = NULL;
+    switch (mode) {
+    case 0:
+        s = nitro_socket_bind("tcp://127.0.0.1:4444", NULL);
+        break;
+    case 1:
+        nitro_sockopt_set_secure(opt, 1);
+        s = nitro_socket_bind("tcp://127.0.0.1:4444", opt);
+        break;
+    }
 
     int i;
 
@@ -31,13 +43,22 @@ void *r_1(void *p) {
 
 void *s_1(void *p) {
     struct t_1 *res = (struct t_1 *)p;
-    nitro_socket_t *s = nitro_socket_connect("tcp://127.0.0.1:4444", NULL);
+    nitro_sockopt_t *opt = nitro_sockopt_new();
+    nitro_socket_t *s = NULL;
+    switch (mode) {
+    case 0:
+        s = nitro_socket_connect("tcp://127.0.0.1:4444", NULL);
+        break;
+    case 1:
+        nitro_sockopt_set_secure(opt, 1);
+        s = nitro_socket_connect("tcp://127.0.0.1:4444", opt);
+        break;
+    }
 
     int i;
 
     for (i=0; i < 10000; i++) {
         nitro_frame_t *fr = nitro_frame_new_copy(&i, sizeof(int));
-        fr = nitro_frame_new_copy(&i, sizeof(int));
         nitro_send(fr, s, 0);
         nitro_frame_destroy(fr);
 
@@ -101,7 +122,6 @@ void *s_2(void *p) {
 
     for (i=0; i < 10000; i++) {
         nitro_frame_t *fr = nitro_frame_new_copy(&i, sizeof(int));
-        fr = nitro_frame_new_copy(&i, sizeof(int));
         nitro_send(fr, s, 0);
         nitro_frame_destroy(fr);
     }
@@ -111,6 +131,9 @@ void *s_2(void *p) {
 }
 
 int main(int argc, char **argv) {
+    if (argc > 1) {
+        mode = atoi(argv[1]);
+    }
     nitro_runtime_start();
 
     pthread_t t1, t2;

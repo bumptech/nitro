@@ -8,13 +8,12 @@
 
 #define NITRO_FRAME_DATA 0
 #define NITRO_FRAME_SUB  1
-#define NITRO_FRAME_HELLO  2
-
-#define NITRO_KEY_LENGTH (64)
+#define NITRO_FRAME_HELLO 2
+#define NITRO_FRAME_SECURE 3
 
 /* Used for publishing */
 typedef struct nitro_key_t {
-    uint8_t *data;
+    const uint8_t *data;
     uint8_t length;
     nitro_counted_buffer_t *buf;
 
@@ -81,7 +80,7 @@ void nitro_frame_iovs_reset(nitro_frame_t *fr);
 void nitro_frame_set_sender(nitro_frame_t *f,
     uint8_t *sender, nitro_counted_buffer_t *buf);
 void nitro_frame_clone_stack(nitro_frame_t *fr, nitro_frame_t *to);
-void nitro_frame_set_stack(nitro_frame_t *f, void *data,
+void nitro_frame_set_stack(nitro_frame_t *f, const uint8_t *data,
     nitro_counted_buffer_t *buf, uint8_t num);
 inline void nitro_frame_stack_push_sender(nitro_frame_t *f);
 inline void nitro_frame_stack_pop(nitro_frame_t *f);
@@ -98,7 +97,7 @@ inline void nitro_frame_stack_pop(nitro_frame_t *f);
     free(__tmp_f);\
 }
 
-nitro_key_t *nitro_key_new(uint8_t *data, uint8_t length, 
+nitro_key_t *nitro_key_new(const uint8_t *data, uint8_t length, 
     nitro_counted_buffer_t *buf);
 int nitro_key_compare(nitro_key_t *k1, nitro_key_t *k2);
 void nitro_key_destroy(nitro_key_t *k);

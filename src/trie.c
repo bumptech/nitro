@@ -36,7 +36,7 @@
 #include "frame.h"
 
 void nitro_prefix_trie_search(
-    nitro_prefix_trie_node *t, uint8_t *rep, uint8_t length,
+    nitro_prefix_trie_node *t, const uint8_t *rep, uint8_t length,
     nitro_prefix_trie_search_callback cb, void *baton) {
     if (!t || t->length > length || memcmp(t->rep, rep, t->length)) {
         return;
@@ -54,7 +54,7 @@ void nitro_prefix_trie_search(
 }
 
 void nitro_prefix_trie_add(nitro_prefix_trie_node **t,
-                           uint8_t *rep, uint8_t length, void *ptr) {
+                           const uint8_t *rep, uint8_t length, void *ptr) {
     nitro_prefix_trie_node *n, *on;
 
     if (!*t) {
@@ -112,7 +112,7 @@ void nitro_prefix_trie_add(nitro_prefix_trie_node **t,
 }
 
 int nitro_prefix_trie_del(nitro_prefix_trie_node *t,
-                          uint8_t *rep, uint8_t length, void *ptr) {
+                          const uint8_t *rep, uint8_t length, void *ptr) {
     if (!t || t->length > length || memcmp(t->rep, rep, t->length)) {
         return -1;
     }

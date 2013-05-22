@@ -1,7 +1,9 @@
 TESTS=`ls *.c | sed 's/\.c//g'`
 redo $TESTS
 
-for i in $TESTS; do
+RUNTESTS=`ls *.test`
+
+for i in $RUNTESTS; do
     if [ -z "$TEST" ];
     then
         echo "Testing $i" 1>&2

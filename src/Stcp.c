@@ -36,6 +36,7 @@
 #include "common.h"
 
 #include "async.h"
+#include "crypto.h"
 #include "err.h"
 #include "pipe.h"
 #include "runtime.h"
@@ -44,7 +45,6 @@
 #include "nitro.h"
 
 #define TCP_INBUF (64 * 1024)
-#define OKAY_ERRNO (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR || errno == EINPROGRESS || errno == EALREADY)
 
 /* EV callbacks, declaration */
 void Stcp_bind_callback(
@@ -688,7 +688,7 @@ typedef struct tcp_frame_parse_state {
  * pub messages to this pipe.
  */
 static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
-    uint64_t state, uint8_t *data, size_t size, nitro_counted_buffer_t *buf) {
+    uint64_t state, const uint8_t *data, size_t size, nitro_counted_buffer_t *buf) {
 
     /* We don't need the lock for this part */
     nitro_key_t *old = p->sub_keys;
@@ -865,15 +865,42 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
         if (left < hd->frame_size + ident_size) {
             break;
         }
-        if (hd->packet_type != NITRO_FRAME_DATA) {
+
+        /* "Parsing" protocol header */
+        const nitro_protocol_header *phd = hd;
+        const uint8_t *frame_data = (uint8_t *)cursor + sizeof(nitro_protocol_header);
+        nitro_counted_buffer_t **bbuf_p = &(st->cbuf);
+        nitro_counted_buffer_t *bbuf = NULL;
+
+        /* First order, unwrap secure */
+        if (hd->packet_type == NITRO_FRAME_SECURE) {
+            size_t final_size;
+            uint8_t *clear = crypto_decrypt_frame(
+                frame_data, hd->frame_size, st->p, &final_size, &bbuf);
+            bbuf_p = &bbuf;
+            phd = (nitro_protocol_header *)clear;
+            frame_data = clear + sizeof(nitro_protocol_header);
+        } else {
+            // XXX better error
+            assert(!st->s->opt->secure || hd->packet_type == NITRO_FRAME_HELLO);
+        }
+
+        if (phd->packet_type != NITRO_FRAME_DATA) {
             /* It's a control frame; handle appropriately */
-            if (hd->packet_type == NITRO_FRAME_HELLO) {
+            if (phd->packet_type == NITRO_FRAME_HELLO) {
                 // XXX better error
-                assert(hd->frame_size == SOCKET_IDENT_LENGTH);
+                assert(!st->p->them_handshake);
+                assert(phd->frame_size == SOCKET_IDENT_LENGTH);
                 /* Copy the identity of the remote socket */
+                if (st->s->opt->has_remote_ident && 
+                    memcmp(st->s->opt->required_remote_ident, frame_data,
+                        SOCKET_IDENT_LENGTH) != 0) {
+                    // XXX better error
+                    assert(0); // Certificate check failed
+                }
                 st->p->remote_ident = malloc(SOCKET_IDENT_LENGTH);
                 memcpy(st->p->remote_ident,
-                    (char *)cursor + sizeof(nitro_protocol_header),
+                    frame_data,
                     SOCKET_IDENT_LENGTH);
                 st->p->remote_ident_buf = nitro_counted_buffer_new(
                     st->p->remote_ident, just_free, NULL);
@@ -881,27 +908,39 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                 /* Register the pipe id into the routing table (for replies and pub) */
                 socket_register_pipe(SOCKET_UNIVERSAL(st->s), st->p);
 
+                /* If this is a secure socket, cache crypto information associated
+                   with the ident (which is actually an NaCl public key */
+                if (st->s->opt->secure) {
+                    crypto_make_pipe_cache(st->s, st->p);
+                    Stcp_pipe_enable_write(st->p);
+                }
+                pthread_mutex_lock(&st->s->l_pipes);
+                if (st->s->sub_data) {
+                    Stcp_pipe_send_sub(st->s, st->p);
+                }
+                pthread_mutex_unlock(&st->s->l_pipes);
 
                 /* Mark the handshake done */
                 st->p->them_handshake = 1;
 
-            } else if (hd->packet_type == NITRO_FRAME_SUB) {
-                assert(hd->frame_size >= sizeof(uint64_t));
-                uint64_t state = *(uint64_t *)(st->cursor + sizeof(nitro_protocol_header));
+            } else if (phd->packet_type == NITRO_FRAME_SUB) {
+                assert(st->p->them_handshake);
+                assert(phd->frame_size >= sizeof(uint64_t));
+                uint64_t state = *(uint64_t *)frame_data;
 
                 /* Check the state counter to see if we've already processed this
                    version of the pipe's sub state */
                 if (st->p->sub_state_recv != state) {
-                    if (!st->cbuf) {
+                    if (*bbuf_p) {
                         /* we need to retain the backing buffer for the sub data */
-                        st->cbuf = nitro_counted_buffer_new(
+                        *bbuf_p = nitro_counted_buffer_new(
                             NULL, buffer_free, (void *)buf);
                     } else {fprintf(stderr, "nope, got it already\n");}
                     /* Parse the sub data from the socket and update the socket
                        sub trie as appropriate */
                     Stcp_socket_parse_subs(st->s, st->p, state,
-                        (uint8_t *)(st->cursor + sizeof(nitro_protocol_header) + sizeof(uint64_t)),
-                        hd->frame_size - sizeof(uint64_t), st->cbuf);
+                        frame_data + sizeof(uint64_t),
+                        phd->frame_size - sizeof(uint64_t), *bbuf_p);
                 }
             }
         } else {
@@ -913,32 +952,35 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
 
             // XXX again, assert is not right here
             assert(st->p->them_handshake);
-            if (!st->cbuf) {
+            if (!*bbuf_p) {
                 /* it is official, we will consume data... */
 
                 /* first incref is for the socket itself, not done copying yet */
-                st->cbuf = nitro_counted_buffer_new(
+                *bbuf_p = nitro_counted_buffer_new(
                 NULL, buffer_free, (void *)buf);
             }
-            nitro_counted_buffer_t const *cbuf = st->cbuf;
+            nitro_counted_buffer_t const *cbuf = *bbuf_p;
 
             /* Incref for the eventual recipient */
             nitro_counted_buffer_incref((nitro_counted_buffer_t *)cbuf);
 
             fr = nitro_frame_new_prealloc(
-                    (char *)cursor + sizeof(nitro_protocol_header),
-                    hd->frame_size, (nitro_counted_buffer_t *)cbuf);
+                    (char *)frame_data,
+                    phd->frame_size, (nitro_counted_buffer_t *)cbuf);
             nitro_frame_set_sender(fr,
-            st->p->remote_ident, st->p->remote_ident_buf);
+                st->p->remote_ident, st->p->remote_ident_buf);
 
             /* If this has a ident stack that's been routed, copy/retain it */
-            if (hd->num_ident) {
-                nitro_counted_buffer_incref((nitro_counted_buffer_t *)cbuf);
+            if (phd->num_ident) {
                 nitro_frame_set_stack(fr,
-                st->cursor + (sizeof(nitro_protocol_header) + hd->frame_size),
-                (nitro_counted_buffer_t *)cbuf, hd->num_ident);
+                    frame_data + phd->frame_size,
+                    (nitro_counted_buffer_t *)cbuf, phd->num_ident);
             }
         }
+        if (bbuf) {
+            nitro_counted_buffer_decref(bbuf);
+        }
+        /* Increment cursor using original frame information */
         st->cursor += (sizeof(nitro_protocol_header) + hd->frame_size + ident_size);
     }
 
@@ -1054,6 +1096,19 @@ void Stcp_bind_callback(
 }
 
 /*
+ * Stcp_encrypt_frame
+ * ------------------
+ *
+ * Encrypt a frame using the pipe's nacl cache.
+ *
+ * (Callback for nitro_queue_fd_write_encrypted())
+ */
+nitro_frame_t *Stcp_encrypt_frame(nitro_frame_t *fr, void *baton) {
+    nitro_pipe_t *p = (nitro_pipe_t *)baton;
+    return crypto_frame_encrypt(fr, p);
+}
+
+/*
  * Stcp_pipe_out_cb
  * ----------------
  *
@@ -1075,6 +1130,7 @@ void Stcp_pipe_out_cb(
 
     int r = 0;
     int tried = 0;
+    int doing_hello = 0;
 
     if (!p->us_handshake) {
         tried = 1;
@@ -1087,24 +1143,33 @@ void Stcp_pipe_out_cb(
         /* Cannot get hello out because q_send full?? not okay */
         assert(!r);
 
-        pthread_mutex_lock(&s->l_pipes);
-        if (s->sub_data) {
-            Stcp_pipe_send_sub(s, p);
-        }
-        pthread_mutex_unlock(&s->l_pipes);
         p->us_handshake = 1;
+        doing_hello = 1;
     }
 
     /* Local queue takes precedence */
     if (nitro_queue_count(p->q_send)) {
         tried = 1;
-        r = nitro_queue_fd_write(
-            p->q_send,
-            p->fd, p->partial, &(p->partial));
+        if (s->opt->secure && !doing_hello) {
+            r = nitro_queue_fd_write_encrypted(
+                p->q_send,
+                p->fd, p->partial, &(p->partial),
+                Stcp_encrypt_frame, p);
+
+        } else {
+            r = nitro_queue_fd_write(
+                p->q_send,
+                p->fd, p->partial, &(p->partial));
+        }
         if (r < 0 && OKAY_ERRNO)
             return;
         if (r < 0) {
             Stcp_destroy_pipe(p);
+            return;
+        }
+        if (doing_hello && s->opt->secure) {
+            ev_io_stop(the_runtime->the_loop,
+            pipe_iow);
             return;
         }
     }
@@ -1113,9 +1178,17 @@ void Stcp_pipe_out_cb(
        to guess kernel buffer is full*/
     if ((!tried || !p->partial) && nitro_queue_count(s->q_send)) {
         tried = 1;
-        r = nitro_queue_fd_write(
-            s->q_send,
-            p->fd, p->partial, &(p->partial));
+        if (s->opt->secure) {
+            r = nitro_queue_fd_write_encrypted(
+                s->q_send,
+                p->fd, p->partial, &(p->partial),
+                Stcp_encrypt_frame, p);
+
+        } else {
+            r = nitro_queue_fd_write(
+                s->q_send,
+                p->fd, p->partial, &(p->partial));
+        }
         if (r < 0 && OKAY_ERRNO)
             return;
         if (r < 0) {
@@ -1448,7 +1521,7 @@ typedef struct Stcp_pub_state {
  * and puts the message on the direct queue for each.
  */
 static void Stcp_deliver_pub_frame(
-    uint8_t *pfx, uint8_t length, nitro_prefix_trie_mem *mems,
+    const uint8_t *pfx, uint8_t length, nitro_prefix_trie_mem *mems,
     void *ptr) {
 
     Stcp_pub_state *st = (Stcp_pub_state *)ptr;
@@ -1483,7 +1556,7 @@ static void Stcp_deliver_pub_frame(
  * (PUBLIC API)
  */
 int Stcp_socket_pub(nitro_tcp_socket_t *s,
-    nitro_frame_t *fr, uint8_t *k, size_t length) {
+    nitro_frame_t *fr, const uint8_t *k, size_t length) {
 
     Stcp_pub_state st = {0};
 

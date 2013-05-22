@@ -27,6 +27,9 @@ typedef struct nitro_pipe_t {
     char us_handshake;
     char them_handshake;
     char registered;
+    uint8_t crypto_cache[crypto_box_BEFORENMBYTES];
+    uint8_t nonce_gen[crypto_box_NONCEBYTES];
+    uint64_t *nonce_incr;
 
     nitro_buffer_t *in_buffer;
 

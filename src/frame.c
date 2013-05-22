@@ -62,12 +62,12 @@ nitro_frame_t *nitro_frame_new_prealloc(void *data, uint32_t size, nitro_counted
     return f;
 }
 
-void nitro_frame_set_stack(nitro_frame_t *f, void *data,
+void nitro_frame_set_stack(nitro_frame_t *f, const uint8_t *data,
     nitro_counted_buffer_t *buf, uint8_t num) {
     f->ident_buffer = buf;
     nitro_counted_buffer_incref(buf);
     f->num_ident = num;
-    f->ident_data = data;
+    f->ident_data = (uint8_t *)data;
 }
 
 void nitro_frame_clone_stack(nitro_frame_t *fr, nitro_frame_t *to) {
@@ -193,7 +193,7 @@ void nitro_frame_iovs_reset(nitro_frame_t *fr) {
     fr->iovec_set = 0;
 }
 
-nitro_key_t *nitro_key_new(uint8_t *data, uint8_t length, 
+nitro_key_t *nitro_key_new(const uint8_t *data, uint8_t length, 
     nitro_counted_buffer_t *buf) {
     nitro_key_t *k; 
     ZALLOC(k);

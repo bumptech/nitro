@@ -60,4 +60,6 @@
 #include "uthash/utlist.h"
 #include "uthash/uthash.h"
 
+#define OKAY_ERRNO (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR || errno == EINPROGRESS || errno == EALREADY)
+
 #endif /* NITRO_COMMON_H */

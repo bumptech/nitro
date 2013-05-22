@@ -28,7 +28,6 @@ nitro_socket_t *nitro_socket_new(nitro_sockopt_t *opt) {
     // Also, add to list for diagnostics XXX
     __sync_add_and_fetch(&the_runtime->num_sock, 1);
     return sock;
-
 }
 
 NITRO_SOCKET_TRANSPORT socket_parse_location(char *location, char **next) {

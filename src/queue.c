@@ -235,6 +235,58 @@ out:
     return ret;
 }
 
+int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd, 
+    nitro_frame_t *partial,
+    nitro_frame_t **remain, 
+    nitro_queue_encrypt_frame_cb encrypt, void *enc_baton) {
+    *remain = NULL;
+    int res = 0;
+
+    nitro_frame_t *current = partial;
+
+    if (!current) {
+        nitro_frame_t *clear = nitro_queue_pull(q, 0);
+        if (clear) {
+            current = encrypt(clear, enc_baton);
+        }
+    }
+
+    while (current) {
+        int num;
+        struct iovec *f_vs = nitro_frame_iovs(current, &num);
+        int bwrite = writev(fd, f_vs, num);
+        if (bwrite == -1) {
+            if (!OKAY_ERRNO) {
+                res = -1;
+                nitro_frame_destroy(current);
+            } else {
+                *remain = current;
+            }
+            break;
+        }
+
+        // advance
+        res += bwrite;
+        int i;
+        int done = 0;
+        for (i=0; bwrite > 0 && !done; ++i) {
+            bwrite -= nitro_frame_iovs_advance(
+                current, i, bwrite, &done);
+        }
+        if (done) {
+            nitro_frame_destroy(current);
+            nitro_frame_t *clear = nitro_queue_pull(q, 0);
+            if (clear) {
+                current = encrypt(clear, enc_baton);
+            } else {
+                current = NULL;
+            }
+        }
+    }
+
+    return res;
+}
+
 #define MIN3(a, b, c) (\
     (a < b) ? \
         (a < c ? a : c) :\
