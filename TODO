@@ -5,20 +5,18 @@
 [ ] Pub/sub unit tests
 [x] Nonblock send/recv -- change all internal uses to use this
 [x] Socket Options
-[ ] STCP
-    - how to pause writes until we have remote ident
-    - how to "re-parse" the clear-text content elegantly
-      post-decryption
+[x] STCP
 [x] Async help... eventfd etc
+[x] Shutdown clean
+[x] Leak check
+[x] Error handling in various places we return -1, use err.c for nice messages
+[x] Security/robustness on TCP upstream.
+    .. aka Close on error instead of assert()
 [ ] Inproc
-[ ] Shutdown clean
-[ ] Error handling in various places we return -1, use err.c for nice messages
 [ ] Leak check
 [ ] Socket Diagnostics (HUP report, stats, query queue sizes, etc)
-[ ] Python bindings
-[ ] Haskell bindings
-[ ] Security/robustness on TCP upstream.  
-    .. aka Close on error instead of assert()
+[i] Python bindings
+[i] Haskell bindings
 [ ] Kill all XXX
 [ ] Re-run style
 [ ] Verify file headers are present and correct in src/*.{c,h}
