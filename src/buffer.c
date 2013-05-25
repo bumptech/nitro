@@ -32,6 +32,10 @@
  * or implied, of Bump Technologies, Inc.
  *
  */
+
+ // think through max size of buffer, and preventing
+ // integer overruns
+
 #include "common.h"
 #include "buffer.h"
 #include "util.h"

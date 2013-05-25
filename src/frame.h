@@ -11,6 +11,8 @@
 #define NITRO_FRAME_HELLO 2
 #define NITRO_FRAME_SECURE 3
 
+#define NITRO_MAX_FRAME (1024 * 1024 * 1024)
+
 /* Used for publishing */
 typedef struct nitro_key_t {
     const uint8_t *data;

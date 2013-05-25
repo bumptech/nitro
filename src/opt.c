@@ -1,6 +1,7 @@
 #include "opt.h"
 #include "err.h"
 #include "util.h"
+#include "frame.h"
 
 #define NITRO_MB (1024 * 1024)
 
@@ -44,6 +45,14 @@ void nitro_sockopt_set_reconnect_interval(nitro_sockopt_t *opt,
 
 void nitro_sockopt_set_max_message_size(nitro_sockopt_t *opt,
     uint32_t max_message_size) {
+    // For performance and security reasons,
+    // we do not allow this to exceed 1GB If 
+    // we keep this away from the 4GB limit, 
+    // we minimize our chances of overflowing integers
+    // (and size_t on 32-bit systems)
+    // when we parse the frame coming from
+    // the network
+    assert(max_message_size <= NITRO_MAX_FRAME);
     opt->max_message_size = max_message_size;
 }
 

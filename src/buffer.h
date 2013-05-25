@@ -3,8 +3,8 @@
 
 typedef struct nitro_buffer_t {
     char *area;
-    int alloc;
-    int size;
+    size_t alloc;
+    size_t size;
 } nitro_buffer_t;
 
 nitro_buffer_t *nitro_buffer_new();

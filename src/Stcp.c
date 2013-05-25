@@ -837,8 +837,8 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
     while (!fr) {
         char const *cursor = st->cursor;
 
-        int taken = cursor - start;
-        int left = size - taken;
+        size_t taken = cursor - start;
+        size_t left = size - taken;
 
         if (left < sizeof(nitro_protocol_header)) {
             break;
@@ -860,7 +860,7 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
             return NULL;
         }
 
-        int ident_size = hd->num_ident * SOCKET_IDENT_LENGTH;
+        size_t ident_size = hd->num_ident * SOCKET_IDENT_LENGTH;
         if (left < hd->frame_size + ident_size) {
             break;
         }
@@ -873,6 +873,11 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
 
         /* First order, unwrap secure */
         if (hd->packet_type == NITRO_FRAME_SECURE) {
+            if (!st->s->opt->secure) {
+                nitro_set_error(NITRO_ERR_BAD_SECURE);
+                st->pipe_error = 1;
+                return NULL;
+            }
             size_t final_size;
             uint8_t *clear = crypto_decrypt_frame(
                 frame_data, hd->frame_size, st->p, &final_size, &bbuf);
@@ -904,7 +909,7 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                     return NULL;
                 }
 
-                /* Copy the identity of the remote socket */
+                /* Check the remote identity if config has one */
                 if (st->s->opt->has_remote_ident && 
                     memcmp(st->s->opt->required_remote_ident, frame_data,
                         SOCKET_IDENT_LENGTH) != 0) {
@@ -913,6 +918,8 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                     st->pipe_error = 1;
                     return NULL;
                 }
+
+                /* Copy the identity of the remote socket */
                 st->p->remote_ident = malloc(SOCKET_IDENT_LENGTH);
                 memcpy(st->p->remote_ident,
                     frame_data,

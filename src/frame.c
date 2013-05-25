@@ -36,7 +36,9 @@
 #include "frame.h"
 #include "cbuffer.h"
 
+
 nitro_frame_t *nitro_frame_copy(nitro_frame_t *f) {
+    assert(f->size < NITRO_MAX_FRAME);
     nitro_frame_t *result = malloc(sizeof(nitro_frame_t));
     memcpy(result, f, sizeof(nitro_frame_t));
     nitro_counted_buffer_incref(f->buffer);
@@ -53,6 +55,7 @@ nitro_frame_t *nitro_frame_new(void *data, uint32_t size, nitro_free_function ff
 }
 
 nitro_frame_t *nitro_frame_new_prealloc(void *data, uint32_t size, nitro_counted_buffer_t *buffer) {
+    assert(size < NITRO_MAX_FRAME);
     nitro_frame_t *f;
     f = malloc(sizeof(nitro_frame_t));
     bzero(f, FRAME_BZERO_SIZE);
