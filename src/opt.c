@@ -1,4 +1,5 @@
 #include "opt.h"
+#include "err.h"
 #include "util.h"
 
 #define NITRO_MB (1024 * 1024)
@@ -11,6 +12,8 @@ nitro_sockopt_t *nitro_sockopt_new() {
     opt->close_linger = 1.0;
     opt->reconnect_interval = 0.2; /* seconds */
     opt->max_message_size = 16 * NITRO_MB;
+
+    opt->error_handler = nitro_error_log_handler;
     return opt;
 }
 
@@ -67,4 +70,15 @@ void nitro_sockopt_set_required_remote_ident(nitro_sockopt_t *opt,
 
     memcpy(opt->required_remote_ident, ident, SOCKET_IDENT_LENGTH);
     opt->has_remote_ident = 1;
+}
+
+void nitro_socket_set_error_handler(nitro_sockopt_t *opt,
+    nitro_error_handler handler, void *baton) {
+    opt->error_handler_baton = baton;
+    opt->error_handler = handler;
+}
+
+void nitro_socket_disable_error_handler(nitro_sockopt_t *opt) {
+    opt->error_handler = NULL;
+    opt->error_handler_baton = NULL;
 }

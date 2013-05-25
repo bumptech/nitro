@@ -57,7 +57,6 @@ static void *actual_run(void *unused) {
 
     ev_loop_destroy(the_runtime->the_loop);
     fprintf(stderr, "NITRO done!\n");
-    pthread_cond_signal(&the_runtime->c_die);
     return NULL;
 }
 
@@ -71,6 +70,7 @@ int nitro_runtime_start() {
     signal(SIGPIPE, handle_pipe); /* ignore sigpipe */
     the_runtime->the_loop = ev_loop_new(0); // AUTO backend
     pthread_mutex_init(&the_runtime->l_tcp_connect, NULL);
+    pthread_mutex_init(&the_runtime->l_inproc, NULL);
 
     atomic_init(&the_runtime->async_stack, NULL);
     atomic_init(&the_runtime->num_sock, 0);
@@ -81,8 +81,6 @@ int nitro_runtime_start() {
 
     ev_async_init(&the_runtime->thread_wake, nitro_async_cb);
     ev_async_start(the_runtime->the_loop, &the_runtime->thread_wake);
-    pthread_mutex_init(&the_runtime->l_die, NULL);
-    pthread_cond_init(&the_runtime->c_die, NULL);
     pthread_create(&the_runtime->the_thread, NULL, actual_run, NULL);
     return 0;
 }
@@ -94,14 +92,11 @@ int nitro_runtime_stop() {
 
     fprintf(stderr, "socket count: %d\n", atomic_load(&the_runtime->num_sock));
     assert(atomic_load(&the_runtime->num_sock) == 0);
-    pthread_mutex_lock(&the_runtime->l_die);
     nitro_async_t *a = nitro_async_new(NITRO_ASYNC_DIE);
     nitro_async_schedule(a);
-    close(the_runtime->random_fd);
-    pthread_cond_wait(&the_runtime->c_die, &the_runtime->l_die);
-    pthread_mutex_unlock(&the_runtime->l_die);
     void *res;
     pthread_join(the_runtime->the_thread, &res);
+    close(the_runtime->random_fd);
     free(the_runtime);
     the_runtime = NULL;
     return 0;

@@ -46,6 +46,8 @@ nitro_socket_t *nitro_socket_bind(char *location, nitro_sockopt_t *opt) {
         return NULL;
     }
 
+    s->stype.univ.given_location = strdup(next);
+
     SOCKET_SET_PARENT(s);
     int r = SOCKET_CALL(s, bind, next);
 
@@ -67,8 +69,15 @@ nitro_socket_t *nitro_socket_connect(char *location, nitro_sockopt_t *opt) {
         return NULL;
     }
 
+    s->stype.univ.given_location = strdup(next);
+
     SOCKET_SET_PARENT(s);
-    SOCKET_CALL(s, connect, next);
+    int r = SOCKET_CALL(s, connect, next);
+
+    if (r) {
+        nitro_socket_destroy(s);
+        return NULL;
+    }
 
     return s;
 }

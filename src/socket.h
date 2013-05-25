@@ -36,6 +36,8 @@ typedef enum {
 
 
 #define SOCKET_COMMON_FIELDS\
+    /* Given Location */\
+    char *given_location;\
     /* Socket Options */\
     nitro_sockopt_t *opt;\
     /* Incoming messages */\
@@ -95,8 +97,19 @@ typedef struct nitro_tcp_socket_t {
 typedef struct nitro_inproc_socket_t {
     SOCKET_COMMON_FIELDS
 
-    /* hash table for bound sockets */
+    /* hash table for bound sockets on the runtime */
     UT_hash_handle hh;
+
+    pthread_rwlock_t link_lock;
+    struct nitro_inproc_socket_t *links;
+    _Atomic (struct nitro_inproc_socket_t *)current;
+    nitro_counted_buffer_t *bind_counter;
+
+    struct nitro_inproc_socket_t *prev;
+    struct nitro_inproc_socket_t *next;
+
+    int bound;
+    int dead;
 
 } nitro_inproc_socket_t;
 

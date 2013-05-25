@@ -1,5 +1,6 @@
 #include "common.h"
 #include "crypto.h"
+#include "err.h"
 #include "runtime.h"
 
 void crypto_make_keypair(uint8_t *pub, uint8_t *sec) {
@@ -60,9 +61,11 @@ nitro_frame_t *crypto_frame_encrypt(nitro_frame_t *fr, nitro_pipe_t *p) {
     int r = crypto_box_afternm(enc + crypto_box_NONCEBYTES, clear + crypto_box_NONCEBYTES, 
         size - crypto_box_NONCEBYTES, clear, p->crypto_cache);
 
-    assert(!r); // XXX safer
-
     nitro_buffer_destroy(buf);
+    if (r != 0) {
+        return NULL;
+    }
+
 
     fr = nitro_frame_new(enc, size, just_free, NULL);
     fr->type = NITRO_FRAME_SECURE;
@@ -73,13 +76,19 @@ nitro_frame_t *crypto_frame_encrypt(nitro_frame_t *fr, nitro_pipe_t *p) {
 uint8_t *crypto_decrypt_frame(const uint8_t *enc, size_t enc_len,
     nitro_pipe_t *p, size_t *out_len, nitro_counted_buffer_t **buf) {
 
-    // XXX safer?
-    assert(enc_len >= crypto_box_NONCEBYTES + crypto_box_ZEROBYTES);
+    if (!(enc_len >= crypto_box_NONCEBYTES + crypto_box_ZEROBYTES)) {
+        nitro_set_error(NITRO_ERR_DECRYPT);
+        return NULL;
+    }
     uint8_t *clear = malloc(enc_len - crypto_box_NONCEBYTES);
 
     int r = crypto_box_open_afternm(clear, enc + crypto_box_NONCEBYTES,
     enc_len - crypto_box_NONCEBYTES, enc, p->crypto_cache);
-    assert(!r); // XXX safer
+    if (r != 0) {
+        free(clear);
+        nitro_set_error(NITRO_ERR_DECRYPT);
+        return NULL;
+    }
 
     *out_len = enc_len - crypto_box_NONCEBYTES - crypto_box_ZEROBYTES;
     *buf = nitro_counted_buffer_new(clear, just_free, NULL);

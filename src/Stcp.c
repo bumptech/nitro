@@ -676,6 +676,7 @@ typedef struct tcp_frame_parse_state {
     nitro_pipe_t *p;
     nitro_tcp_socket_t *s;
     int got_data_frames;
+    int pipe_error;
 } tcp_frame_parse_state;
 
 
@@ -719,7 +720,6 @@ static void Stcp_socket_parse_subs(nitro_tcp_socket_t *s, nitro_pipe_t *p,
        find things added and removed vs. last iteration */
     DL_SORT(p->sub_keys, nitro_key_compare);
 
-    // XXX asserts on del()
     pthread_mutex_lock(&s->l_pipes);
 
     nitro_key_t *walk_old = old, *tmp=NULL, *walk_new = p->sub_keys;
@@ -849,18 +849,17 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
         left -= sizeof(nitro_protocol_header);
 
         if (hd->frame_size > st->s->opt->max_message_size) {
-            assert(0);
-            // XXX handle more gracefully
+            nitro_set_error(NITRO_ERR_MAX_FRAME_EXCEEDED);
+            st->pipe_error = 1;
+            return NULL;
         }
 
-        // XXX error on protocol version
-        // XXX this is BAD, crashy!
-        // XXX maximum packet size, config based?
-        // other safety/security/anti-dos audit
-        // ... probably the socket closes on
-        // rule violations
+        if (hd->protocol_version != 1) {
+            nitro_set_error(NITRO_ERR_BAD_PROTOCOL_VERSION);
+            st->pipe_error = 1;
+            return NULL;
+        }
 
-        assert(hd->protocol_version == 1);
         int ident_size = hd->num_ident * SOCKET_IDENT_LENGTH;
         if (left < hd->frame_size + ident_size) {
             break;
@@ -877,26 +876,42 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
             size_t final_size;
             uint8_t *clear = crypto_decrypt_frame(
                 frame_data, hd->frame_size, st->p, &final_size, &bbuf);
+            if (!clear) {
+                assert(nitro_has_error());
+                st->pipe_error = 1;
+                return NULL;
+            }
             bbuf_p = &bbuf;
             phd = (nitro_protocol_header *)clear;
             frame_data = clear + sizeof(nitro_protocol_header);
-        } else {
-            // XXX better error
-            assert(!st->s->opt->secure || hd->packet_type == NITRO_FRAME_HELLO);
+        } else if (st->s->opt->secure && hd->packet_type != NITRO_FRAME_HELLO) {
+            nitro_set_error(NITRO_ERR_INVALID_CLEAR);
+            st->pipe_error = 1;
+            return NULL;
         }
 
         if (phd->packet_type != NITRO_FRAME_DATA) {
             /* It's a control frame; handle appropriately */
             if (phd->packet_type == NITRO_FRAME_HELLO) {
-                // XXX better error
-                assert(!st->p->them_handshake);
-                assert(phd->frame_size == SOCKET_IDENT_LENGTH);
+                if (st->p->them_handshake) {
+                    nitro_set_error(NITRO_ERR_DOUBLE_HANDSHAKE);
+                    st->pipe_error = 1;
+                    return NULL;
+                }
+                if (phd->frame_size != SOCKET_IDENT_LENGTH) {
+                    nitro_set_error(NITRO_ERR_DOUBLE_HANDSHAKE);
+                    st->pipe_error = 1;
+                    return NULL;
+                }
+
                 /* Copy the identity of the remote socket */
                 if (st->s->opt->has_remote_ident && 
                     memcmp(st->s->opt->required_remote_ident, frame_data,
                         SOCKET_IDENT_LENGTH) != 0) {
-                    // XXX better error
-                    assert(0); // Certificate check failed
+
+                    nitro_set_error(NITRO_ERR_INVALID_CERT);
+                    st->pipe_error = 1;
+                    return NULL;
                 }
                 st->p->remote_ident = malloc(SOCKET_IDENT_LENGTH);
                 memcpy(st->p->remote_ident,
@@ -924,8 +939,17 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                 st->p->them_handshake = 1;
 
             } else if (phd->packet_type == NITRO_FRAME_SUB) {
-                assert(st->p->them_handshake);
-                assert(phd->frame_size >= sizeof(uint64_t));
+                if (!st->p->them_handshake) {
+                    nitro_set_error(NITRO_ERR_NO_HANDSHAKE);
+                    st->pipe_error = 1;
+                    return NULL;
+                }
+
+                if (phd->frame_size < sizeof(uint64_t)) {
+                    nitro_set_error(NITRO_ERR_BAD_SUB);
+                    st->pipe_error = 1;
+                    return NULL;
+                }
                 uint64_t state = *(uint64_t *)frame_data;
 
                 /* Check the state counter to see if we've already processed this
@@ -949,9 +973,11 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                it to the end of the queue */
 
             /* NOTE: This is an especially busy corner of a nitro socket */
-
-            // XXX again, assert is not right here
-            assert(st->p->them_handshake);
+            if (!st->p->them_handshake) {
+                nitro_set_error(NITRO_ERR_NO_HANDSHAKE);
+                st->pipe_error = 1;
+                return NULL;
+            }
             if (!*bbuf_p) {
                 /* it is official, we will consume data... */
 
@@ -1013,9 +1039,19 @@ void Stcp_parse_socket_buffer(nitro_pipe_t *p) {
     parse_state.p = p;
     parse_state.s = s;
 
+    nitro_clear_error();
     nitro_queue_consume(s->q_recv,
         Stcp_parse_next_frame,
         &parse_state);
+
+    if (parse_state.pipe_error) {
+        if (s->opt->error_handler) {
+            s->opt->error_handler(nitro_error(),
+                s->opt->error_handler_baton);
+        }
+        Stcp_destroy_pipe(p);
+        return;
+    }
 
     int size;
     char *start = nitro_buffer_data(p->in_buffer, &size);
@@ -1105,7 +1141,12 @@ void Stcp_bind_callback(
  */
 nitro_frame_t *Stcp_encrypt_frame(nitro_frame_t *fr, void *baton) {
     nitro_pipe_t *p = (nitro_pipe_t *)baton;
-    return crypto_frame_encrypt(fr, p);
+    nitro_frame_t *out = crypto_frame_encrypt(fr, p);
+
+    if (!out) {
+        nitro_set_error(NITRO_ERR_ENCRYPT);
+    }
+    return out;
 }
 
 /*
@@ -1164,6 +1205,10 @@ void Stcp_pipe_out_cb(
         if (r < 0 && OKAY_ERRNO)
             return;
         if (r < 0) {
+            if (s->opt->error_handler) {
+                s->opt->error_handler(nitro_error(),
+                    s->opt->error_handler_baton);
+            }
             Stcp_destroy_pipe(p);
             return;
         }
@@ -1192,6 +1237,10 @@ void Stcp_pipe_out_cb(
         if (r < 0 && OKAY_ERRNO)
             return;
         if (r < 0) {
+            if (s->opt->error_handler) {
+                s->opt->error_handler(nitro_error(),
+                    s->opt->error_handler_baton);
+            }
             Stcp_destroy_pipe(p);
             return;
         }
@@ -1349,26 +1398,28 @@ int Stcp_socket_relay_bk(nitro_tcp_socket_t *s,
     int ret = -1;
     pthread_mutex_lock(&s->l_pipes);
 
-    assert(snd->num_ident);
-    uint8_t *top_of_stack = snd->ident_data + (
-        (snd->num_ident - 1) * SOCKET_IDENT_LENGTH);
-
-    nitro_pipe_t *p = socket_lookup_pipe(
-        SOCKET_UNIVERSAL(s), top_of_stack);
-
-    if (p) {
-        nitro_frame_t *out = (flags & NITRO_NOCOPY) ? 
-            fr : nitro_frame_copy(fr);
-        nitro_frame_clone_stack(snd, out);
-        nitro_frame_stack_pop(out);
-        ret = nitro_queue_push(p->q_send, out, !(flags & NITRO_NOWAIT));
-        if (ret && !(flags & NITRO_NOCOPY)) {
-            nitro_frame_destroy(out);
-        }
-    } else {
+    if (!snd->num_ident) {
         nitro_set_error(NITRO_ERR_NO_RECIPIENT);
-    }
+    } else {
+        uint8_t *top_of_stack = snd->ident_data + (
+            (snd->num_ident - 1) * SOCKET_IDENT_LENGTH);
 
+        nitro_pipe_t *p = socket_lookup_pipe(
+            SOCKET_UNIVERSAL(s), top_of_stack);
+
+        if (p) {
+            nitro_frame_t *out = (flags & NITRO_NOCOPY) ? 
+                fr : nitro_frame_copy(fr);
+            nitro_frame_clone_stack(snd, out);
+            nitro_frame_stack_pop(out);
+            ret = nitro_queue_push(p->q_send, out, !(flags & NITRO_NOWAIT));
+            if (ret && !(flags & NITRO_NOCOPY)) {
+                nitro_frame_destroy(out);
+            }
+        } else {
+            nitro_set_error(NITRO_ERR_NO_RECIPIENT);
+        }
+    }
     pthread_mutex_unlock(&s->l_pipes);
     return ret;
 }

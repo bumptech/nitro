@@ -180,6 +180,7 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
     /* On error, we don't move the queue pointers at all. 
        We'll let the caller sort out the errno. */
     if (actual_bytes == -1) {
+        nitro_set_error(NITRO_ERR_ERRNO);
         ret = -1;
         goto out;
     }
@@ -248,6 +249,9 @@ int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
         nitro_frame_t *clear = nitro_queue_pull(q, 0);
         if (clear) {
             current = encrypt(clear, enc_baton);
+            if (!current) {
+                res = -1;
+            }
         }
     }
 
@@ -258,6 +262,7 @@ int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
         if (bwrite == -1) {
             if (!OKAY_ERRNO) {
                 res = -1;
+                nitro_set_error(NITRO_ERR_ERRNO);
                 nitro_frame_destroy(current);
             } else {
                 *remain = current;
@@ -278,6 +283,9 @@ int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
             nitro_frame_t *clear = nitro_queue_pull(q, 0);
             if (clear) {
                 current = encrypt(clear, enc_baton);
+                if (!current) {
+                    res = -1;
+                }
             } else {
                 current = NULL;
             }

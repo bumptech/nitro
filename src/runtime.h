@@ -14,8 +14,8 @@ typedef struct nitro_runtime {
     /* CAS stack */
     _Atomic (nitro_async_t *)async_stack;
 
-    pthread_mutex_t l_die;
-    pthread_cond_t c_die;
+    pthread_mutex_t l_inproc;
+    nitro_inproc_socket_t *inprocs;
 
     ev_async thread_wake;
 

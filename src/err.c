@@ -34,12 +34,16 @@
  */
 #include "common.h"
 #include "err.h"
+#include "log.h"
 
 // XXX: this is not thread safe, therefore incorrect. __thread not supported on mac
 static int nitro_errno;
 
 char *nitro_errmsg(NITRO_ERROR error) {
     switch (error) {
+    case NITRO_ERR_NONE:
+        return "(no error)";
+        break;
     case NITRO_ERR_EAGAIN:
         return "socket queue operation would block";
         break;
@@ -76,6 +80,66 @@ char *nitro_errmsg(NITRO_ERROR error) {
         return "invalid transport type for socket";
         break;
 
+    case NITRO_ERR_ENCRYPT:
+        return "(pipe) frame encryption failed";
+        break;
+
+    case NITRO_ERR_DECRYPT:
+        return "(pipe) frame decryption failed";
+        break;
+        
+    case NITRO_ERR_MAX_FRAME_EXCEEDED:
+        return "(pipe) remote tried to send a frame larger than the maximum allowable size";
+        break;
+
+    case NITRO_ERR_BAD_PROTOCOL_VERSION:
+        return "(pipe) remote sent a nitro protocol version that is unsupported by this application";
+        break;
+
+    case NITRO_ERR_INVALID_CLEAR:
+        return "(pipe) remote sent a unencrypted message over a secure socket";
+        break;
+
+    case NITRO_ERR_DOUBLE_HANDSHAKE:
+        return "(pipe) remote sent two HELLO packets on same connection";
+        break;
+
+    case NITRO_ERR_INVALID_CERT:
+        return "(pipe) remote identity/public key does not match the one required by this socket";
+        break;
+
+    case NITRO_ERR_NO_HANDSHAKE:
+        return "(pipe) remote sent a non-HELLO packet before HELLO";
+        break;
+
+    case NITRO_ERR_BAD_SUB:
+        return "(pipe) remote sent a SUB packet that is too short to be valid";
+        break;
+
+    case NITRO_ERR_BAD_HANDSHAKE:
+        return "(pipe) remote sent a HELLO packet that is too short to be valid";
+        break;
+
+    case NITRO_ERR_BAD_INPROC_OPT:
+        return "inproc socket creation was given an unsupported socket option";
+        break;
+
+    case NITRO_ERR_INPROC_ALREADY_BOUND:
+        return "another inproc socket is already bound to that location";
+        break;
+
+    case NITRO_ERR_BAD_SECURE:
+        return "(pipe) remote sent a secure envelope on an insecure connection";
+        break;
+
+    case NITRO_ERR_INPROC_NOT_BOUND:
+        return "cannot connect to inproc: not bound";
+        break;
+
+    case NITRO_ERR_INPROC_NO_CONNECTIONS:
+        return "cannot send() on inproc without any established connections";
+        break;
+
     default:
         assert(0);
         break;
@@ -91,4 +155,16 @@ NITRO_ERROR nitro_error() {
 int nitro_set_error(NITRO_ERROR e) {
     nitro_errno = e;
     return -1;
+}
+
+void nitro_clear_error() {
+    nitro_errno = NITRO_ERR_NONE;
+}
+
+int nitro_has_error() {
+    return nitro_errno != NITRO_ERR_NONE;
+}
+
+void nitro_error_log_handler(int err, void *baton) {
+    nitro_log_err("error-logger", nitro_errmsg(err));
 }

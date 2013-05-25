@@ -20,6 +20,9 @@ void *r_1(void *p) {
         nitro_sockopt_set_secure(opt, 1);
         s = nitro_socket_bind("tcp://127.0.0.1:4444", opt);
         break;
+    case 2:
+        s = nitro_socket_bind("inproc://foobar", opt);
+        break;
     }
 
     int i;
@@ -38,6 +41,8 @@ void *r_1(void *p) {
 
     res->r_c = i;
 
+//    sleep(1);
+
     nitro_socket_close(s);
 
     return NULL;
@@ -54,6 +59,9 @@ void *s_1(void *p) {
     case 1:
         nitro_sockopt_set_secure(opt, 1);
         s = nitro_socket_connect("tcp://127.0.0.1:4444", opt);
+        break;
+    case 2:
+        s = nitro_socket_connect("inproc://foobar", opt);
         break;
     }
 
@@ -128,6 +136,9 @@ void *s_2(void *p) {
         nitro_sockopt_set_secure(opt, 1);
         s = nitro_socket_connect("tcp://127.0.0.1:4445", opt);
         break;
+    case 2:
+        s = nitro_socket_connect("inproc://foobar2", opt);
+        break;
     }
     sleep(1);
 
@@ -163,6 +174,8 @@ int main(int argc, char **argv) {
 
 
     TEST("r_1(1:1 rpc) all 10,000 matched", acc1.r_c == 10000);
+    // give that ^^ time to bind
+    sleep(1);
     TEST("s_1(1:1 rpc) all 10,000 matched", acc1.s_c == 10000);
 
     struct t_2 acc2;
@@ -179,6 +192,9 @@ int main(int argc, char **argv) {
     case 1:
         nitro_sockopt_set_secure(opt, 1);
         s = nitro_socket_bind("tcp://127.0.0.1:4445", opt);
+        break;
+    case 2:
+        s = nitro_socket_bind("inproc://foobar2", opt);
         break;
     }
 
