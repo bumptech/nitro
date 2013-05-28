@@ -3,6 +3,7 @@
 
 #define MESSAGES 10000000
 
+
 int main(int argc, char **argv) {
     nitro_runtime_start();
 
@@ -22,7 +23,7 @@ int main(int argc, char **argv) {
 
     gettimeofday(&tstart, NULL);
     for (i=0; i < MESSAGES; ++i) {
-        nitro_send(out, s, 0);
+        nitro_send(&out, s, NITRO_REUSE);
     }
     printf("started %d messages: %d.%d\n", MESSAGES,
         (int)tstart.tv_sec, (int)tstart.tv_usec);

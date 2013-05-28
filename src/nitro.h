@@ -9,7 +9,7 @@
 #include "Sinproc.h"
 #include "log.h"
 
-#define NITRO_NOCOPY (1 << 0)
+#define NITRO_REUSE (1 << 0)
 #define NITRO_NOWAIT (1 << 1)
 
 #define nitro_send(fr, s, flags) SOCKET_CALL(s, send, fr, flags)
@@ -19,7 +19,7 @@
 #define nitro_relay_bk(snd, fr, s, flags) SOCKET_CALL(s, relay_bk, snd, fr, flags)
 #define nitro_sub(s, k, l) SOCKET_CALL(s, sub, k, l)
 #define nitro_unsub(s, k, l) SOCKET_CALL(s, unsub, k, l)
-#define nitro_pub(fr, k, l, s) SOCKET_CALL(s, pub, fr, k, l)
+#define nitro_pub(fr, k, l, s, f) SOCKET_CALL(s, pub, fr, k, l, f)
 #define nitro_eventfd(s) ((s)->stype.univ.event_fd)
 
 #endif

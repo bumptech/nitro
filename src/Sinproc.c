@@ -191,11 +191,15 @@ void Sinproc_socket_close(nitro_inproc_socket_t *s){
     nitro_counted_buffer_decref(cleanup);
 }
 
-int Sinproc_socket_send(nitro_inproc_socket_t *s, nitro_frame_t *fr, int flags) {
-    int r = -1;
-    if (!(flags & NITRO_NOCOPY)) {
-        fr = nitro_frame_copy(fr);
+int Sinproc_socket_send(nitro_inproc_socket_t *s, nitro_frame_t **frp, int flags) {
+    nitro_frame_t *fr = *frp;
+    if (flags & NITRO_REUSE) {
+        nitro_frame_incref(fr);
+    } else {
+        *frp = NULL;
     }
+
+    int r = -1;
     if (s->bound) {
         pthread_rwlock_rdlock(&s->link_lock);
         volatile nitro_inproc_socket_t *try = atomic_load(&s->current);
@@ -220,6 +224,10 @@ int Sinproc_socket_send(nitro_inproc_socket_t *s, nitro_frame_t *fr, int flags) 
                !(flags & NITRO_NOWAIT));
         }
     }
+
+    if (r) {
+        nitro_frame_destroy(fr);
+    }
     return r;
 }
 
@@ -227,15 +235,15 @@ nitro_frame_t *Sinproc_socket_recv(nitro_inproc_socket_t *s, int flags) {
     return nitro_queue_pull(s->q_recv, !(flags & NITRO_NOWAIT));
 }
 
-int Sinproc_socket_reply(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr, int flags) {
+int Sinproc_socket_reply(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
     return -1;
 }
 
-int Sinproc_socket_relay_fw(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr, int flags) {
+int Sinproc_socket_relay_fw(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
     return -1;
 }
 
-int Sinproc_socket_relay_bk(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t *fr, int flags) {
+int Sinproc_socket_relay_bk(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
     return -1;
 }
 
@@ -250,6 +258,6 @@ int Sinproc_socket_unsub(nitro_inproc_socket_t *s,
 }
 
 int Sinproc_socket_pub(nitro_inproc_socket_t *s,
-    nitro_frame_t *fr, uint8_t *k, size_t length) {
+    nitro_frame_t **frp, uint8_t *k, size_t length, int flags) {
     return 0;
 }

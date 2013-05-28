@@ -1306,12 +1306,16 @@ void Stcp_pipe_in_cb(
  *
  * (PUBLIC API)
  */
-int Stcp_socket_send(nitro_tcp_socket_t *s, nitro_frame_t *fr, int flags) {
-    if (!(flags & NITRO_NOCOPY)) {
-        fr = nitro_frame_copy(fr);
+int Stcp_socket_send(nitro_tcp_socket_t *s, nitro_frame_t **frp, int flags) {
+    nitro_frame_t *fr = *frp;
+    if (flags & NITRO_REUSE) {
+        nitro_frame_incref(fr);
+    } else {
+        *frp = NULL;
     }
+
     int r = nitro_queue_push(s->q_send, fr, !(flags & NITRO_NOWAIT));
-    if (r && !(flags & NITRO_NOCOPY)) {
+    if (r) {
         nitro_frame_destroy(fr);
     }
     return r;
@@ -1341,25 +1345,29 @@ nitro_frame_t *Stcp_socket_recv(nitro_tcp_socket_t *s, int flags) {
  * private outbound queue.
  */
 int Stcp_socket_reply(nitro_tcp_socket_t *s,
-    nitro_frame_t *snd, nitro_frame_t *fr, int flags) {
+    nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
+    assert(!(flags & NITRO_REUSE));
+    nitro_frame_t *fr = *frp;
+    *frp = NULL;
+    
     int ret = -1;
     pthread_mutex_lock(&s->l_pipes);
     nitro_pipe_t *p = socket_lookup_pipe(
         SOCKET_UNIVERSAL(s), snd->sender);
 
     if (p) {
-        nitro_frame_t *out = (flags & NITRO_NOCOPY) ?
-            fr : nitro_frame_copy(fr);
-        nitro_frame_clone_stack(snd, out);
-        ret = nitro_queue_push(p->q_send, out, !(flags & NITRO_NOWAIT));
-        if (ret && !(flags & NITRO_NOCOPY)) {
-            nitro_frame_destroy(out);
-        }
+        nitro_frame_clone_stack(snd, fr);
+        ret = nitro_queue_push(p->q_send, fr, !(flags & NITRO_NOWAIT));
     } else {
         nitro_set_error(NITRO_ERR_NO_RECIPIENT);
     }
 
     pthread_mutex_unlock(&s->l_pipes);
+
+    if (ret) {
+        nitro_frame_destroy(fr);
+    }
+
     return ret;
 }
 
@@ -1374,15 +1382,17 @@ int Stcp_socket_reply(nitro_tcp_socket_t *s,
  * to the origin through all intermediate hops (if necessary).
  */
 int Stcp_socket_relay_fw(nitro_tcp_socket_t *s, 
-    nitro_frame_t *snd, nitro_frame_t *fr, int flags) {
+    nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
+    assert(!(flags & NITRO_REUSE));
+    nitro_frame_t *fr = *frp;
+    *frp = NULL;
 
-    nitro_frame_t *out = (flags & NITRO_NOCOPY) ? fr : nitro_frame_copy(fr);
-    nitro_frame_clone_stack(snd, out);
-    nitro_frame_set_sender(out, snd->sender, snd->sender_buffer);
-    nitro_frame_stack_push_sender(out);
-    int r = nitro_queue_push(s->q_send, out, !(flags & NITRO_NOWAIT));
-    if (r && !(flags & NITRO_NOCOPY)) {
-        nitro_frame_destroy(out);
+    nitro_frame_clone_stack(snd, fr);
+    nitro_frame_set_sender(fr, snd->sender, snd->sender_buffer);
+    nitro_frame_stack_push_sender(fr);
+    int r = nitro_queue_push(s->q_send, fr, !(flags & NITRO_NOWAIT));
+    if (r) {
+        nitro_frame_destroy(fr);
     }
 
     return r;
@@ -1401,7 +1411,11 @@ int Stcp_socket_relay_fw(nitro_tcp_socket_t *s,
  * the reply finds the original sender() (even over several hops).
  */
 int Stcp_socket_relay_bk(nitro_tcp_socket_t *s, 
-    nitro_frame_t *snd, nitro_frame_t *fr, int flags) {
+    nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
+    assert(!(flags & NITRO_REUSE));
+    nitro_frame_t *fr = *frp;
+    *frp = NULL;
+
     int ret = -1;
     pthread_mutex_lock(&s->l_pipes);
 
@@ -1415,19 +1429,18 @@ int Stcp_socket_relay_bk(nitro_tcp_socket_t *s,
             SOCKET_UNIVERSAL(s), top_of_stack);
 
         if (p) {
-            nitro_frame_t *out = (flags & NITRO_NOCOPY) ? 
-                fr : nitro_frame_copy(fr);
-            nitro_frame_clone_stack(snd, out);
-            nitro_frame_stack_pop(out);
-            ret = nitro_queue_push(p->q_send, out, !(flags & NITRO_NOWAIT));
-            if (ret && !(flags & NITRO_NOCOPY)) {
-                nitro_frame_destroy(out);
-            }
+            nitro_frame_clone_stack(snd, fr);
+            nitro_frame_stack_pop(fr);
+            ret = nitro_queue_push(p->q_send, fr, !(flags & NITRO_NOWAIT));
         } else {
             nitro_set_error(NITRO_ERR_NO_RECIPIENT);
         }
     }
     pthread_mutex_unlock(&s->l_pipes);
+
+    if (ret) {
+        nitro_frame_destroy(fr);
+    }
     return ret;
 }
 
@@ -1589,7 +1602,8 @@ static void Stcp_deliver_pub_frame(
     DL_FOREACH(mems, m) {
         nitro_pipe_t *p = (nitro_pipe_t *)m->ptr;
 
-        nitro_frame_t *fr = nitro_frame_copy(st->fr);
+        nitro_frame_t *fr = st->fr;
+        nitro_frame_incref(fr);
 
         /* we'll *try* to pub, but if queue is full, then
            we're just gonna have to drop it (pub will not
@@ -1614,7 +1628,15 @@ static void Stcp_deliver_pub_frame(
  * (PUBLIC API)
  */
 int Stcp_socket_pub(nitro_tcp_socket_t *s,
-    nitro_frame_t *fr, const uint8_t *k, size_t length) {
+    nitro_frame_t **frp, const uint8_t *k,
+    size_t length, int flags) {
+
+    nitro_frame_t *fr = *frp;
+    if (flags & NITRO_REUSE) {
+        nitro_frame_incref(fr);
+    } else {
+        *frp = NULL;
+    }
 
     Stcp_pub_state st = {0};
 
@@ -1626,6 +1648,8 @@ int Stcp_socket_pub(nitro_tcp_socket_t *s,
         k, length, Stcp_deliver_pub_frame, &st);
 
     pthread_mutex_unlock(&s->l_pipes);
+
+    nitro_frame_destroy(fr);
 
     return st.count;
 }

@@ -35,8 +35,7 @@ void *r_1(void *p) {
         nitro_frame_destroy(fr);
         int back = 10000 - i;
         fr = nitro_frame_new_copy(&back, sizeof(int));
-        nitro_send(fr, s, 0);
-        nitro_frame_destroy(fr);
+        nitro_send(&fr, s, 0);
     }
 
     res->r_c = i;
@@ -69,8 +68,7 @@ void *s_1(void *p) {
 
     for (i=0; i < 10000; i++) {
         nitro_frame_t *fr = nitro_frame_new_copy(&i, sizeof(int));
-        nitro_send(fr, s, 0);
-        nitro_frame_destroy(fr);
+        nitro_send(&fr, s, 0);
 
         fr = nitro_recv(s, 0);
         if (*(int*)nitro_frame_data(fr) != (10000 - i)) {
@@ -146,8 +144,7 @@ void *s_2(void *p) {
 
     for (i=0; i < 10000; i++) {
         nitro_frame_t *fr = nitro_frame_new_copy(&i, sizeof(int));
-        nitro_send(fr, s, 0);
-        nitro_frame_destroy(fr);
+        nitro_send(&fr, s, 0);
     }
 
     nitro_socket_close(s);

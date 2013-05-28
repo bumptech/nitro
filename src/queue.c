@@ -192,35 +192,38 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
        at the end, update its iovectors to represent the fractional
        state and return it as a "remainder" (but still pop it off
        this queue) */
-    int i = 0, r = 0, done=0;
+    int i = 0, r = 0, done=0, vecwalk=0;
     *remain = NULL;
     if (partial) {
         i = 0;
         do {
-            r = nitro_frame_iovs_advance(partial, i++, actual_bytes, &done);
+            r = nitro_frame_iovs_advance(partial, vectors + vecwalk, i++, actual_bytes, &done);
             actual_bytes -= r;
         } while (actual_bytes && !done);
 
         if (done) {
             nitro_frame_destroy(partial);
+            vecwalk += i;
         } else {
             assert(!actual_bytes);
              *remain = partial;
+            nitro_frame_set_iovec(partial, vectors + vecwalk);
         }
     }
     while (actual_bytes) {
         nitro_frame_t *fr = *q->head;
         i = 0;
         do {
-            r = nitro_frame_iovs_advance(fr, i++, actual_bytes, &done);
+            r = nitro_frame_iovs_advance(fr, vectors + vecwalk, i++, actual_bytes, &done);
             actual_bytes -= r;
         } while (actual_bytes && !done);
 
         if (done) {
             nitro_frame_destroy(fr);
+            vecwalk += i;
         } else {
             assert(!actual_bytes);
-            *remain = fr;
+            *remain = nitro_frame_copy_partial(fr, vectors + vecwalk);
         }
 
         q->head++;
@@ -275,8 +278,9 @@ int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
         int i;
         int done = 0;
         for (i=0; bwrite > 0 && !done; ++i) {
+            // modify in-place.. we own the frame privately
             bwrite -= nitro_frame_iovs_advance(
-                current, i, bwrite, &done);
+                current, current->iovs, i, bwrite, &done);
         }
         if (done) {
             nitro_frame_destroy(current);

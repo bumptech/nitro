@@ -37,7 +37,25 @@
 #include "cbuffer.h"
 
 
-nitro_frame_t *nitro_frame_copy(nitro_frame_t *f) {
+
+static inline void nitro_frame_cleanup(void *fp, void *unused) {
+    nitro_frame_t *f = (nitro_frame_t *)fp;
+    nitro_counted_buffer_decref(f->buffer);
+    if (f->ident_buffer) {
+        nitro_counted_buffer_decref(f->ident_buffer);
+    }
+    if (f->sender_buffer) {
+        nitro_counted_buffer_decref(f->sender_buffer);
+    }
+    free(f);
+}
+
+void nitro_frame_set_iovec(nitro_frame_t *f, struct iovec *vecs) {
+    assert(f->iovec_set);
+    memcpy(f->iovs, vecs, sizeof(struct iovec) * f->iovec_set);
+}
+
+nitro_frame_t *nitro_frame_copy_partial(nitro_frame_t *f, struct iovec *vecs) {
     assert(f->size < NITRO_MAX_FRAME);
     nitro_frame_t *result = malloc(sizeof(nitro_frame_t));
     memcpy(result, f, sizeof(nitro_frame_t));
@@ -46,6 +64,11 @@ nitro_frame_t *nitro_frame_copy(nitro_frame_t *f) {
         nitro_counted_buffer_incref(f->ident_buffer);
     if (f->sender_buffer)
         nitro_counted_buffer_incref(f->sender_buffer);
+    result->myref = nitro_counted_buffer_new(result, nitro_frame_cleanup, NULL);
+
+    if (vecs) {
+        nitro_frame_set_iovec(result, vecs);
+    }
     return result;
 }
 
@@ -62,6 +85,7 @@ nitro_frame_t *nitro_frame_new_prealloc(void *data, uint32_t size, nitro_counted
     f->buffer = buffer;
     f->size = size;
     f->data = data;
+    f->myref = nitro_counted_buffer_new(f, nitro_frame_cleanup, NULL);
     return f;
 }
 
@@ -168,12 +192,11 @@ inline struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num) {
     return (struct iovec *)fr->iovs;
 }
 
-inline int nitro_frame_iovs_advance(nitro_frame_t *fr, int index, int offset, int *done) {
+inline int nitro_frame_iovs_advance(nitro_frame_t *fr, 
+    struct iovec *vecs, int index, int offset, int *done) {
     int ret = -1;
 
-    assert(index < fr->iovec_set);
-
-    struct iovec *mv = &(fr->iovs[index]);
+    struct iovec *mv = &(vecs[index]);
 
     if (offset >= mv->iov_len) {
         ret = mv->iov_len;

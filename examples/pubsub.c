@@ -39,11 +39,9 @@ int main(int argc, char **argv) {
     sleep(1);
 
     nitro_frame_t *fr = nitro_frame_new_copy("dog", 4);
-    int sent = nitro_pub(fr, (uint8_t *)"foxy", 4, s);
+    int sent = nitro_pub(&fr, (uint8_t *)"foxy", 4, s, 0);
     printf("sent was: %d\n", sent);
     assert(sent == 1);
-
-    nitro_frame_destroy(fr);
 
     fr = nitro_recv(c, 0);
 

@@ -32,7 +32,7 @@ typedef struct nitro_protocol_header {
 } nitro_protocol_header;
 
 #define FRAME_BZERO_SIZE \
-    ((sizeof(void *) * 4) + \
+    ((sizeof(void *) * 3) + \
     (sizeof(char) * 4))
 
 typedef struct nitro_frame_t {
@@ -42,7 +42,6 @@ typedef struct nitro_frame_t {
     above if you add fields */
 
     /* START bzero() region */
-    nitro_key_t *key;
     /* num idents to send on end of buffer */
     nitro_counted_buffer_t *ident_buffer;
     nitro_counted_buffer_t *sender_buffer;
@@ -65,10 +64,12 @@ typedef struct nitro_frame_t {
     // TCP
     nitro_protocol_header tcp_header;
     struct iovec iovs[4];
+    nitro_counted_buffer_t *myref;
 
 } nitro_frame_t;
 
-nitro_frame_t *nitro_frame_copy(nitro_frame_t *f);
+void nitro_frame_set_iovec(nitro_frame_t *f, struct iovec *vecs);
+nitro_frame_t *nitro_frame_copy_partial(nitro_frame_t *f, struct iovec *vecs);
 nitro_frame_t *nitro_frame_new(void *data, uint32_t size, nitro_free_function ff, void *baton);
 nitro_frame_t *nitro_frame_new_prealloc(void *data, uint32_t size, nitro_counted_buffer_t *buffer);
 nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size);
@@ -77,7 +78,8 @@ nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size);
 inline void *nitro_frame_data(nitro_frame_t *fr);
 inline uint32_t nitro_frame_size(nitro_frame_t *fr);
 inline struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num);
-inline int nitro_frame_iovs_advance(nitro_frame_t *fr, int index, int offset, int *done);
+inline int nitro_frame_iovs_advance(nitro_frame_t *fr,
+    struct iovec *vecs, int index, int offset, int *done);
 void nitro_frame_iovs_reset(nitro_frame_t *fr);
 void nitro_frame_set_sender(nitro_frame_t *f,
     uint8_t *sender, nitro_counted_buffer_t *buf);
@@ -88,15 +90,11 @@ inline void nitro_frame_stack_push_sender(nitro_frame_t *f);
 inline void nitro_frame_stack_pop(nitro_frame_t *f);
 
 #define nitro_frame_destroy(f) {\
-    nitro_frame_t *__tmp_f = (f);\
-    nitro_counted_buffer_decref(__tmp_f->buffer);\
-    if (__tmp_f->ident_buffer) {\
-        nitro_counted_buffer_decref(__tmp_f->ident_buffer);\
-    }\
-    if (__tmp_f->sender_buffer) {\
-        nitro_counted_buffer_decref(__tmp_f->sender_buffer);\
-    }\
-    free(__tmp_f);\
+    nitro_counted_buffer_decref((f)->myref);\
+}
+
+#define nitro_frame_incref(f) {\
+    nitro_counted_buffer_incref((f)->myref);\
 }
 
 nitro_key_t *nitro_key_new(const uint8_t *data, uint8_t length, 

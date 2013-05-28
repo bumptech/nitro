@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     TEST("_new_copy mutate unchange",
     !strcmp(nitro_frame_data(fr), "yope"));
 
-    nitro_frame_t *fr2 = nitro_frame_copy(fr);
+    nitro_frame_t *fr2 = nitro_frame_copy_partial(fr, NULL);
 
     TEST("_copy frames are different",
     fr2 != fr);
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
     fr = nitro_frame_new(reg, 4,
     my_free, &fst);
 
-    fr2 = nitro_frame_copy(fr);
+    fr2 = nitro_frame_copy_partial(fr, NULL);
 
     TEST("custom free unmarked 1",
     !fst.done);
@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
     uint8_t *p1 = ios[0].iov_base;
     int done;
 
-    int r = nitro_frame_iovs_advance(fr, 0, 3, &done);
+    int r = nitro_frame_iovs_advance(fr, fr->iovs, 0, 3, &done);
     
     ios = nitro_frame_iovs(fr, &num);
     int s2 = ios[0].iov_len;
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
     p2 - p1 == 3);
 
     // test 2. more of first
-    r = nitro_frame_iovs_advance(fr, 0, 3, &done);
+    r = nitro_frame_iovs_advance(fr, fr->iovs, 0, 3, &done);
     ios = nitro_frame_iovs(fr, &num);
     s2 = ios[0].iov_len;
     p2 = ios[0].iov_base;
@@ -111,17 +111,17 @@ int main(int argc, char **argv) {
 
 
     // test 3. start of second
-    r = nitro_frame_iovs_advance(fr, 0, 10, &done);
+    r = nitro_frame_iovs_advance(fr, fr->iovs, 0, 10, &done);
     TEST("iovs advance (3) only took two, !done",
     !done && (r == 2));
-    r = nitro_frame_iovs_advance(fr, 1, 0, &done);
+    r = nitro_frame_iovs_advance(fr, fr->iovs, 1, 0, &done);
     ios = nitro_frame_iovs(fr, &num);
     TEST("iovs advance (3) still two iov",
     num == 2)
     s1 = ios[1].iov_len;
     p1 = ios[1].iov_base;
 
-    r = nitro_frame_iovs_advance(fr, 1, 4, &done);
+    r = nitro_frame_iovs_advance(fr, fr->iovs, 1, 4, &done);
     ios = nitro_frame_iovs(fr, &num);
     s2 = ios[1].iov_len;
     p2 = ios[1].iov_base;
@@ -132,7 +132,7 @@ int main(int argc, char **argv) {
     TEST("iovs advance (4) empty iov1 size",
     ios[0].iov_len == 0);
     
-    r = nitro_frame_iovs_advance(fr, 1, 40000, &done);
+    r = nitro_frame_iovs_advance(fr, fr->iovs, 1, 40000, &done);
     TEST("iovs advance final clip test",
     (r == big_length - 4) && done);
 

@@ -1,27 +1,129 @@
 #include "nitro.h"
 #include <unistd.h>
 
-#define MESSAGES 10000000
+static int MESSAGES;
+static int SIZE;
 
-int main(int argc, char **argv) {
-    nitro_runtime_start();
+struct test_state {
+    nitro_socket_t *s_r;
+    nitro_socket_t *s_s;
+    double start;
+    double end;
+};
 
-    nitro_socket_t *s = nitro_socket_bind("tcp://127.0.0.1:4444", NULL);
-    if (!s) {
-        printf("error on bind: %s\n", nitro_errmsg(nitro_error()));
-        exit(1);
-    }
+void *do_recv(void *baton) {
+    struct test_state *ts = (struct test_state *)baton;
+    nitro_socket_t *s = ts->s_r;
 
     int i;
     for (i=0; i < MESSAGES; ++i) {
         nitro_frame_t *fr = nitro_recv(s, 0);
         nitro_frame_destroy(fr);
     }
-    struct timeval tend;
-    gettimeofday(&tend, NULL);
+    struct timeval mark;
+    gettimeofday(&mark, NULL);
+    ts->end = ((double)mark.tv_sec + 
+        (mark.tv_usec / 1000000.0));
 
-    printf("ended %d messages: %d.%d\n", MESSAGES,
-        (int)tend.tv_sec, (int)tend.tv_usec);
+    return NULL;
+}
+
+void *do_send(void *baton) {
+    struct test_state *ts = (struct test_state *)baton;
+    nitro_socket_t *s = ts->s_s;
+    int i = 0;
+
+    char *buf = alloca(SIZE);
+    bzero(buf, SIZE);
+
+    sleep(1);
+    nitro_frame_t *out = nitro_frame_new_copy(buf, SIZE);
+
+    struct timeval mark;
+
+    gettimeofday(&mark, NULL);
+    for (i=0; i < MESSAGES; ++i) {
+        nitro_send(&out, s, NITRO_REUSE);
+    }
+
+    nitro_frame_destroy(out);
+
+    ts->start = ((double)mark.tv_sec + 
+        (mark.tv_usec / 1000000.0));
+    return NULL;
+}
+
+void print_report(struct test_state *ts, char *name) {
+    double delt = ts->end - ts->start;
+
+    fprintf(stderr, "{%s} %d messages in %.3f seconds (%d/s)\n",
+        name, MESSAGES, delt, (int)(MESSAGES / delt));
+}
+
+int main(int argc, char **argv) {
+
+    if (argc != 3) {
+        fprintf(stderr, "two arguments: MESSAGE_COUNT MESSAGE_SIZE\n");
+        return -1;
+    }
+
+    MESSAGES = atoi(argv[1]);
+    SIZE = atoi(argv[2]);
+    nitro_runtime_start();
+
+    nitro_socket_t *r = nitro_socket_bind("tcp://127.0.0.1:4444", NULL);
+    nitro_socket_t *c = nitro_socket_connect("tcp://127.0.0.1:4444", NULL);
+
+    pthread_t t1, t2;
+    void *res;
+    struct test_state test_1 = {r, c, 0, 0};
+
+    pthread_create(&t1, NULL, do_recv, &test_1);
+    pthread_create(&t2, NULL, do_send, &test_1);
+    pthread_join(t1, &res);
+    pthread_join(t2, &res);
+
+    print_report(&test_1, "tcp");
+
+    nitro_socket_close(r);
+    nitro_socket_close(c);
+
+    nitro_sockopt_t *opt = nitro_sockopt_new();
+    nitro_sockopt_set_secure(opt, 1);
+    nitro_sockopt_t *opt2 = nitro_sockopt_new();
+    nitro_sockopt_set_secure(opt2, 1);
+
+    r = nitro_socket_bind("tcp://127.0.0.1:4445", opt);
+    c = nitro_socket_connect("tcp://127.0.0.1:4445", opt2);
+
+    struct test_state test_2 = {r, c, 0, 0};
+
+    pthread_create(&t1, NULL, do_recv, &test_2);
+    pthread_create(&t2, NULL, do_send, &test_2);
+    pthread_join(t1, &res);
+    pthread_join(t2, &res);
+
+    print_report(&test_2, "tcp-secure");
+
+    nitro_socket_close(r);
+    nitro_socket_close(c);
+
+    r = nitro_socket_bind("inproc://foobar", NULL);
+    c = nitro_socket_connect("inproc://foobar", NULL);
+
+    struct test_state test_3 = {r, c, 0, 0};
+
+    pthread_create(&t1, NULL, do_recv, &test_3);
+    pthread_create(&t2, NULL, do_send, &test_3);
+    pthread_join(t1, &res);
+    pthread_join(t2, &res);
+
+    print_report(&test_3, "inproc");
+
+    nitro_socket_close(r);
+    nitro_socket_close(c);
+
+    nitro_runtime_stop();
 
     return 0;
 }

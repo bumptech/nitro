@@ -17,9 +17,8 @@ void *recipient(void *p) {
     int i;
     for (i=0; i < 5000; i++) {
         nitro_frame_t *fr = nitro_recv(s, 0);
-        int p = nitro_reply(fr, fr, s, 0);
+        int p = nitro_reply(fr, &fr, s, 0);
         assert(!p);
-        nitro_frame_destroy(fr);
     }
 
     return NULL;
@@ -36,14 +35,11 @@ void *proxy(void *ptr) {
     for (i=0; i < 10000; i++) {
         nitro_socket_t *outp = outs[i % 2];
         nitro_frame_t *fr = nitro_recv(inp, 0);
-        p = nitro_relay_fw(fr, fr, outp, 0);
+        p = nitro_relay_fw(fr, &fr, outp, 0);
         assert(!p);
-        nitro_frame_destroy(fr);
         fr = nitro_recv(outp, 0);
-        nitro_relay_bk(fr, fr, inp, 0);
+        nitro_relay_bk(fr, &fr, inp, 0);
         assert(!p);
-        nitro_frame_destroy(fr);
-
     }
     return NULL;
 }
@@ -72,8 +68,7 @@ void *sender(void *p) {
     /* pipeline... */
     for (i=base; i < base + 1000; ++i) {
         nitro_frame_t *fr = nitro_frame_new_copy(&i, sizeof(int));
-        nitro_send(fr, s, 0);
-        nitro_frame_destroy(fr);
+        nitro_send(&fr, s, 0);
     }
 
     /* pipeline... */

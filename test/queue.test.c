@@ -104,7 +104,7 @@ inline nitro_frame_t *make_frames(void *p) {
         return NULL;
     ++(*i);
 
-    return nitro_frame_copy(gframe);
+    return nitro_frame_copy_partial(gframe, NULL);
 }
 
 int main(int argc, char **argv) {
@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
 
     int i;
     for (i=0; i < 1023; i++) {
-        nitro_frame_t *hcopy = nitro_frame_copy(hello);
+        nitro_frame_t *hcopy = nitro_frame_copy_partial(hello, NULL);
         nitro_queue_push(q, hcopy, 1);
         back = nitro_queue_pull(q, 1);
         assert(back == hcopy);
@@ -206,7 +206,7 @@ int main(int argc, char **argv) {
     hello = nitro_frame_new_copy("hello", 6);
 
     for (i=0; i < 313; i++) {
-        back = nitro_frame_copy(hello);
+        back = nitro_frame_copy_partial(hello, NULL);
         nitro_queue_push(q, back, 1);
     }
 
@@ -477,7 +477,7 @@ int main(int argc, char **argv) {
     d1 = now_double();
     for (i=0; i < CONSUME_COUNT; i++) {
         nitro_queue_push(q,
-            nitro_frame_copy(gframe), 1);
+            nitro_frame_copy_partial(gframe, NULL), 1);
     }
     d2 = now_double();
 
