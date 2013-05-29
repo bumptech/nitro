@@ -3,6 +3,8 @@
 [x] Unit test trie
 [x] Pub/sub
 [ ] Pub/sub unit tests
+[ ] XXX PUB SUB CRASH BUG
+[ ] XXX HWM BUG
 [x] Nonblock send/recv -- change all internal uses to use this
 [x] Socket Options
 [x] STCP
@@ -13,6 +15,8 @@
 [x] Security/robustness on TCP upstream.
     .. aka Close on error instead of assert()
 [ ] Inproc
+[ ] Change REUSE/NOCOPY -- refcount frames, isolate parts that are "non final",
+    like in-progress iovecs, pub keys?  speed difference...
 [ ] Leak check
 [ ] Socket Diagnostics (HUP report, stats, query queue sizes, etc)
 [i] Python bindings
