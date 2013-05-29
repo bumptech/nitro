@@ -4,6 +4,7 @@
 #include "frame.h"
 #include "queue.h"
 
+#define QUEUE_GROWTH_FACTOR 3
 
 static void nitro_queue_issue_callbacks(nitro_queue_t *q, int old_count);
 
@@ -18,12 +19,12 @@ static void nitro_queue_grow(nitro_queue_t *q, int suggestion) {
     if (!q->size) {
         size = INITIAL_QUEUE_SZ;
     } else {
-        size = (q->capacity && (q->size << 3) > q->capacity) ?
-            q->capacity : (q->size << 3);
+        size = (q->capacity && (q->size << QUEUE_GROWTH_FACTOR) > q->capacity) ?
+            q->capacity : (q->size << QUEUE_GROWTH_FACTOR);
     }
 
     while (size < suggestion) {
-        size <<= 3;
+        size <<= QUEUE_GROWTH_FACTOR;
     }
 
     nitro_frame_t **old_q = q->q;

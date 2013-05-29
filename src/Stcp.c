@@ -1182,15 +1182,10 @@ void Stcp_pipe_out_cb(
 
     if (!p->us_handshake) {
         tried = 1;
-        assert(nitro_queue_count(p->q_send) == 0);
         nitro_frame_t *hello = nitro_frame_new_copy(
         s->opt->ident, SOCKET_IDENT_LENGTH);
         hello->type = NITRO_FRAME_HELLO;
-        r = nitro_queue_push(p->q_send, hello, 0);
-
-        /* Cannot get hello out because q_send full?? not okay */
-        assert(!r);
-
+        p->partial = hello;
         p->us_handshake = 1;
         doing_hello = 1;
     }
