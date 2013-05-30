@@ -1191,7 +1191,7 @@ void Stcp_pipe_out_cb(
     }
 
     /* Local queue takes precedence */
-    if (nitro_queue_count(p->q_send)) {
+    if (p->partial || nitro_queue_count(p->q_send)) {
         tried = 1;
         if (s->opt->secure && !doing_hello) {
             r = nitro_queue_fd_write_encrypted(
