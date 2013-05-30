@@ -962,7 +962,7 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                 /* Check the state counter to see if we've already processed this
                    version of the pipe's sub state */
                 if (st->p->sub_state_recv != state) {
-                    if (*bbuf_p) {
+                    if (!*bbuf_p) {
                         /* we need to retain the backing buffer for the sub data */
                         *bbuf_p = nitro_counted_buffer_new(
                             NULL, buffer_free, (void *)buf);
