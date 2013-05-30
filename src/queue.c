@@ -3,8 +3,13 @@
 #include "err.h"
 #include "frame.h"
 #include "queue.h"
+#include "buffer.h"
 
 #define QUEUE_GROWTH_FACTOR 3
+
+#define NITRO_MAX_IOV IOV_MAX
+#define QUEUE_FD_BUFFER_GUESS (32 * 1024)
+#define QUEUE_FD_BUFFER_PADDING (2 * 1024)
 
 static void nitro_queue_issue_callbacks(nitro_queue_t *q, int old_count);
 
@@ -63,6 +68,7 @@ nitro_queue_t *nitro_queue_new(int capacity,
     q->capacity = capacity;
     q->state_callback = queue_cb;
     q->baton = baton;
+    q->send_target = QUEUE_FD_BUFFER_GUESS;
     pthread_mutex_init(&q->lock, NULL);
     nitro_queue_grow(q, 0);
 
@@ -134,6 +140,8 @@ int nitro_queue_push(nitro_queue_t *q,
     return 0;
 }
 
+#define IOV_TOTAL(i) ((i[0].iov_len) + (i[1].iov_len) + (i[2].iov_len) + (i[3].iov_len))
+
 /* "internal" functions, mass population and eviction */
 int nitro_queue_fd_write(nitro_queue_t *q, int fd, 
     nitro_frame_t *partial,
@@ -144,27 +152,25 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
     int accum_bytes = 0;
     int ret = 0;
     nitro_frame_t **iter = q->head;
-    struct iovec vectors[IOV_MAX];
+    struct iovec vectors[NITRO_MAX_IOV];
 
     if (partial) {
         int num;
         struct iovec *f_vs = nitro_frame_iovs(partial, &num);
         memcpy(&(vectors[0]), f_vs, num * sizeof(struct iovec));
-        accum_bytes += 
-            (f_vs[0].iov_len + f_vs[1].iov_len + 
-             f_vs[2].iov_len + f_vs[3].iov_len);
+        accum_bytes += IOV_TOTAL(f_vs);
         actual_iovs += num;
     }
 
     int old_count = q->count;
     int temp_count = old_count;
-    while (accum_bytes < (32 * 1024) && actual_iovs < (IOV_MAX - 4) && temp_count) {
+    int byte_target = q->send_target + QUEUE_FD_BUFFER_PADDING;;
+
+    while (accum_bytes < byte_target && actual_iovs < (NITRO_MAX_IOV - 5) && temp_count) {
         int num;
         struct iovec *f_vs = nitro_frame_iovs(*iter, &num);
         memcpy(&(vectors[actual_iovs]), f_vs, num * sizeof(struct iovec));
-        accum_bytes += 
-            (f_vs[0].iov_len + f_vs[1].iov_len + 
-             f_vs[2].iov_len + f_vs[3].iov_len);
+        accum_bytes += IOV_TOTAL(f_vs);
         actual_iovs += num;
         ++iter;
         --temp_count;
@@ -193,38 +199,37 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
        at the end, update its iovectors to represent the fractional
        state and return it as a "remainder" (but still pop it off
        this queue) */
-    int i = 0, r = 0, done=0, vecwalk=0;
+    int i = 0, r = 0, done=0;
     *remain = NULL;
     if (partial) {
         i = 0;
         do {
-            r = nitro_frame_iovs_advance(partial, vectors + vecwalk, i++, actual_bytes, &done);
+            r = nitro_frame_iovs_advance(partial, partial->iovs, i++, actual_bytes, &done);
             actual_bytes -= r;
         } while (actual_bytes && !done);
 
         if (done) {
             nitro_frame_destroy(partial);
-            vecwalk += i;
         } else {
             assert(!actual_bytes);
              *remain = partial;
-            nitro_frame_set_iovec(partial, vectors + vecwalk);
         }
     }
     while (actual_bytes) {
         nitro_frame_t *fr = *q->head;
+        struct iovec scratch[4];
+        memcpy(scratch, fr->iovs, sizeof(scratch));
         i = 0;
         do {
-            r = nitro_frame_iovs_advance(fr, vectors + vecwalk, i++, actual_bytes, &done);
+            r = nitro_frame_iovs_advance(fr, scratch, i++, actual_bytes, &done);
             actual_bytes -= r;
         } while (actual_bytes && !done);
 
         if (done) {
             nitro_frame_destroy(fr);
-            vecwalk += i;
         } else {
             assert(!actual_bytes);
-            *remain = nitro_frame_copy_partial(fr, vectors + vecwalk);
+            *remain = nitro_frame_copy_partial(fr, scratch);
         }
 
         q->head++;
@@ -234,6 +239,9 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
     }
 
     nitro_queue_issue_callbacks(q, old_count);
+    if (q->count && ret > 0) {
+        q->send_target = ret >  QUEUE_FD_BUFFER_GUESS ? QUEUE_FD_BUFFER_GUESS : ret;
+    }
 
 out:
     pthread_mutex_unlock(&q->lock);
