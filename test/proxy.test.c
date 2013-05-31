@@ -1,6 +1,8 @@
 #include "test.h"
 #include "nitro.h"
 
+static int mode;
+
 struct t_1 {
     int got[10];
     pthread_t kids[10];
@@ -8,7 +10,14 @@ struct t_1 {
 
 void *recipient(void *p) {
     char *bind_loc = (char *)p;
-    nitro_socket_t *s = nitro_socket_bind(bind_loc, NULL);
+    nitro_socket_t *s;
+    nitro_sockopt_t *opt = nitro_sockopt_new();
+
+    if (mode == 1) {
+        nitro_sockopt_set_secure(opt, 1);
+    }
+
+    s = nitro_socket_bind(bind_loc, opt);
     if (!s) {
         printf("error on bind: %s\n", nitro_errmsg(nitro_error()));
         exit(1);
@@ -26,9 +35,32 @@ void *recipient(void *p) {
 
 void *proxy(void *ptr) {
     nitro_socket_t *outs[2];
-    nitro_socket_t *inp = nitro_socket_bind("tcp://127.0.0.1:4443", NULL);
-    outs[0] = nitro_socket_connect("tcp://127.0.0.1:4444", NULL);
-    outs[1] = nitro_socket_connect("tcp://127.0.0.1:4445", NULL);
+    nitro_socket_t *inp = NULL;
+
+    nitro_sockopt_t *opt = nitro_sockopt_new();
+    nitro_sockopt_t *opt1 = nitro_sockopt_new();
+    nitro_sockopt_t *opt2 = nitro_sockopt_new();
+
+    switch (mode) {
+    case 0:
+        inp = nitro_socket_bind("tcp://127.0.0.1:4443", opt);
+        outs[0] = nitro_socket_connect("tcp://127.0.0.1:4444", opt1);
+        outs[1] = nitro_socket_connect("tcp://127.0.0.1:4445", opt2);
+        break;
+    case 1:
+        nitro_sockopt_set_secure(opt, 1);
+        nitro_sockopt_set_secure(opt1, 1);
+        nitro_sockopt_set_secure(opt2, 1);
+        inp = nitro_socket_bind("tcp://127.0.0.1:4443", opt);
+        outs[0] = nitro_socket_connect("tcp://127.0.0.1:4444", opt1);
+        outs[1] = nitro_socket_connect("tcp://127.0.0.1:4445", opt2);
+        break;
+    case 2:
+        inp = nitro_socket_bind("inproc://front", opt);
+        outs[0] = nitro_socket_connect("inproc://back1", opt1);
+        outs[1] = nitro_socket_connect("inproc://back2", opt2);
+        break;
+    }
 
     int p;
     int i;
@@ -56,10 +88,20 @@ void *sender(void *p) {
 
     int id = i;
 
-    nitro_socket_t *s = nitro_socket_connect("tcp://127.0.0.1:4443", NULL);
-    if (!s) {
-        printf("error on connect: %s\n", nitro_errmsg(nitro_error()));
-        exit(1);
+    nitro_socket_t *s = NULL;
+    nitro_sockopt_t *opt = nitro_sockopt_new();
+
+    switch (mode) {
+    case 0:
+        s = nitro_socket_connect("tcp://127.0.0.1:4443", opt);
+        break;
+    case 1:
+        nitro_sockopt_set_secure(opt, 1);
+        s = nitro_socket_connect("tcp://127.0.0.1:4443", opt);
+        break;
+    case 2:
+        s = nitro_socket_connect("inproc://front", opt);
+        break;
     }
 
     int base = id * 1000;
@@ -86,6 +128,9 @@ void *sender(void *p) {
 }
 
 int main(int argc, char **argv) {
+    if (argc > 1) {
+        mode = atoi(argv[1]);
+    }
     nitro_runtime_start();
 
     pthread_t r1, r2, prox;
@@ -93,9 +138,20 @@ int main(int argc, char **argv) {
     struct t_1 acc1;
     bzero(&acc1, sizeof(acc1));
 
-    pthread_create(&r1, NULL, recipient, "tcp://127.0.0.1:4444");
-    pthread_create(&r2, NULL, recipient, "tcp://127.0.0.1:4445");
-    pthread_create(&prox, NULL, proxy, "tcp://127.0.0.1:4445");
+    switch(mode) {
+    case 0:
+    case 1:
+        pthread_create(&r1, NULL, recipient, "tcp://127.0.0.1:4444");
+        pthread_create(&r2, NULL, recipient, "tcp://127.0.0.1:4445");
+        break;
+    case 2:
+        pthread_create(&r1, NULL, recipient, "inproc://back1");
+        pthread_create(&r2, NULL, recipient, "inproc://back2");
+        break;
+    }
+    sleep(1);
+    pthread_create(&prox, NULL, proxy, NULL);
+    sleep(1);
 
     int i;
     for (i=0; i < 10; i++) {

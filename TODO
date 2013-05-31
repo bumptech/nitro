@@ -3,6 +3,7 @@
 [x] Unit test trie
 [x] Pub/sub
 [ ] Pub/sub unit tests
+[ ] Torture
 [ ] XXX HWM BUG
 [x] Nonblock send/recv -- change all internal uses to use this
 [x] Socket Options
@@ -18,8 +19,6 @@
     like in-progress iovecs, pub keys?  speed difference...
 [ ] Leak check
 [ ] Socket Diagnostics (HUP report, stats, query queue sizes, etc)
-[ ] Copy/pack encrypted frame smarter into common buffer for fewer writev calls
-[ ] Profile Inproc and find slow points
 [i] Python bindings
 [i] Haskell bindings
 [ ] Kill all XXX
