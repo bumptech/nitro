@@ -74,6 +74,10 @@ void Sinproc_socket_bound_add_conn(nitro_inproc_socket_t *b,
 
     pthread_rwlock_wrlock(&b->link_lock);
 
+    HASH_ADD_KEYPTR(bound_hh,
+        b->registry, c->opt->ident,
+        SOCKET_IDENT_LENGTH, c);
+
     CDL_PREPEND(b->links, c);
     if (!atomic_load(&b->current)) {
         atomic_init(&b->current, c);
@@ -87,6 +91,9 @@ void Sinproc_socket_bound_rm_conn(nitro_inproc_socket_t *b,
     nitro_inproc_socket_t *c) {
 
     pthread_rwlock_wrlock(&b->link_lock);
+
+    HASH_DELETE(bound_hh, b->registry, c);
+
     if (atomic_load(&b->current) == c) {
         atomic_init(&b->current, (c->next == c) ? NULL : c->next);
     }
@@ -191,15 +198,8 @@ void Sinproc_socket_close(nitro_inproc_socket_t *s){
     nitro_counted_buffer_decref(cleanup);
 }
 
-int Sinproc_socket_send(nitro_inproc_socket_t *s, nitro_frame_t **frp, int flags) {
-    nitro_frame_t *fr = *frp;
-    if (flags & NITRO_REUSE) {
-        nitro_frame_incref(fr);
-    } else {
-        *frp = NULL;
-    }
-
-    int r = -1;
+static int Sinproc_socket_send_general(nitro_inproc_socket_t *s,  nitro_frame_t *fr, int flags) {
+    int ret = -1;
     if (s->bound) {
         pthread_rwlock_rdlock(&s->link_lock);
         volatile nitro_inproc_socket_t *try = atomic_load(&s->current);
@@ -211,7 +211,7 @@ int Sinproc_socket_send(nitro_inproc_socket_t *s, nitro_frame_t **frp, int flags
                 ok = atomic_compare_exchange_strong(
                     &s->current, &try, try->next);
             }
-            r = nitro_queue_push(try->q_recv, fr,
+            ret = nitro_queue_push(try->q_recv, fr,
                !(flags & NITRO_NOWAIT));
         }
         pthread_rwlock_unlock(&s->link_lock);
@@ -220,15 +220,55 @@ int Sinproc_socket_send(nitro_inproc_socket_t *s, nitro_frame_t **frp, int flags
         if (s->links->dead) {
             nitro_set_error(NITRO_ERR_INPROC_NO_CONNECTIONS);
         } else {
-            r = nitro_queue_push(s->links->q_recv, fr,
+            ret = nitro_queue_push(s->links->q_recv, fr,
                !(flags & NITRO_NOWAIT));
         }
     }
+    return ret;
+}
 
-    if (r) {
+static int Sinproc_socket_send_to_ident(nitro_inproc_socket_t *s, uint8_t *ident, nitro_frame_t *fr, int flags) {
+    int ret = -1;
+    nitro_inproc_socket_t *try;
+    if (s->bound) {
+        pthread_rwlock_rdlock(&s->link_lock);
+        HASH_FIND(bound_hh, s->registry, ident,
+            SOCKET_IDENT_LENGTH, try);
+        if (try == NULL) {
+            nitro_set_error(NITRO_ERR_NO_RECIPIENT);
+        } else {
+            ret = nitro_queue_push(try->q_recv, fr,
+               !(flags & NITRO_NOWAIT));
+        }
+        pthread_rwlock_unlock(&s->link_lock);
+    } else {
+        assert(s->links);
+        if (s->links->dead) {
+            nitro_set_error(NITRO_ERR_NO_RECIPIENT);
+        } else {
+            ret = nitro_queue_push(s->links->q_recv, fr,
+               !(flags & NITRO_NOWAIT));
+        }
+    }
+    return ret;
+}
+
+
+int Sinproc_socket_send(nitro_inproc_socket_t *s, nitro_frame_t **frp, int flags) {
+    nitro_frame_t *fr = *frp;
+    if (flags & NITRO_REUSE) {
+        fr = nitro_frame_copy_partial(fr, NULL);
+    } else {
+        *frp = NULL;
+    }
+
+    nitro_frame_set_sender(fr, s->opt->ident, s->opt->ident_buf);
+
+    int ret = Sinproc_socket_send_general(s, fr, flags);
+    if (ret) {
         nitro_frame_destroy(fr);
     }
-    return r;
+    return ret;
 }
 
 nitro_frame_t *Sinproc_socket_recv(nitro_inproc_socket_t *s, int flags) {
@@ -236,15 +276,64 @@ nitro_frame_t *Sinproc_socket_recv(nitro_inproc_socket_t *s, int flags) {
 }
 
 int Sinproc_socket_reply(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
-    return -1;
+    int ret = 0;
+    nitro_frame_t *fr = *frp;
+    fr = nitro_frame_copy_partial(fr, NULL);
+    nitro_frame_clone_stack(snd, fr);
+    nitro_frame_set_sender(fr, s->opt->ident, s->opt->ident_buf);
+
+    ret = Sinproc_socket_send_to_ident(s, snd->sender, fr, flags);
+
+    if (!(flags & NITRO_REUSE)) {
+        nitro_frame_destroy(*frp);
+        *frp = NULL;
+    }
+    if (ret) {
+        nitro_frame_destroy(fr);
+    }
+    return ret;
 }
 
 int Sinproc_socket_relay_fw(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
-    return -1;
+    int ret = 0;
+    nitro_frame_t *fr = *frp;
+    fr = nitro_frame_copy_partial(fr, NULL);
+
+    nitro_frame_set_sender(fr, s->opt->ident, s->opt->ident_buf);
+    nitro_frame_extend_stack(snd, fr);
+
+    ret = Sinproc_socket_send_general(s, fr, flags);
+    if (!(flags & NITRO_REUSE)) {
+        nitro_frame_destroy(*frp);
+        *frp = NULL;
+    }
+    if (ret) {
+        nitro_frame_destroy(fr);
+    }
+    return ret;
 }
 
 int Sinproc_socket_relay_bk(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
-    return -1;
+    int ret = 0;
+    nitro_frame_t *fr = *frp;
+    fr = nitro_frame_copy_partial(fr, NULL);
+    nitro_frame_set_sender(fr, s->opt->ident, s->opt->ident_buf);
+
+    uint8_t *top_of_stack = snd->ident_data + (
+        (snd->num_ident - 1) * SOCKET_IDENT_LENGTH);
+
+    nitro_frame_clone_stack(snd, fr);
+    nitro_frame_stack_pop(fr);
+
+    ret = Sinproc_socket_send_to_ident(s, top_of_stack, fr, flags);
+    if (!(flags & NITRO_REUSE)) {
+        nitro_frame_destroy(*frp);
+        *frp = NULL;
+    }
+    if (ret) {
+        nitro_frame_destroy(fr);
+    }
+    return ret;
 }
 
 int Sinproc_socket_sub(nitro_inproc_socket_t *s,

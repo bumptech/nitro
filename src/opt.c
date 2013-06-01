@@ -10,6 +10,8 @@ nitro_sockopt_t *nitro_sockopt_new() {
     ZALLOC(opt);
 
     /* defaults (otherwise, 0) */
+    opt->ident = malloc(SOCKET_IDENT_LENGTH);
+    opt->ident_buf = nitro_counted_buffer_new(opt->ident, just_free, NULL);
     opt->close_linger = 1.0;
     opt->reconnect_interval = 0.2; /* seconds */
     opt->max_message_size = 16 * NITRO_MB;
@@ -81,13 +83,19 @@ void nitro_sockopt_set_required_remote_ident(nitro_sockopt_t *opt,
     opt->has_remote_ident = 1;
 }
 
-void nitro_socket_set_error_handler(nitro_sockopt_t *opt,
+void nitro_sockopt_set_error_handler(nitro_sockopt_t *opt,
     nitro_error_handler handler, void *baton) {
     opt->error_handler_baton = baton;
     opt->error_handler = handler;
 }
 
-void nitro_socket_disable_error_handler(nitro_sockopt_t *opt) {
+void nitro_sockopt_disable_error_handler(nitro_sockopt_t *opt) {
     opt->error_handler = NULL;
     opt->error_handler_baton = NULL;
 }
+
+void nitro_sockopt_destroy(nitro_sockopt_t *opt) {
+    nitro_counted_buffer_decref(opt->ident_buf);
+    free(opt);
+}
+

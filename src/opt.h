@@ -2,6 +2,7 @@
 #define NITRO_OPT_H
 
 #include "common.h"
+#include "cbuffer.h"
 
 typedef void (*nitro_error_handler)(int nitro_error, void *baton);
 
@@ -15,7 +16,8 @@ typedef struct nitro_sockopt_t {
     int want_eventfd;
 
     int has_ident;
-    uint8_t ident[SOCKET_IDENT_LENGTH];
+    uint8_t *ident;
+    nitro_counted_buffer_t *ident_buf;
     uint8_t pkey[crypto_box_SECRETKEYBYTES];
 
     int secure;
@@ -44,8 +46,9 @@ void nitro_sockopt_set_secure(nitro_sockopt_t *opt, int enabled);
 void nitro_sockopt_set_required_remote_ident(nitro_sockopt_t *opt,
     uint8_t *ident, size_t ident_length);
 void nitro_sockopt_set_want_eventfd(nitro_sockopt_t *opt, int want_eventfd);
-void nitro_socket_set_error_handler(nitro_sockopt_t *opt,
+void nitro_sockopt_set_error_handler(nitro_sockopt_t *opt,
     nitro_error_handler handler, void *baton);
-void nitro_socket_disable_error_handler(nitro_sockopt_t *opt);
+void nitro_sockopt_disable_error_handler(nitro_sockopt_t *opt);
+void nitro_sockopt_destroy(nitro_sockopt_t *opt);
 
 #endif /* NITRO_OPT_H */

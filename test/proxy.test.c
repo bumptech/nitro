@@ -167,7 +167,6 @@ int main(int argc, char **argv) {
 
     for (i=0; i < 10; i++) {
         pthread_join(acc1.kids[i], res);
-        fprintf(stderr, "thread got: %d\n", acc1.got[i]);
         TEST("proxy(sender) all 1,000 of mine matched", acc1.got[i] == 1000);
     }
 

@@ -109,6 +109,23 @@ void nitro_frame_clone_stack(nitro_frame_t *fr, nitro_frame_t *to) {
     }
 }
 
+void nitro_frame_extend_stack(nitro_frame_t *fr, nitro_frame_t *to) {
+    if (to->ident_buffer) {
+        nitro_counted_buffer_decref(to->ident_buffer);
+    }
+    to->num_ident = fr->num_ident + (fr->sender ? 1 : 0);
+    to->ident_data = malloc(SOCKET_IDENT_LENGTH * to->num_ident);
+    to->ident_buffer = nitro_counted_buffer_new(to->ident_data, just_free, NULL);
+    if (fr->num_ident) {
+        memcpy(to->ident_data, fr->ident_data, SOCKET_IDENT_LENGTH * fr->num_ident);
+    }
+
+    if (fr->sender) {
+        memcpy(to->ident_data + (SOCKET_IDENT_LENGTH * fr->num_ident),
+            fr->sender, SOCKET_IDENT_LENGTH);
+    }
+}
+
 void nitro_frame_set_sender(nitro_frame_t *f,
     uint8_t *sender, nitro_counted_buffer_t *buf) {
     if (f->sender_buffer) {
@@ -116,7 +133,9 @@ void nitro_frame_set_sender(nitro_frame_t *f,
     }
     f->sender_buffer = buf;
     f->sender = sender;
-    nitro_counted_buffer_incref(buf);
+    if (buf) {
+        nitro_counted_buffer_incref(buf);
+    }
 }
 
 inline void nitro_frame_stack_pop(nitro_frame_t *f) {

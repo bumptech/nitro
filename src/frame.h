@@ -60,11 +60,11 @@ typedef struct nitro_frame_t {
     uint32_t size;
 
     uint8_t *sender;
+    nitro_counted_buffer_t *myref;
 
     // TCP
     nitro_protocol_header tcp_header;
     struct iovec iovs[4];
-    nitro_counted_buffer_t *myref;
 
 } nitro_frame_t;
 
@@ -88,6 +88,7 @@ void nitro_frame_set_stack(nitro_frame_t *f, const uint8_t *data,
     nitro_counted_buffer_t *buf, uint8_t num);
 inline void nitro_frame_stack_push_sender(nitro_frame_t *f);
 inline void nitro_frame_stack_pop(nitro_frame_t *f);
+void nitro_frame_extend_stack(nitro_frame_t *fr, nitro_frame_t *to);
 
 #define nitro_frame_destroy(f) {\
     nitro_counted_buffer_decref((f)->myref);\

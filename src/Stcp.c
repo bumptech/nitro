@@ -117,7 +117,6 @@ static int Stcp_parse_location(char *p_location,
         return nitro_set_error(NITRO_ERR_TCP_LOC_NOCOLON);
     }
 
-
     *split = 0;
     errno = 0;
     int port = strtol(split + 1, NULL, 10);

@@ -45,7 +45,7 @@ NITRO_SOCKET_TRANSPORT socket_parse_location(char *location, char **next) {
 
 void nitro_socket_destroy(nitro_socket_t *s) {
     nitro_universal_socket_t *us = &s->stype.univ;
-    free(us->opt);
+    nitro_sockopt_destroy(us->opt);
     free(us->given_location);
     free(s);
     atomic_fetch_sub(&the_runtime->num_sock, 1);

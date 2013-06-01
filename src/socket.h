@@ -111,6 +111,9 @@ typedef struct nitro_inproc_socket_t {
     int bound;
     int dead;
 
+    struct nitro_inproc_socket_t *registry;
+    UT_hash_handle bound_hh;
+
 } nitro_inproc_socket_t;
 
 typedef struct nitro_socket_t {
