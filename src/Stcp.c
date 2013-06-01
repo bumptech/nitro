@@ -38,7 +38,6 @@
 #include "async.h"
 #include "crypto.h"
 #include "err.h"
-#include "pipe.h"
 #include "runtime.h"
 #include "socket.h"
 
@@ -224,6 +223,7 @@ int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
     }
     s->outbound = 1;
 
+    pthread_mutex_init(&s->l_pipes, NULL);
     Stcp_create_queues(s);
 
     ev_timer_init(
@@ -258,6 +258,7 @@ int Stcp_socket_bind(nitro_tcp_socket_t *s, char *location) {
         return r;
     }
 
+    pthread_mutex_init(&s->l_pipes, NULL);
     Stcp_create_queues(s);
     ev_timer_init(
         &s->sub_send_timer,
@@ -548,8 +549,7 @@ void Stcp_destroy_pipe(nitro_pipe_t *p) {
     if (p->partial) {
         nitro_frame_destroy(p->partial);
     }
-    nitro_pipe_destroy(p,
-        SOCKET_UNIVERSAL(s));
+    Stcp_pipe_destroy(p, s);
 
     if (s->outbound) {
         ev_timer_start(the_runtime->the_loop, &s->connect_timer);
@@ -567,7 +567,7 @@ void Stcp_destroy_pipe(nitro_pipe_t *p) {
  */
 void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd) {
     NITRO_THREAD_CHECK;
-    nitro_pipe_t *p = nitro_pipe_new(SOCKET_UNIVERSAL(s));
+    nitro_pipe_t *p = Stcp_pipe_new(s);
     p->fd = fd;
     p->in_buffer = nitro_buffer_new();
     p->the_socket = s;
@@ -927,7 +927,7 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                     st->p->remote_ident, just_free, NULL);
 
                 /* Register the pipe id into the routing table (for replies and pub) */
-                socket_register_pipe(SOCKET_UNIVERSAL(st->s), st->p);
+                Stcp_register_pipe(st->s, st->p);
 
                 /* If this is a secure socket, cache crypto information associated
                    with the ident (which is actually an NaCl public key */
@@ -1346,8 +1346,7 @@ int Stcp_socket_reply(nitro_tcp_socket_t *s,
     
     int ret = -1;
     pthread_mutex_lock(&s->l_pipes);
-    nitro_pipe_t *p = socket_lookup_pipe(
-        SOCKET_UNIVERSAL(s), snd->sender);
+    nitro_pipe_t *p = Stcp_lookup_pipe(s, snd->sender);
 
     if (p) {
         nitro_frame_clone_stack(snd, fr);
@@ -1419,8 +1418,8 @@ int Stcp_socket_relay_bk(nitro_tcp_socket_t *s,
         uint8_t *top_of_stack = snd->ident_data + (
             (snd->num_ident - 1) * SOCKET_IDENT_LENGTH);
 
-        nitro_pipe_t *p = socket_lookup_pipe(
-            SOCKET_UNIVERSAL(s), top_of_stack);
+        nitro_pipe_t *p = Stcp_lookup_pipe(
+            s, top_of_stack);
 
         if (p) {
             nitro_frame_clone_stack(snd, fr);
@@ -1646,4 +1645,69 @@ int Stcp_socket_pub(nitro_tcp_socket_t *s,
     nitro_frame_destroy(fr);
 
     return st.count;
+}
+
+
+void Stcp_register_pipe(nitro_tcp_socket_t *s, nitro_pipe_t *p) {
+    pthread_mutex_lock(&s->l_pipes);
+    HASH_ADD_KEYPTR(hh, s->pipes_by_session, 
+        p->remote_ident, SOCKET_IDENT_LENGTH, p);
+    
+    nitro_pipe_t *p2 = Stcp_lookup_pipe(s, p->remote_ident);
+    assert(p2);
+    p->registered = 1;
+    pthread_mutex_unlock(&s->l_pipes);
+}
+
+nitro_pipe_t *Stcp_lookup_pipe(nitro_tcp_socket_t *s, uint8_t *ident) {
+    // assumed -- lock held
+    nitro_pipe_t *p;
+    HASH_FIND(hh, s->pipes_by_session, 
+        ident, SOCKET_IDENT_LENGTH, p);
+    return p;
+}
+
+void Stcp_unregister_pipe(nitro_tcp_socket_t *s, nitro_pipe_t *p) {
+    pthread_mutex_lock(&s->l_pipes);
+    if (p->registered) {
+        HASH_DELETE(hh, s->pipes_by_session, p);
+        p->registered = 0;
+    }
+    pthread_mutex_unlock(&s->l_pipes);
+}
+
+void Stcp_pipe_destroy(nitro_pipe_t *p, nitro_tcp_socket_t *s) {
+
+    Stcp_unregister_pipe(s, p);
+
+    pthread_mutex_lock(&s->l_pipes);
+    if (s->num_pipes == 1) {
+       s->next_pipe = NULL;
+    } else if (p == s->next_pipe) {
+       s->next_pipe = p->next;
+    }
+    --s->num_pipes;
+    CDL_DELETE(s->pipes, p);
+    pthread_mutex_unlock(&s->l_pipes);
+
+    if (p->remote_ident_buf) {
+        nitro_counted_buffer_decref(p->remote_ident_buf);
+    }
+
+    free(p);
+}
+
+nitro_pipe_t *Stcp_pipe_new(nitro_tcp_socket_t *s) {
+    nitro_pipe_t *p = calloc(1, sizeof(nitro_pipe_t));
+
+    pthread_mutex_lock(&s->l_pipes);
+    CDL_PREPEND(s->pipes, p);
+    if (!s->next_pipe) {
+        s->next_pipe = p;
+    }
+    ++s->num_pipes;
+    pthread_mutex_unlock(&s->l_pipes);
+
+
+    return p;
 }

@@ -7,9 +7,49 @@
 #include "cbuffer.h"
 #include "frame.h"
 #include "opt.h"
-#include "pipe.h"
 #include "queue.h"
 #include "trie.h"
+
+typedef struct nitro_pipe_t *nitro_pipe_t_p;
+
+typedef struct nitro_pipe_t {
+
+    /* Direct send queue */
+    nitro_queue_t *q_send;
+
+    /* for TCP sockets */
+    ev_io ior;
+    ev_io iow;
+    int fd;
+    uint64_t sub_state_sent;
+    uint64_t sub_state_recv;
+
+    /* When we have partial output */
+    nitro_frame_t *partial;
+    uint8_t *remote_ident;
+    nitro_counted_buffer_t *remote_ident_buf;
+    char us_handshake;
+    char them_handshake;
+    char registered;
+    uint8_t crypto_cache[crypto_box_BEFORENMBYTES];
+    uint8_t nonce_gen[crypto_box_NONCEBYTES];
+    uint64_t *nonce_incr;
+
+    nitro_buffer_t *in_buffer;
+
+    void *the_socket;
+
+    /* XXX for inproc, paired socket */
+    void *dest_socket;
+
+    struct nitro_pipe_t *prev;
+    struct nitro_pipe_t *next;
+
+    nitro_key_t *sub_keys;
+
+    UT_hash_handle hh;
+} nitro_pipe_t;
+
 
 #define INPROC_PREFIX "inproc://"
 #define TCP_PREFIX "tcp://"
@@ -42,31 +82,8 @@ typedef enum {
     nitro_sockopt_t *opt;\
     /* Incoming messages */\
     nitro_queue_t *q_recv;\
-    /* Outgoing _general_ messages */\
-    nitro_queue_t *q_send;\
-    ev_timer close_timer;\
-    \
-    /* Pipes need to be locked during map
-       lookup, mutation by libev thread, etc */\
-    pthread_mutex_t l_pipes;\
-    /* for reply-style session mapping\
-       UT Hash.  Pipes that have not yet registered are not in here */\
-    nitro_pipe_t *pipes_by_session;\
-    \
-    /* Circular List of all connected pipes (can use for round robining, or broadcast with pub)*/\
-    nitro_pipe_t *pipes;\
-    nitro_pipe_t *next_pipe;\
-    int num_pipes;\
-    \
     /* Event fd (for integration with other event loops) */\
     int event_fd;\
-    \
-    /* Subscription trie */\
-    nitro_prefix_trie_node *subs;\
-    /* Socket identity/crypto */\
-    /* Local "want subscription" list */\
-    nitro_key_t *sub_keys;\
-    uint64_t sub_keys_state;\
     /* Parent socket */\
     void *parent;\
 
@@ -78,6 +95,29 @@ typedef struct nitro_tcp_socket_t *nitro_tcp_socket_t_p;
 
 typedef struct nitro_tcp_socket_t {
     SOCKET_COMMON_FIELDS
+
+    /* Outgoing _general_ messages */
+    nitro_queue_t *q_send;
+    ev_timer close_timer;
+    
+    /* Pipes need to be locked during map
+       lookup, mutation by libev thread, etc */
+    pthread_mutex_t l_pipes;
+    /* for reply-style session mapping
+       UT Hash.  Pipes that have not yet registered are not in here */
+    nitro_pipe_t *pipes_by_session;
+    
+    /* Circular List of all connected pipes (can use for round robining, or broadcast with pub)*/
+    nitro_pipe_t *pipes;
+    nitro_pipe_t *next_pipe;
+    int num_pipes;
+    
+    /* Subscription trie */
+    nitro_prefix_trie_node *subs;
+    /* Socket identity/crypto */
+    /* Local "want subscription" list */
+    nitro_key_t *sub_keys;
+    uint64_t sub_keys_state;
 
     ev_io bound_io;
     int bound_fd;
@@ -133,9 +173,6 @@ nitro_socket_t *nitro_socket_bind(char *location, nitro_sockopt_t *opt);
 nitro_socket_t *nitro_socket_connect(char *location, nitro_sockopt_t *opt);
 void nitro_socket_close(nitro_socket_t *s);
 NITRO_SOCKET_TRANSPORT socket_parse_location(char *location, char **next);
-void socket_register_pipe(nitro_universal_socket_t *s, nitro_pipe_t *p);
-nitro_pipe_t *socket_lookup_pipe(nitro_universal_socket_t *s, uint8_t *ident);
-void socket_unregister_pipe(nitro_universal_socket_t *s, nitro_pipe_t *p);
 
 
 #endif /* SOCKET_H */

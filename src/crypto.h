@@ -2,7 +2,6 @@
 #define CRYPTO_H
 
 #include "socket.h"
-#include "pipe.h"
 
 void crypto_make_keypair(uint8_t *pub, uint8_t *sec);
 void crypto_make_pipe_cache(nitro_tcp_socket_t *s, nitro_pipe_t *p);

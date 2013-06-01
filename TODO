@@ -16,6 +16,8 @@
 [x] Security/robustness on TCP upstream.
     .. aka Close on error instead of assert()
 [i] Inproc
+    - pub/sub
+    - eventfd
 [x] Change REUSE/NOCOPY -- refcount frames, isolate parts that are "non final",
     like in-progress iovecs, pub keys?  speed difference...
 [ ] Leak check

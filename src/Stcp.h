@@ -26,4 +26,10 @@ int Stcp_socket_pub(nitro_tcp_socket_t *s,
     nitro_frame_t **frp, const uint8_t *k,
     size_t length, int flags);
 
+void Stcp_register_pipe(nitro_tcp_socket_t *s, nitro_pipe_t *p);
+nitro_pipe_t *Stcp_lookup_pipe(nitro_tcp_socket_t *s, uint8_t *ident);
+void Stcp_unregister_pipe(nitro_tcp_socket_t *s, nitro_pipe_t *p);
+nitro_pipe_t *Stcp_pipe_new(nitro_tcp_socket_t *s);
+void Stcp_pipe_destroy(nitro_pipe_t *p, nitro_tcp_socket_t *s);
+
 #endif /* NITRO_STCP_H */
