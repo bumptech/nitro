@@ -64,6 +64,11 @@ void *s_1(void *p) {
         break;
     }
 
+    if (!s) {
+        fprintf(stderr, nitro_errmsg(nitro_error()));
+        assert(s);
+    }
+
     int i;
 
     for (i=0; i < 10000; i++) {
@@ -162,6 +167,7 @@ int main(int argc, char **argv) {
 
     struct t_1 acc1 = {0};
     pthread_create(&t1, NULL, r_1, &acc1);
+    sleep(1);
     pthread_create(&t2, NULL, s_1, &acc1);
 
     void *res = NULL;
@@ -172,7 +178,6 @@ int main(int argc, char **argv) {
 
     TEST("r_1(1:1 rpc) all 10,000 matched", acc1.r_c == 10000);
     // give that ^^ time to bind
-    sleep(1);
     TEST("s_1(1:1 rpc) all 10,000 matched", acc1.s_c == 10000);
 
     struct t_2 acc2;
