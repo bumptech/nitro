@@ -30,3 +30,7 @@
 [ ] Verify file headers are present and correct in src/*.{c,h}
 [ ] Namespace all ifndefs in headers
 [ ] Verify non-exports are static
+[ ] More tests
+    - hwm
+    - secure verify
+    - eventfd
