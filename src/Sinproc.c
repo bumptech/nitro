@@ -42,7 +42,7 @@
 
 void Sinproc_socket_recv_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, void *p) {
 //    nitro_inproc_socket_t *s = (nitro_inproc_socket_t *)p;
-
+    // Event fd stuff here?
 }
 
 /* Sinproc_create_queues
@@ -117,6 +117,7 @@ int Sinproc_socket_connect(nitro_inproc_socket_t *s, char *location) {
         return nitro_set_error(NITRO_ERR_INPROC_NOT_BOUND);
     }
 
+    pthread_rwlock_init(&s->link_lock, NULL); 
     Sinproc_socket_bound_add_conn(match, s);
     pthread_mutex_unlock(&the_runtime->l_inproc);
 
@@ -276,7 +277,7 @@ nitro_frame_t *Sinproc_socket_recv(nitro_inproc_socket_t *s, int flags) {
 }
 
 int Sinproc_socket_reply(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
-    int ret = 0;
+    int ret = -1;
     nitro_frame_t *fr = *frp;
     fr = nitro_frame_copy_partial(fr, NULL);
     nitro_frame_clone_stack(snd, fr);
@@ -295,7 +296,7 @@ int Sinproc_socket_reply(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_fra
 }
 
 int Sinproc_socket_relay_fw(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
-    int ret = 0;
+    int ret = -1;
     nitro_frame_t *fr = *frp;
     fr = nitro_frame_copy_partial(fr, NULL);
 
@@ -314,7 +315,7 @@ int Sinproc_socket_relay_fw(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_
 }
 
 int Sinproc_socket_relay_bk(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
-    int ret = 0;
+    int ret = -1;
     nitro_frame_t *fr = *frp;
     fr = nitro_frame_copy_partial(fr, NULL);
     nitro_frame_set_sender(fr, s->opt->ident, s->opt->ident_buf);
@@ -338,15 +339,178 @@ int Sinproc_socket_relay_bk(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_
 
 int Sinproc_socket_sub(nitro_inproc_socket_t *s,
     uint8_t *k, size_t length) {
-    return -1;
+    uint8_t *cp = memdup(k, length);
+    nitro_key_t *search;
+
+    nitro_counted_buffer_t *buf = 
+        nitro_counted_buffer_new(
+            cp, just_free, NULL);
+
+    nitro_key_t *key = nitro_key_new(cp, length,
+        buf);
+
+    int ret = 0;
+    pthread_rwlock_wrlock(&s->link_lock);
+
+    DL_FOREACH(s->sub_keys, search) {
+        if (!nitro_key_compare(search, key)) {
+            ret = -1;
+            break;
+        }
+    }
+
+    if (!ret) {
+        DL_APPEND(s->sub_keys, key);
+        pthread_rwlock_unlock(&s->link_lock);
+        if (s->bound) {
+            pthread_rwlock_rdlock(&s->link_lock);
+            nitro_inproc_socket_t *iter;
+            CDL_FOREACH(s->links, iter) {
+                nitro_prefix_trie_add(
+                    &iter->subs,
+                    k, length, s);
+
+            }
+            pthread_rwlock_unlock(&s->link_lock);
+        } else {
+            assert(s->links);
+            if (s->links->dead) {
+                ret = nitro_set_error(NITRO_ERR_NO_RECIPIENT);
+            } else {
+                ret = 0;
+                nitro_inproc_socket_t *remote = s->links;
+                pthread_rwlock_wrlock(&remote->link_lock);
+                nitro_prefix_trie_add(
+                    &remote->subs,
+                    k, length, s);
+                pthread_rwlock_unlock(&remote->link_lock);
+            }
+        }
+    } else {
+        nitro_key_destroy(key);
+        nitro_set_error(NITRO_ERR_SUB_ALREADY);
+        pthread_rwlock_unlock(&s->link_lock);
+    }
+
+    return ret;
 }
 
 int Sinproc_socket_unsub(nitro_inproc_socket_t *s,
     uint8_t *k, size_t length) {
-    return -1;
+    uint8_t *cp = memdup(k, length);
+    nitro_key_t *search;
+
+    nitro_counted_buffer_t *buf = 
+        nitro_counted_buffer_new(
+            cp, just_free, NULL);
+
+    nitro_key_t *tmp = nitro_key_new(cp, length,
+        buf);
+
+    int ret = -1;
+    pthread_rwlock_wrlock(&s->link_lock);
+
+    DL_FOREACH(s->sub_keys, search) {
+        if (!nitro_key_compare(search, tmp)) {
+            ret = 0;
+            break;
+        }
+    }
+
+    nitro_key_destroy(tmp);
+
+    if (!ret) {
+        assert(search);
+        DL_DELETE(s->sub_keys, search);
+        pthread_rwlock_unlock(&s->link_lock);
+        if (s->bound) {
+            pthread_rwlock_rdlock(&s->link_lock);
+            nitro_inproc_socket_t *iter;
+            CDL_FOREACH(s->links, iter) {
+                nitro_prefix_trie_del(
+                    iter->subs,
+                    k, length, s);
+            }
+            pthread_rwlock_unlock(&s->link_lock);
+        } else {
+            assert(s->links);
+            if (s->links->dead) {
+                ret = nitro_set_error(NITRO_ERR_NO_RECIPIENT);
+            } else {
+                nitro_inproc_socket_t *remote = s->links;
+                pthread_rwlock_wrlock(&remote->link_lock);
+                nitro_prefix_trie_del(
+                    remote->subs,
+                    k, length, s);
+                pthread_rwlock_unlock(&remote->link_lock);
+            }
+        }
+    } else {
+        nitro_set_error(NITRO_ERR_SUB_MISSING);
+        pthread_rwlock_unlock(&s->link_lock);
+    }
+
+    return ret;
+}
+
+/* State during trie walk for socket delivery */
+typedef struct Sinproc_pub_state {
+    int count;
+    nitro_frame_t *fr;
+} Sinproc_pub_state;
+
+/*
+ * Stcp_deliver_pub_frame
+ * ----------------------
+ *
+ * Callback given to trie walk function by pub() function;
+ * will be invoked for all prefixes that match.
+ *
+ * It walks the list of pipes subscribed to that prefix
+ * and puts the message on the direct queue for each.
+ */
+static void Sinproc_deliver_pub_frame(
+    const uint8_t *pfx, uint8_t length, nitro_prefix_trie_mem *mems,
+    void *ptr) {
+
+    Sinproc_pub_state *st = (Sinproc_pub_state *)ptr;
+
+    nitro_prefix_trie_mem *m;
+
+    DL_FOREACH(mems, m) {
+        nitro_inproc_socket_t *s = (nitro_inproc_socket_t *)m->ptr;
+
+        nitro_frame_t *fr = st->fr;
+        fr = nitro_frame_copy_partial(fr, NULL);
+        int r = nitro_queue_push(s->q_recv, fr, 0);
+        if (r) {
+            nitro_frame_destroy(fr);
+        } else {
+            ++st->count;
+        }
+    }
 }
 
 int Sinproc_socket_pub(nitro_inproc_socket_t *s,
     nitro_frame_t **frp, uint8_t *k, size_t length, int flags) {
-    return 0;
+    nitro_frame_t *fr = *frp;
+    if (flags & NITRO_REUSE) {
+        fr = nitro_frame_copy_partial(fr, NULL);
+    } else {
+        *frp = NULL;
+    }
+
+    nitro_frame_set_sender(fr, s->opt->ident, s->opt->ident_buf);
+    Sinproc_pub_state st = {0, fr};
+
+    pthread_rwlock_rdlock(&s->link_lock);
+
+    nitro_prefix_trie_search(s->subs,
+        k, length, Sinproc_deliver_pub_frame, &st);
+
+    pthread_rwlock_unlock(&s->link_lock);
+
+    nitro_frame_destroy(fr);
+
+    return st.count;
 }

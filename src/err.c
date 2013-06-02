@@ -140,6 +140,14 @@ char *nitro_errmsg(NITRO_ERROR error) {
         return "cannot send() on inproc without any established connections";
         break;
 
+    case NITRO_ERR_SUB_ALREADY:
+        return "given key is already subscribed";
+        break;
+
+    case NITRO_ERR_SUB_MISSING:
+        return "given key to unsub is not subscribed";
+        break;
+
     default:
         assert(0);
         break;

@@ -86,6 +86,10 @@ typedef enum {
     int event_fd;\
     /* Parent socket */\
     void *parent;\
+    /* Subscription trie */\
+    nitro_prefix_trie_node *subs;\
+    /* Local "want subscription" list */\
+    nitro_key_t *sub_keys;\
 
 typedef struct nitro_universal_socket_t {
     SOCKET_COMMON_FIELDS
@@ -106,17 +110,12 @@ typedef struct nitro_tcp_socket_t {
     /* for reply-style session mapping
        UT Hash.  Pipes that have not yet registered are not in here */
     nitro_pipe_t *pipes_by_session;
-    
+
     /* Circular List of all connected pipes (can use for round robining, or broadcast with pub)*/
     nitro_pipe_t *pipes;
     nitro_pipe_t *next_pipe;
     int num_pipes;
-    
-    /* Subscription trie */
-    nitro_prefix_trie_node *subs;
-    /* Socket identity/crypto */
-    /* Local "want subscription" list */
-    nitro_key_t *sub_keys;
+
     uint64_t sub_keys_state;
 
     ev_io bound_io;

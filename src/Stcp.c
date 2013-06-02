@@ -380,6 +380,10 @@ void Stcp_pipe_send_sub(nitro_tcp_socket_t *s,
     nitro_pipe_t *p) {
     // NOTE: assumed l_pipes is held
 
+    if (s->opt->secure && !p->them_handshake) {
+        /* Cannot send until they've finished the handshake */
+        return;
+    }
     nitro_counted_buffer_incref(s->sub_data);
     nitro_frame_t *fr = nitro_frame_new_prealloc(
         s->sub_data->ptr,
@@ -935,14 +939,15 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                     crypto_make_pipe_cache(st->s, st->p);
                     Stcp_pipe_enable_write(st->p);
                 }
+
+                /* Mark the handshake done */
+                st->p->them_handshake = 1;
+
                 pthread_mutex_lock(&st->s->l_pipes);
                 if (st->s->sub_data) {
                     Stcp_pipe_send_sub(st->s, st->p);
                 }
                 pthread_mutex_unlock(&st->s->l_pipes);
-
-                /* Mark the handshake done */
-                st->p->them_handshake = 1;
 
             } else if (phd->packet_type == NITRO_FRAME_SUB) {
                 if (!st->p->them_handshake) {
@@ -965,13 +970,13 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                         /* we need to retain the backing buffer for the sub data */
                         *bbuf_p = nitro_counted_buffer_new(
                             NULL, buffer_free, (void *)buf);
-                    } else {fprintf(stderr, "nope, got it already\n");}
+                    }
                     /* Parse the sub data from the socket and update the socket
                        sub trie as appropriate */
                     Stcp_socket_parse_subs(st->s, st->p, state,
                         frame_data + sizeof(uint64_t),
                         phd->frame_size - sizeof(uint64_t), *bbuf_p);
-                }
+                } else {}
             }
         } else {
             /* Data frame.  This is meat and potatos user data.
@@ -1448,7 +1453,7 @@ static void Stcp_socket_reindex_subs(nitro_tcp_socket_t *s) {
 
     nitro_key_t *key;
     ++s->sub_keys_state;
-    fprintf(stderr, "state changed to: %llu\n", (unsigned long long) s->sub_keys_state);
+//    fprintf(stderr, "state changed to: %llu\n", (unsigned long long) s->sub_keys_state);
     ev_timer_start(the_runtime->the_loop,
         &s->sub_send_timer);
     if (s->sub_data) {
@@ -1516,6 +1521,9 @@ int Stcp_socket_sub(nitro_tcp_socket_t *s,
     if (!ret) {
         DL_APPEND(s->sub_keys, key);
         Stcp_socket_reindex_subs(s);
+    } else {
+        nitro_set_error(NITRO_ERR_SUB_ALREADY);
+        nitro_key_destroy(key);
     }
 
     pthread_mutex_unlock(&s->l_pipes);
@@ -1561,6 +1569,8 @@ int Stcp_socket_unsub(nitro_tcp_socket_t *s,
         DL_DELETE(s->sub_keys, search);
         nitro_key_destroy(search);
         Stcp_socket_reindex_subs(s);
+    } else {
+        nitro_set_error(NITRO_ERR_SUB_MISSING);
     }
 
     pthread_mutex_unlock(&s->l_pipes);
