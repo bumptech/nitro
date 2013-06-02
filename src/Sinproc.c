@@ -41,8 +41,20 @@
 
 
 void Sinproc_socket_recv_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, void *p) {
-//    nitro_inproc_socket_t *s = (nitro_inproc_socket_t *)p;
-    // Event fd stuff here?
+    nitro_inproc_socket_t *s = (nitro_inproc_socket_t *)p;
+    if (s->opt->want_eventfd) {
+        if (last == NITRO_QUEUE_STATE_EMPTY) {
+            /* empty to non-empty */
+            uint64_t inc = 1;
+            int evwrote = write(s->event_fd, (char *)(&inc), sizeof(inc));
+            assert(evwrote == sizeof(inc));
+        } else if (st == NITRO_QUEUE_STATE_EMPTY) {
+            /* non-empty to empty */
+            uint64_t buf;
+            int evread = read(s->event_fd, &buf, sizeof(uint64_t));
+            assert(evread == sizeof(uint64_t));
+        }
+    }
 }
 
 /* Sinproc_create_queues
