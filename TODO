@@ -2,10 +2,7 @@
 [x] Automated tests for reply and fw stacks
 [x] Unit test trie
 [x] Pub/sub
-[ ] Pub/sub unit tests
-[ ] Torture
-[ ] XXX HWM BUG
-[ ] Static Analysis (splint? coverity free?)
+[x] Pub/sub unit tests
 [x] Nonblock send/recv -- change all internal uses to use this
 [x] Socket Options
 [x] STCP
@@ -15,21 +12,23 @@
 [x] Error handling in various places we return -1, use err.c for nice messages
 [x] Security/robustness on TCP upstream.
     .. aka Close on error instead of assert()
-[i] Inproc
-    - pub/sub
-    - eventfd
+[x] Inproc
 [x] Change REUSE/NOCOPY -- refcount frames, isolate parts that are "non final",
     like in-progress iovecs, pub keys?  speed difference...
-[ ] Leak check
+[x] Re-align socket fields
+[ ] Torture
+[ ] XXX HWM BUG
 [ ] Socket Diagnostics (HUP report, stats, query queue sizes, etc)
-[ ] Re-align socket fields
+[ ] Leak check
 [i] Python bindings
 [i] Haskell bindings
 [ ] Kill all XXX
 [ ] Re-run style
 [ ] Verify file headers are present and correct in src/*.{c,h}
-[ ] Namespace all ifndefs in headers
+[ ] Namespace all _H #defines in headers (add NITRO_)
 [ ] Verify non-exports are static
+[ ] Static Analysis (splint? coverity free?)
+[ ] Document/website/release
 [ ] More tests
     - hwm
     - secure verify
