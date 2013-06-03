@@ -52,16 +52,9 @@ static void nitro_async_destroy(nitro_async_t *a) {
 }
 
 void nitro_async_schedule(nitro_async_t *a) {
-    volatile nitro_async_t *trial = NULL;
-    while (1) {
-        int swapped = atomic_compare_exchange_strong(
-            &the_runtime->async_stack,
-            (nitro_async_t **)&trial, a);
-        if (swapped) {
-            a->next = (nitro_async_t *)trial;
-            break;
-        }
-    }
+    pthread_mutex_lock(&the_runtime->l_async);
+    LL_APPEND(the_runtime->async_queue, a);
+    pthread_mutex_unlock(&the_runtime->l_async);
     ev_async_send(the_runtime->the_loop,
         &the_runtime->thread_wake);
 }
@@ -94,14 +87,11 @@ static void nitro_async_handle(nitro_async_t *a) {
 }
 
 void nitro_async_cb(struct ev_loop *loop, ev_async *a, int revents) {
-    volatile nitro_async_t *head = NULL, *next = NULL;
-    while (1) {
-        int swapped = atomic_compare_exchange_strong(
-            &the_runtime->async_stack,
-            (nitro_async_t **)&head, NULL);
-        if (swapped)
-            break;
-    }
+    nitro_async_t *head, *next;
+    pthread_mutex_lock(&the_runtime->l_async);
+    head = the_runtime->async_queue;
+    the_runtime->async_queue = NULL;
+    pthread_mutex_unlock(&the_runtime->l_async);
 
     for (; head; head = next) {
         next = head->next;

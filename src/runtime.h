@@ -11,8 +11,8 @@ typedef struct nitro_runtime {
     nitro_socket_t *want_tcp_connect;
     pthread_mutex_t l_tcp_connect;
 
-    /* CAS stack */
-    _Atomic (nitro_async_t *)async_stack;
+    nitro_async_t *async_queue;
+    pthread_mutex_t l_async;
 
     pthread_mutex_t l_inproc;
     nitro_inproc_socket_t *inprocs;
