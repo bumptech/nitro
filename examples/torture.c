@@ -113,6 +113,7 @@ void * do_sender(void *p) {
 
         uint64_t result = *(uint64_t *)nitro_frame_data(fr);
         assert(result == count * st->factor);
+        nitro_frame_destroy(fr);
         __sync_fetch_and_add(st->done, 1);
 
         gettimeofday(&tv, NULL);
