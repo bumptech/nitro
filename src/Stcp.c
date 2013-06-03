@@ -194,6 +194,9 @@ void Stcp_socket_recv_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, v
     }
 }
 
+void Stcp_queue_do_nothing_stat(
+    NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, void *p) {
+}
 /* Stcp_create_queues
  * ------------------
  *
@@ -204,6 +207,8 @@ void Stcp_create_queues(nitro_tcp_socket_t *s) {
         s->opt->hwm_out_general, Stcp_socket_send_queue_stat, (void*)s);
     s->q_recv = nitro_queue_new(
         s->opt->hwm_in, Stcp_socket_recv_queue_stat, (void*)s);
+    s->q_empty = nitro_queue_new(
+        0, Stcp_queue_do_nothing_stat, NULL);
 }
 
 /* Stcp_socket_connect
@@ -329,6 +334,7 @@ void Stcp_socket_shutdown(nitro_tcp_socket_t *s) {
 
     nitro_queue_destroy(s->q_send);
     nitro_queue_destroy(s->q_recv);
+    nitro_queue_destroy(s->q_empty);
     ev_timer_stop(the_runtime->the_loop, &s->connect_timer);
     ev_io_stop(the_runtime->the_loop, &s->connect_io);
     ev_io_stop(the_runtime->the_loop, &s->bound_io);
@@ -1182,27 +1188,44 @@ void Stcp_pipe_out_cb(
 
     int r = 0;
     int tried = 0;
-    int doing_hello = 0;
 
     if (!p->us_handshake) {
-        tried = 1;
         nitro_frame_t *hello = nitro_frame_new_copy(
         s->opt->ident, SOCKET_IDENT_LENGTH);
         hello->type = NITRO_FRAME_HELLO;
         p->partial = hello;
         p->us_handshake = 1;
-        doing_hello = 1;
+
+        if (s->opt->secure) {
+            r = nitro_queue_fd_write(
+                s->q_empty,
+                p->fd, p->partial, &(p->partial));
+            if (r < 0 && OKAY_ERRNO) {
+                return;
+            }
+            else if (r < 0) {
+                if (s->opt->error_handler) {
+                    s->opt->error_handler(nitro_error(),
+                        s->opt->error_handler_baton);
+                }
+                Stcp_destroy_pipe(p);
+                return;
+            } else if (!p->them_handshake) {
+                ev_io_stop(the_runtime->the_loop,
+                pipe_iow);
+                return;
+            }
+        }
     }
 
-    /* Local queue takes precedence */
     if (p->partial || nitro_queue_count(p->q_send)) {
         tried = 1;
-        if (s->opt->secure && !doing_hello) {
+        if (s->opt->secure) {
+            assert(p->them_handshake);
             r = nitro_queue_fd_write_encrypted(
                 p->q_send,
                 p->fd, p->partial, &(p->partial),
                 Stcp_encrypt_frame, p);
-
         } else {
             r = nitro_queue_fd_write(
                 p->q_send,
@@ -1218,11 +1241,6 @@ void Stcp_pipe_out_cb(
             Stcp_destroy_pipe(p);
             return;
         }
-        if (doing_hello && s->opt->secure) {
-            ev_io_stop(the_runtime->the_loop,
-            pipe_iow);
-            return;
-        }
     }
 
     /* Note -- using truncate frame as heuristic
@@ -1230,6 +1248,7 @@ void Stcp_pipe_out_cb(
     if ((!tried || !p->partial) && nitro_queue_count(s->q_send)) {
         tried = 1;
         if (s->opt->secure) {
+            assert(p->them_handshake);
             r = nitro_queue_fd_write_encrypted(
                 s->q_send,
                 p->fd, p->partial, &(p->partial),

@@ -102,6 +102,7 @@ typedef struct nitro_tcp_socket_t {
 
     /* Outgoing _general_ messages */
     nitro_queue_t *q_send;
+    nitro_queue_t *q_empty;
     ev_timer close_timer;
     
     /* Pipes need to be locked during map
