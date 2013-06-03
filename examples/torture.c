@@ -163,7 +163,7 @@ int main(int argc, char **argv) {
 
 
     int job_time = random() % 20 + 2;
-    int launch_pause = random() % 200; // ms
+    int launch_pause = (random() % 2) ? 0 : random() % 200; // ms
     int num_jobs = (random() % 100) + 20;
     int backend_threads = (random() % 15) + 1;
     char balancer_protocol[50];
@@ -266,8 +266,10 @@ int main(int argc, char **argv) {
     sleep(2);
     printf("Spawning %d jobs:\n", num_jobs);
     for (i=0; i < num_jobs; ++i) {
-        struct timespec pause_time = {0, launch_pause * 1000000};
-        nanosleep(&pause_time, NULL);
+        if (launch_pause) {
+            struct timespec pause_time = {0, launch_pause * 1000000};
+            nanosleep(&pause_time, NULL);
+        }
         struct sender_state *send_st = alloca(sizeof(struct sender_state));
         char buf[50];
         if (sender_secure) {
