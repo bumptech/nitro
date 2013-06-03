@@ -16,7 +16,8 @@
 [x] Change REUSE/NOCOPY -- refcount frames, isolate parts that are "non final",
     like in-progress iovecs, pub keys?  speed difference...
 [x] Re-align socket fields
-[ ] Torture
+[x] Torture
+    - leak-free torture
 [ ] XXX HWM BUG
 [ ] Socket Diagnostics (HUP report, stats, query queue sizes, etc)
 [ ] Leak check
