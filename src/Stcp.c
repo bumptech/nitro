@@ -1200,22 +1200,22 @@ void Stcp_pipe_out_cb(
             r = nitro_queue_fd_write(
                 s->q_empty,
                 p->fd, p->partial, &(p->partial));
-            if (r < 0 && OKAY_ERRNO) {
-                return;
-            }
-            else if (r < 0) {
+            if (r < 0 && !OKAY_ERRNO) {
                 if (s->opt->error_handler) {
                     s->opt->error_handler(nitro_error(),
                         s->opt->error_handler_baton);
                 }
                 Stcp_destroy_pipe(p);
                 return;
-            } else if (!p->them_handshake) {
-                ev_io_stop(the_runtime->the_loop,
-                pipe_iow);
-                return;
             }
         }
+    }
+
+    if (s->opt->secure && !p->them_handshake) {
+        ev_io_stop(the_runtime->the_loop,
+        pipe_iow);
+        return;
+
     }
 
     if (p->partial || nitro_queue_count(p->q_send)) {
