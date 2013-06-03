@@ -1364,9 +1364,12 @@ nitro_frame_t *Stcp_socket_recv(nitro_tcp_socket_t *s, int flags) {
  */
 int Stcp_socket_reply(nitro_tcp_socket_t *s,
     nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
-    assert(!(flags & NITRO_REUSE));
     nitro_frame_t *fr = *frp;
-    *frp = NULL;
+    if (flags & NITRO_REUSE) {
+        fr = nitro_frame_copy_partial(fr, NULL);
+    } else {
+        *frp = NULL;
+    }
     
     int ret = -1;
     pthread_mutex_lock(&s->l_pipes);
@@ -1400,9 +1403,12 @@ int Stcp_socket_reply(nitro_tcp_socket_t *s,
  */
 int Stcp_socket_relay_fw(nitro_tcp_socket_t *s, 
     nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
-    assert(!(flags & NITRO_REUSE));
     nitro_frame_t *fr = *frp;
-    *frp = NULL;
+    if (flags & NITRO_REUSE) {
+        fr = nitro_frame_copy_partial(fr, NULL);
+    } else {
+        *frp = NULL;
+    }
 
     nitro_frame_clone_stack(snd, fr);
     nitro_frame_set_sender(fr, snd->sender, snd->sender_buffer);
@@ -1429,9 +1435,12 @@ int Stcp_socket_relay_fw(nitro_tcp_socket_t *s,
  */
 int Stcp_socket_relay_bk(nitro_tcp_socket_t *s, 
     nitro_frame_t *snd, nitro_frame_t **frp, int flags) {
-    assert(!(flags & NITRO_REUSE));
     nitro_frame_t *fr = *frp;
-    *frp = NULL;
+    if (flags & NITRO_REUSE) {
+        fr = nitro_frame_copy_partial(fr, NULL);
+    } else {
+        *frp = NULL;
+    }
 
     int ret = -1;
     pthread_mutex_lock(&s->l_pipes);
