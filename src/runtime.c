@@ -47,7 +47,6 @@ void handle_pipe(int sig) {
 }
 
 static void *actual_run(void *unused) {
-    fprintf(stderr, "NITRO start!\n");
 
     // handle everything!
     ev_run(the_runtime->the_loop, 0);
@@ -56,7 +55,6 @@ static void *actual_run(void *unused) {
     ev_async_stop(the_runtime->the_loop, &the_runtime->thread_wake);
 
     ev_loop_destroy(the_runtime->the_loop);
-    fprintf(stderr, "NITRO done!\n");
     return NULL;
 }
 
@@ -90,7 +88,6 @@ int nitro_runtime_stop() {
         return NITRO_ERR_NOT_RUNNING;
     }
 
-    fprintf(stderr, "socket count: %d\n", atomic_load(&the_runtime->num_sock));
     assert(atomic_load(&the_runtime->num_sock) == 0);
     nitro_async_t *a = nitro_async_new(NITRO_ASYNC_DIE);
     nitro_async_schedule(a);
