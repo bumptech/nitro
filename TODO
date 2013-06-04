@@ -18,6 +18,8 @@
 [x] Re-align socket fields
 [x] Torture
     - leak-free torture
+[x] error thread safety
+[ ] Safety of async jobs with TCP?
 [ ] XXX HWM BUG
 [ ] Socket Diagnostics (HUP report, stats, query queue sizes, etc)
 [ ] Leak check
