@@ -37,5 +37,7 @@ NITRO_ERROR nitro_error();
 void nitro_clear_error();
 int nitro_has_error();
 void nitro_error_log_handler(int err, void *baton);
+void nitro_err_start();
+void nitro_err_stop();
 
 #endif /* ERR_H */

@@ -36,8 +36,7 @@
 #include "err.h"
 #include "log.h"
 
-// XXX: this is not thread safe, therefore incorrect. __thread not supported on mac
-static int nitro_errno;
+static pthread_key_t err_key;
 
 char *nitro_errmsg(NITRO_ERROR error) {
     switch (error) {
@@ -87,7 +86,7 @@ char *nitro_errmsg(NITRO_ERROR error) {
     case NITRO_ERR_DECRYPT:
         return "(pipe) frame decryption failed";
         break;
-        
+
     case NITRO_ERR_MAX_FRAME_EXCEEDED:
         return "(pipe) remote tried to send a frame larger than the maximum allowable size";
         break;
@@ -156,21 +155,42 @@ char *nitro_errmsg(NITRO_ERROR error) {
     return NULL;
 }
 
+#if __x86_64__
+#define PTR_TO_INT(i, p) {uint64_t __tmp_64 = (uint64_t)p; i = (int)__tmp_64;}
+#define INT_TO_PTR(p, i) {uint64_t __tmp_64 = (uint64_t)i; p = (void *)__tmp_64;}
+#else
+#define PTR_TO_INT(i, p) {i = (int)p;}
+#define INT_TO_PTR(p, i) {p = (void *)i;}
+#endif
+
 NITRO_ERROR nitro_error() {
-    return nitro_errno;
+    void *p = pthread_getspecific(err_key);
+    int e;
+    PTR_TO_INT(e, p);
+    return e;
 }
 
 int nitro_set_error(NITRO_ERROR e) {
-    nitro_errno = e;
-    return -1;
+    void *p;
+    INT_TO_PTR(p, e);
+    pthread_setspecific(err_key, p);
+    return e;
 }
 
 void nitro_clear_error() {
-    nitro_errno = NITRO_ERR_NONE;
+    nitro_set_error(NITRO_ERR_NONE);
 }
 
 int nitro_has_error() {
-    return nitro_errno != NITRO_ERR_NONE;
+    return nitro_error() != NITRO_ERR_NONE;
+}
+
+void nitro_err_start() {
+    pthread_key_create(&err_key, NULL);
+}
+
+void nitro_err_stop() {
+    pthread_key_delete(err_key);
 }
 
 void nitro_error_log_handler(int err, void *baton) {

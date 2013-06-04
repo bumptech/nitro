@@ -63,8 +63,10 @@ static void *actual_run(void *unused) {
 int nitro_runtime_start() {
 
     if (the_runtime) {
-        return nitro_set_error(NITRO_ERR_ALREADY_RUNNING);
+        return NITRO_ERR_ALREADY_RUNNING;
     }
+
+    nitro_err_start();
 
     ZALLOC(the_runtime);
     signal(SIGPIPE, handle_pipe); /* ignore sigpipe */
@@ -85,7 +87,7 @@ int nitro_runtime_start() {
 
 int nitro_runtime_stop() {
     if (!the_runtime) {
-        return nitro_set_error(NITRO_ERR_NOT_RUNNING);
+        return NITRO_ERR_NOT_RUNNING;
     }
 
     fprintf(stderr, "socket count: %d\n", atomic_load(&the_runtime->num_sock));
@@ -97,5 +99,6 @@ int nitro_runtime_stop() {
     close(the_runtime->random_fd);
     free(the_runtime);
     the_runtime = NULL;
+    nitro_err_stop();
     return 0;
 }
