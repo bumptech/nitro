@@ -1,2 +1,2 @@
 source ./platform.sh
-redo suite
+$REDO_CMD suite

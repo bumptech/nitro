@@ -1,3 +1,3 @@
 source ./platform.sh
-redo suite
-redo test/all
+$REDO_CMD suite
+$REDO_CMD test/all

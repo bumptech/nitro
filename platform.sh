@@ -25,3 +25,11 @@ export EXTRA_LDFLAGS
 
 echo "-I$HERE/src -I$NACL_INC" > NITRO_CFLAGS
 echo "-L$HERE -lnitro -lev -lpthread $EXTRA_LDFLAGS" > NITRO_LDFLAGS
+
+if [ -a "/proc/cpuinfo" ]; then
+    CORES=`grep '^processor' /proc/cpuinfo | wc -l`
+    echo " ...  Building with $CORES cores..." 1>&2
+    REDO_CMD="redo -j $CORES"
+else
+    REDO_CMD="redo"
+fi
