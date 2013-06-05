@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="pandoc">
+  <meta name="author" content="Jamie Turner">
+  <title>Nitro Docs</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+  <style type="text/css">
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; background-color: #303030; color: #cccccc; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; }
+td.sourceCode { padding-left: 5px; }
+pre, code { color: #cccccc; background-color: #303030; }
+code > span.kw { color: #f0dfaf; }
+code > span.dt { color: #dfdfbf; }
+code > span.dv { color: #dcdccc; }
+code > span.bn { color: #dca3a3; }
+code > span.fl { color: #c0bed1; }
+code > span.ch { color: #dca3a3; }
+code > span.st { color: #cc9393; }
+code > span.co { color: #7f9f7f; }
+code > span.ot { color: #efef8f; }
+code > span.al { color: #ffcfaf; }
+code > span.fu { color: #efef8f; }
+code > span.er { color: #c3bf9f; }
+  </style>
+  <link rel="stylesheet" href="pandoc.css">
+</head>
+<body>
+<div id="nitro-container">
+<img style="display: block; margin: 0 auto" src="//gonitro.io/img/nitro_logo.png">
+<header>
+<h1 class="title">Nitro Docs</h1>
+<h2 class="author">Jamie Turner</h2>
+<h3 class="date">June 2nd, 2013</h3>
+</header>
+<nav id="TOC">
+<ul>
+<li><a href="#introducing-nitro">Introducing Nitro</a></li>
+<li><a href="#nitro-concepts">Nitro Concepts</a><ul>
+<li><a href="#sockets">Sockets</a></li>
+<li><a href="#frame">Frame</a></li>
+<li><a href="#receiving">Receiving</a></li>
+<li><a href="#sending">Sending</a></li>
+<li><a href="#pub-and-sub">Pub and Sub</a></li>
+</ul></li>
+<li><a href="#examples">Examples</a><ul>
+<li><a href="#pipelines">Pipelines</a></li>
+<li><a href="#proxy-time">Proxy Time</a></li>
+<li><a href="#publish-this">Publish This</a></li>
+<li><a href="#secure-sockets">Secure Sockets</a></li>
+</ul></li>
+<li><a href="#binding-agreement">Binding Agreement</a></li>
+<li><a href="#api">API</a><ul>
+<li><a href="#runtime">Runtime</a></li>
+<li><a href="#errors">Errors</a></li>
+<li><a href="#logging">Logging</a></li>
+<li><a href="#socket-options">Socket Options</a></li>
+<li><a href="#socket-lifetime">Socket Lifetime</a></li>
+<li><a href="#frame-management">Frame Management</a></li>
+<li><a href="#receiving-frames">Receiving Frames</a></li>
+<li><a href="#sending-frames">Sending Frames</a></li>
+<li><a href="#publishsubscribe">Publish/Subscribe</a></li>
+</ul></li>
+<li><a href="#faq">FAQ</a></li>
+<li><a href="#contactcredits">Contact/Credits</a></li>
+</ul>
+</nav>
+<h1 id="introducing-nitro"><a href="#introducing-nitro">Introducing Nitro</a></h1>
+<p>Nitro is a library for writing scalable, flexible, and secure network applications. Nitro applications create bound sockets (&quot;nitro sockets&quot; here being a different and higher-level abstraction than BSD sockets) that listen at a certain location so that other nitro sockets can connect and exchange messages.</p>
+<p>A message, also called a &quot;frame&quot;, is the fundamental unit of communication between nitro sockets. When a frame is sent, it is either received completely by another party or not at all. Application developers don't need to worry about boundary conditions, message delimiting, etc.</p>
+<p>Sockets can also be set to be &quot;secure&quot;, in which case NaCL-based public-key encryption is used. These secure sockets can be given a required certificate the peer socket must present to authenticate the connection (and protect against man-in-the-middle attacks).</p>
+<p>Sockets can either be of protocol &quot;tcp&quot; or &quot;inproc&quot;; inproc sockets are thin (but API-compatible) wrappers on top of thread-safe message queues to help with multithreaded in-process message passing or to provide abstraction/generalization of local vs. remote services.</p>
+<p>Some use cases for nitro:</p>
+<ul>
+<li>Private network services, like caches, proxies (dispatchers/routers), job queues, database communication</li>
+<li>Public internet services, like low-latency push-capable services embedded in desktop applications or mobile apps</li>
+<li>Non-networked multicore utilization in map-reduce type work using inproc sockets</li>
+<li>Pub/sub systems, like network-wide event monitoring, newsreaders, etc.</li>
+</ul>
+<h1 id="nitro-concepts"><a href="#nitro-concepts">Nitro Concepts</a></h1>
+<h2 id="sockets"><a href="#sockets">Sockets</a></h2>
+<p>The basic bind/connect relationship is the same as BSD sockets:</p>
+<ol type="1">
+<li>Every nitro connection is done between a bound socket and a connected socket. A socket can only <code>bind</code> or <code>connect</code>, not both (this is enforced via the socket constructors).</li>
+<li>Bound sockets may be communicating with many connected sockets</li>
+<li>Connected sockets are only ever communicating with one bound socket</li>
+<li>Connected sockets will attempt reconnection if the connection is interrupted; messages sent while disconnected are queued.</li>
+</ol>
+<h2 id="frame"><a href="#frame">Frame</a></h2>
+<ol type="1">
+<li>Every frame (save some internal frames) is created by the application programmer, using <code>nitro_frame_new_copy</code> and similar frame constructors.</li>
+<li>Frames given to one of the &quot;sending family of functions&quot; will transfer ownership to nitro unless the NITRO_REUSE flag is passed by the application programmer.</li>
+<li>Frames received from <code>nitro_recv</code> are owned by the application programmer, and must either be destroyed or given back to a &quot;sending family&quot; function (for forwarding, etc, thus re-transfering ownership to nitro).</li>
+<li>Frames received from inproc sockets can transparently be sent to tcp sockets and vice versa.</li>
+</ol>
+<h2 id="receiving"><a href="#receiving">Receiving</a></h2>
+<ol type="1">
+<li><code>nitro_recv</code> is the only way to retrieve incoming frames from a socket.</li>
+<li><code>nitro_recv</code> will block until a socket is available unless a NOBLOCK flag is given; otherwise, it will return NITRO_ERR_AGAIN</li>
+</ol>
+<h2 id="sending"><a href="#sending">Sending</a></h2>
+<p>There are a few different functions in the &quot;sending family of functions&quot;, ranging from simple origin sends to replies and proxy relays.</p>
+<p><strong>nitro_send</strong></p>
+<ol type="1">
+<li>Nitro send is a &quot;naive send&quot; that will send to any available peer socket.</li>
+<li>If the socket is a connected socket, the frame is sent to the peer socket if it is currently connected; otherwise queued</li>
+<li>If the socket is a bound socket, the frame is sent to:
+<ul>
+<li>On a &quot;tcp&quot; socket, the first peer socket that will accept the write() on the network (when there is room in the outgoing kernel buffer)</li>
+<li>On an &quot;inproc&quot; socket, the next peer socket in round-robin order</li>
+</ul></li>
+<li><code>nitro_send</code> will block if the outbound queue is full, unless a NOBLOCK flag is given; then it will return NITRO_ERR_AGAIN</li>
+</ol>
+<p><strong>nitro_reply</strong></p>
+<ol type="1">
+<li>Commonly used on a bound socket with lots of peers, <code>nitro_reply</code> lets you send a frame <em>back</em> to a particular peer. The peer is identified from envelope information in a frame that came from <code>nitro_recv</code>.</li>
+<li>If the socket is still a connected peer, <code>nitro_reply</code> will attempt delivery; otherwise, an error is returned and the frame is discarded.</li>
+</ol>
+<p><strong>nitro_relay_fw</strong></p>
+<ol type="1">
+<li>Commonly used in a proxy-type situation. Given a frame that came from <code>nitro_recv</code>, and a new frame, forward the new frame to the destination socket while retaining the routing history associated with the old frame.</li>
+<li>The general delivery of the new frame follows the same rules as <code>nitro_send</code>.</li>
+<li>The &quot;routing frame&quot; and the &quot;message frame&quot; can be (and often are) the same frame.</li>
+</ol>
+<p><strong>nitro_relay_bk</strong></p>
+<ol type="1">
+<li>Commonly used in a proxy-type situation. Given an old frame that came from <code>nitro_recv</code>, and a new frame, relay the new frame <em>back</em> to the original sender using the top of the routing stack in the old frame.</li>
+<li>The targeted delivery to the socket in the routing stack follows the same rules as nitro_reply</li>
+<li>The &quot;routing frame&quot; and the &quot;message frame&quot; can be (and often are) the same frame.</li>
+</ol>
+<h2 id="pub-and-sub"><a href="#pub-and-sub">Pub and Sub</a></h2>
+<p><strong>nitro_sub/nitro_unsub</strong></p>
+<ol type="1">
+<li>Subscribe or unsubscribe to some bytestring prefix. The subscriptions are registered with any peer frames. (Note: even over the network, so published messages are sender-filtered).</li>
+</ol>
+<p><strong>nitro_pub</strong></p>
+<ol type="1">
+<li>Publish a frame to a given key. All peers who are subscribing to a prefix of that key will receive the message</li>
+<li>The return value is the number of peers who were sent the message</li>
+</ol>
+<h1 id="examples"><a href="#examples">Examples</a></h1>
+<p><em>Note: these examples assume you have already used the README.md to successfully install nitro and learn how to build nitro programs. Please review the README.md if this is not so.</em></p>
+<h2 id="pipelines"><a href="#pipelines">Pipelines</a></h2>
+<p>The simplest example (and fastest, due to nearly no latency) is a single send/recv pipeline.</p>
+<p>Every nitro program begins with starting the nitro runtime:</p>
+<pre class="sourceCode c"><code class="sourceCode c">nitro_runtime_start();</code></pre>
+<p>This sets up some global locks, a libev event loop, etc, and starts the main nitro thread in the background.</p>
+<p>Then, let's create a bound socket. This will be the side doing the receiving.</p>
+<pre class="sourceCode c"><code class="sourceCode c">nitro_socket_t *sock = nitro_socket_bind(<span class="st">&quot;tcp://*:4444&quot;</span>, NULL);</code></pre>
+<p>Now we have a socket listening on port 4444. Let's make this socket just print the messages it receives.</p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">char</span> buf[<span class="dv">50</span>] = {<span class="dv">0</span>};
+<span class="kw">while</span> (<span class="dv">1</span>) {
+    nitro_frame_t *f = nitro_recv(sock, <span class="dv">0</span>);
+    assert(nitro_frame_size(f) &lt; <span class="dv">50</span>);
+    memcpy(buf, (<span class="dt">char</span> *)nitro_frame_data(f), nitro_frame_size(f));
+    buf[nitro_frame_size(f)] = <span class="dv">0</span>;
+    printf(<span class="st">&quot;They said: %s</span><span class="ch">\n</span><span class="st">&quot;</span>, buf);
+    nitro_frame_destroy(f);
+}</code></pre>
+<p>Due to the fun of C strings, we copy the given frame into a buffer and make sure to set the terminating null byte before we print.</p>
+<p>So, that's about it. Here's our whole program:</p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="ot">#include &lt;nitro.h&gt;</span>
+
+<span class="dt">int</span> main(<span class="dt">int</span> argc, <span class="dt">char</span> **argv) {
+    nitro_runtime_start();
+    nitro_socket_t *sock = nitro_socket_bind(<span class="st">&quot;tcp://*:4444&quot;</span>, NULL);
+    <span class="dt">char</span> buf[<span class="dv">50</span>] = {<span class="dv">0</span>};
+    <span class="kw">while</span> (<span class="dv">1</span>) {
+        nitro_frame_t *f = nitro_recv(sock, <span class="dv">0</span>);
+        assert(nitro_frame_size(f) &lt; <span class="dv">50</span>);
+        memcpy(buf, (<span class="dt">char</span> *)nitro_frame_data(f), nitro_frame_size(f));
+        buf[nitro_frame_size(f)] = <span class="dv">0</span>;
+        printf(<span class="st">&quot;They said: %s</span><span class="ch">\n</span><span class="st">&quot;</span>, buf);
+        nitro_frame_destroy(f);
+    }
+    <span class="kw">return</span> <span class="dv">0</span>;
+}</code></pre>
+<p>Let's move through the sender more quickly:</p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="ot">#include &lt;nitro.h&gt;</span>
+
+<span class="dt">int</span> main(<span class="dt">int</span> argc, <span class="dt">char</span> **argv) {
+    nitro_runtime_start();
+    nitro_socket_t *sock = nitro_socket_connect(<span class="st">&quot;tcp://127.0.0.1:4444&quot;</span>, NULL);
+    <span class="dt">int</span> i = <span class="dv">0</span>;
+    <span class="kw">for</span> (; i &lt; <span class="dv">10</span>; ++i) {
+        nitro_frame_t *f = nitro_frame_new_copy(<span class="st">&quot;Pinky&quot;</span>, <span class="dv">6</span>);
+        nitro_send(&amp;f, sock, <span class="dv">0</span>);
+    }
+    sleep(<span class="dv">1</span>);
+    <span class="kw">return</span> <span class="dv">0</span>;
+}</code></pre>
+<p>The differences are that we're connecting to the service instead of binding, then calling <code>nitro_send</code> on a fixed number of frames. Notice we're not calling <code>nitro_frame_destroy</code>; as per the frame ownership rules, <code>nitro_send</code> is taking ownership of that frame in a zero-copy way.</p>
+<p>We also sleep one second at the end to let the tcp socket flush before the program ends.</p>
+<p>Here's what a compile/run looks like:</p>
+<pre><code>$ gcc -Wall -Werror -g -O2 `pkg-config --cflags nitro` -o rec rec.c `pkg-config --libs nitro`
+$ gcc -Wall -Werror -g -O2 `pkg-config --cflags nitro` -o send send.c `pkg-config --libs nitro`
+$ ./rec &amp;
+[1] 16608
+$ ./send
+They said: Pinky
+They said: Pinky
+They said: Pinky
+They said: Pinky
+They said: Pinky
+They said: Pinky
+They said: Pinky
+They said: Pinky
+They said: Pinky
+They said: Pinky
+$</code></pre>
+<h2 id="proxy-time"><a href="#proxy-time">Proxy Time</a></h2>
+<p><em>coming soon... see examples/ in project directory</em></p>
+<h2 id="publish-this"><a href="#publish-this">Publish This</a></h2>
+<p><em>coming soon... see examples/ in project directory</em></p>
+<h2 id="secure-sockets"><a href="#secure-sockets">Secure Sockets</a></h2>
+<p><em>coming soon... see examples/ in project directory</em></p>
+<h1 id="binding-agreement"><a href="#binding-agreement">Binding Agreement</a></h1>
+<p>For a project like nitro to succeed, it will need great bindings in many different languages.</p>
+<p>Right now, there are Python and Haskell bindings in the works. Please, please, we need more!</p>
+<p>If you write one, please drop us a line in IRC and we'll add it to the home page.</p>
+<h1 id="api"><a href="#api">API</a></h1>
+<h2 id="runtime"><a href="#runtime">Runtime</a></h2>
+<p><strong>nitro_runtime_start</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">int</span> nitro_runtime_start();</code></pre>
+<p>Starts up all the nitro thread, sets up global locks, etc.</p>
+<p>This function must be called and must return before calling any other nitro functions.</p>
+<p><em>Return Value</em></p>
+<p>0 on success, &lt; 0 on error.</p>
+<ul>
+<li><code>NITRO_ERR_ALREADY_RUNNING</code> - If the nitro_runtime_start() has already been called</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Not thread safe.</p>
+<p><strong>nitro_runtime_stop</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">int</span> nitro_runtime_stop();</code></pre>
+<p>Stops the nitro thread, cleans up all memory, etc.</p>
+<p>This function must not be called until all sockets are <code>nitro_socket_close</code>ed and destroyed.</p>
+<p>For TCP sockets (which have a linger value), this means it is only safe to call <code>nitro_runtime_stop</code> after the longest linger value has elapsed.</p>
+<p><em>Return Value</em></p>
+<p>0 on success, &lt; 0 on error.</p>
+<ul>
+<li><code>NITRO_ERR_NOT_RUNNING</code> - The nitro runtime is not currently running (<code>nitro_runtime_start</code> has not been called).</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Not thread safe.</p>
+<p><em>Crash Note</em></p>
+<p>If the socket count is non-zero, assert() will fire SIGABORT.</p>
+<p><em>Usage Note</em></p>
+<p>This function is useful for tests, and to prove the memory-soundness of nitro, but is probably rarely used in practice.</p>
+<h2 id="errors"><a href="#errors">Errors</a></h2>
+<p>Nitro tracks detail error codes and has explanations for issues that may arise during the execution of your pgoram.</p>
+<p>Nitro errors are thread-local, so it is safe to assume the error number nitro returns to your thread was triggered by you.</p>
+<p><strong>nitro_error</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c">NITRO_ERROR nitro_error();</code></pre>
+<p>Returns the last error to occur on this thread (the &quot;current&quot; error).</p>
+<p><em>Return Value</em></p>
+<p>The current error.</p>
+<p><em>Thread Safety</em></p>
+<p><code>nitro_error</code> is thread safe.</p>
+<p><strong>nitro_errmsg</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">char</span> *nitro_errmsg(NITRO_ERROR error);</code></pre>
+<p>Produce a user-readable message in english describing the given error.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>NITRO_ERROR error</code> - The error code in question (typically, returned from <code>nitro_error</code>.</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>A cstring containing the user-readable description of the given error.</p>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<h2 id="logging"><a href="#logging">Logging</a></h2>
+<p>Nitro includes several logging macros that print nicely-formatted messages with timestamps to stderr.</p>
+<p><strong>nitro_log_</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_log_info(<span class="dt">char</span> *location, <span class="dt">char</span> *format, ...)
+<span class="dt">void</span> nitro_log_warn(<span class="dt">char</span> *location, <span class="dt">char</span> *format, ...)
+<span class="dt">void</span> nitro_log_warning(<span class="dt">char</span> *location, <span class="dt">char</span> *format, ...)
+<span class="dt">void</span> nitro_log_err(<span class="dt">char</span> *location, <span class="dt">char</span> *format, ...)
+<span class="dt">void</span> nitro_log_error(<span class="dt">char</span> *location, <span class="dt">char</span> *format, ...)</code></pre>
+<p>Write a printf-style formatted string to stderr, prefixing the line with the current time and location.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>location</code> - An identifer to represent the general domain or subsystem where the event being logged took place. <strong>FILE</strong> is a decent choice if you can't think of anything better.</li>
+<li><code>format</code> - <code>printf</code>-style format string</li>
+<li><code>...</code> - Format args, ala printf</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<h2 id="socket-options"><a href="#socket-options">Socket Options</a></h2>
+<p>Socket options live in a structure that is built ahead of socket creation and passed to the socket constructors.</p>
+<p><strong>nitro_sockopt_new</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c">nitro_sockopt_t *nitro_sockopt_new();</code></pre>
+<p><em>Return Value</em></p>
+<p>Socket options structure, initialized to default values.</p>
+<p><em>Thread Safety</em></p>
+<p>Thread safe.</p>
+<p><em>Ownership Notes</em></p>
+<p>When <code>nitro_socket_t</code> objects are given to a socket constructor, the socket now owns that options object. The application does not need to destroy the options object.</p>
+<p><strong>nitro_sockopt_set_want_eventfd</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_sockopt_set_want_eventfd(nitro_sockopt_t *opt, <span class="dt">int</span> want_eventfd);</code></pre>
+<p>Enable the event fd on this socket.</p>
+<p>The event fd is a file descriptor whose readability indicates one or more whole frames is ready to be read via <code>nitro_recv</code>. This is useful for integrating Nitro into other event loops.</p>
+<p>The event fd is level triggered, meaning it will remain readable until the socket recieve queue is empty.</p>
+<p>The highest-performance way to consume this is to repeatedly call <code>nitro_recv</code> in your readable-callback with <code>NITRO_NOBLOCK</code> set until it returns NULL.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *opt</code> - The socket options structure to modify</li>
+<li><code>int want_eventfd</code> - 1 or 0 to indicate if the eventfd should or should not be updated when the recieve queue changes state</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><em>Default Value</em></p>
+<p>The default value is <code>0</code>.</p>
+<p><strong>nitro_sockopt_set_close_linger</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_sockopt_set_close_linger(nitro_sockopt_t *opt,
+    <span class="dt">double</span> close_linger);</code></pre>
+<p>Adjust the &quot;linger&quot; time on a TCP socket.</p>
+<p>The linger times indicates how long a TCP socket should remain connected with peers after <code>nitro_socket_close</code> is called before destroying the socket object. This is useful to give pending messages in the send queue a chance to flush before cleaning up.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *opt</code> - The socket options structure to modify</li>
+<li><code>double close_linger</code> - Time, in seconds, to allow messages to flush.</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><em>Default Value</em></p>
+<p>The default value is <code>1.0</code> seconds.</p>
+<p><strong>nitro_sockopt_set_reconnect_interval</strong></p>
+<p><em>Socket Type Limitations</em></p>
+<p>Only applicable to TCP sockets; inproc sockets will assert if this value is set.</p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_sockopt_set_reconnect_interval(nitro_sockopt_t *opt,
+    <span class="dt">double</span> reconnect_interval);</code></pre>
+<p>The reconnect interval is how often connected TCP sockets (sockets created with <code>nitro_socket_connect</code>) will retry to (re)connect with their remote peer when in a disconnected state.</p>
+<p>Connected sockets attempt to transparently keep the link alive as much as possible in the face of network failures, etc. This function effectively sets the poll time when a connect attempt has failed or an existing connection was dropped.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *opt</code> - The socket options structure to modify</li>
+<li><code>double reconnect_interval</code> - Time, in seconds, to wait before retrying connection.</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><em>Default Value</em></p>
+<p>The default value is <code>0.2</code> seconds.</p>
+<p><strong>nitro_sockopt_set_max_message_size</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_sockopt_set_max_message_size(nitro_sockopt_t *opt,
+    <span class="dt">uint32_t</span> max_message_size);</code></pre>
+<p>Set the maximum frame size allowable on this socket.</p>
+<p>If a remote connection attempts to send a frame larger than this value, the nitro error handler will be invoked and the connection will be dropped.</p>
+<p>Similarly, if the local application attempts to send a frame larger than this value, the library call will fail and the message will not be queued.</p>
+<p>The maximum possible value accepted by this function is 1GB.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *opt</code> - The socket options structure to modify</li>
+<li><code>uint32_t max_message_size</code> - Size, in bytes, of largest frame this socket will allow to be sent or received.</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><em>Default Value</em></p>
+<p>The default value is 16MB (1024 * 1024 * 16 bytes).</p>
+<p><strong>nitro_sockopt_set_secure</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_sockopt_set_secure(nitro_sockopt_t *opt,
+    <span class="dt">int</span> enabled);</code></pre>
+<p>Make this TCP socket a secure socket.</p>
+<p>Frames will be encrypted using NaCL's authenticated, public-key encryption (<code>crypto_box</code>).</p>
+<p>How crypto works in Nitro:</p>
+<ol type="1">
+<li>Every socket created in Nitro has a socket identity.</li>
+<li>The socket identity is actually a <code>crypto_box</code> public key</li>
+<li>Every socket also has a corresponding <code>crypto_box</code> private key</li>
+<li>Secure TCP sockets exchange public keys after the connection is established. This <code>HELLO</code> frame is the only frame sent unencrypted.</li>
+<li>Subsequent frames are all sent in a <code>SECURE</code> frame wrapper. This payload is a nonce and a encrypted bytestring that contains the real frame (including frame envelope). When socket A sends a frame F to socket B, A encrypts F using (B.public_key, A.private_key, nonce). Socket B decrypts back to F using (A.public_key, B.private_key, nonce).</li>
+</ol>
+<p>Secure sockets will refuse to exchange any frame types after <code>HELLO</code> except <code>SECURE</code> frames. Any peer socket sending a non-<code>SECURE</code> frame will cause the error handler to be invoked and the peer to be dropped.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *opt</code> - The socket options structure to modify</li>
+<li><code>int enabled</code> - 1 or 0, to enable or disable encryption.</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><em>Default Value</em></p>
+<p>The default value is 0.</p>
+<p><em>Socket Type Limitations</em></p>
+<p>Only applicable to TCP sockets; inproc sockets will assert if this value is set.</p>
+<p><strong>nitro_sockopt_set_secure_identity</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_sockopt_set_secure_identity(nitro_sockopt_t *opt,
+    <span class="dt">uint8_t</span> *ident, size_t ident_length,
+    <span class="dt">uint8_t</span> *pkey, size_t pkey_length);</code></pre>
+<p>Explicitly set the crypto_box public and private keys for this socket.</p>
+<p>It is imperative to use this function (as well as <code>nitro_sockopt_set_required_remote_ident</code> below) to prevent man-in-the-middle attacks, DNS spoofing, etc.</p>
+<p>The typical deployment would be that the bound socket sets a specific known keypair, and then the clients would ship the public key from this pair and require that this key be the one sent exchanged in the <code>HELLO</code>.</p>
+<p>You can create a valid keypair using <code>crypto_box_keypair</code> from NaCL. Keep your private keys safe on your production machines! Do not ship them to untrusted clients.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *opt</code> - The socket options structure to modify</li>
+<li><code>uint8_t *ident</code> - The identity (<code>crypto_box</code> public key) of the socket</li>
+<li><code>size_t ident_length</code> - The length of the identity (nitro will assert if it is not equal to <code>crypto_box_PUBLICKEYBYTES</code></li>
+<li><code>uint8_t *pkey</code> - The <code>crypto_box</code> private key.</li>
+<li><code>size_t pkey_length</code> - The length of the private key (nitro will assert if it is not equal to <code>crypto_box_SECRETKEYBYTES</code></li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><em>Default Value</em></p>
+<p>By default, as long as <code>nitro_sockopt_set_secure</code> is enabled, nitro will generate a random keypair (using <code>crypto_box_keypair</code>) whose lifetime ends with the socket.</p>
+<p><em>Socket Type Limitations</em></p>
+<p>Only applicable to TCP sockets; inproc sockets will assert if this value is set.</p>
+<p><strong>nitro_sockopt_set_required_remote_ident</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_sockopt_set_required_remote_ident(nitro_sockopt_t *opt,
+    <span class="dt">uint8_t</span> *ident, size_t ident_length);</code></pre>
+<p>Require that this secure TCP socket only accept frames from peers who provide a known identity (public key).</p>
+<p>The public key provided here corresponds to one given to <code>nitro_sockopt_set_secure_identity</code> on the remote peer.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *opt</code> - The socket options structure to modify</li>
+<li><code>uint8_t *ident</code> - The identity (<code>crypto_box</code> public key) of the socket</li>
+<li><code>size_t ident_length</code> - The length of the identity (nitro will assert if it is not equal to <code>crypto_box_PUBLICKEYBYTES</code></li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><em>Default Value</em></p>
+<p>By default nitro will accept encrypted packets from any peer providing any public key.</p>
+<p><em>Socket Type Limitations</em></p>
+<p>Only applicable to TCP sockets; inproc sockets will assert if this value is set.</p>
+<p><strong>nitro_sockopt_set_error_handler</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="kw">typedef</span> <span class="dt">void</span> (*nitro_error_handler)(<span class="dt">int</span> nitro_error, <span class="dt">void</span> *baton);
+<span class="dt">void</span> nitro_sockopt_set_error_handler(nitro_sockopt_t *opt,
+    nitro_error_handler handler, <span class="dt">void</span> *baton);</code></pre>
+<p>Set a handler for any errors that occur on the nitro thread during communication with TCP sockets.</p>
+<p>This handler will be invoked from the nitro thread, so it should do its work quickly and return. No TCP nitro traffic will take place while your custom handler is executed.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *opt</code> - The socket options structure to modify</li>
+<li><code>nitro_error_handler handler</code> - An error handler callback that will take action when a background error occurs.</li>
+<li><code>void *baton</code> - Some pass-through object to be given to the error handler</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><em>Default Value</em></p>
+<p>Nitro's default error handler logs the errors to stdout. Using <code>nitro_log_error</code> and <code>nitro_errmsg</code>.</p>
+<p><em>Possible Background Errors</em></p>
+<ul>
+<li><code>NITRO_ERR_ENCRYPT</code> &quot;(pipe) frame encryption failed&quot;. This error can occur if a secure socket is unable to encrypt a frame using the remote public/local private keypair. It's possible the remote peer could have provided an invalid public key, or you have given an incorrect private key to <code>nitro_sockopt_set_secure_identity</code>.</li>
+<li><code>NITRO_ERR_DECRYPT</code> &quot;(pipe) frame decryption failed&quot;. Frame decryption failed on SECURE frame data coming from the TCP socket. This can occur because of bad keys, invalid NONCE, any number of reasons.</li>
+<li><code>NITRO_ERR_MAX_FRAME_EXCEEDED</code> &quot;(pipe) remote tried to send a frame larger than the maximum allowable size&quot;. The remote peer attempted to send a frame larger than the specified maximum allowable size.</li>
+<li><code>NITRO_ERR_BAD_PROTOCOL_VERSION</code> &quot;(pipe) remote sent a nitro protocol version that is unsupported by this application&quot;. A frame header contained a protocol version field that was either invalid or not implemented by this version of Nitro.</li>
+<li><code>NITRO_ERR_INVALID_CLEAR</code> &quot;(pipe) remote sent a unencrypted message over a secure socket&quot;. After <code>HELLO</code>, a non-encrypted message was sent by remote peer to this secure socket.</li>
+<li><code>NITRO_ERR_DOUBLE_HANDSHAKE</code> &quot;(pipe) remote sent two HELLO packets on same connection&quot;. The remote peer sent the <code>HELLO</code> frame twice.</li>
+<li><code>NITRO_ERR_INVALID_CERT</code> &quot;(pipe) remote identity/public key does not match the one required by this socket&quot;. Key validation is enabled (using <code>nitro_sockopt_set_required_remote_ident</code>) and the key provided by the remote peer did not match.</li>
+<li><code>NITRO_ERR_NO_HANDSHAKE</code> &quot;(pipe) remote sent a non-HELLO packet before HELLO&quot;. The remote peer sent some other frame before <code>HELLO</code>.</li>
+<li><code>NITRO_ERR_BAD_SUB</code> &quot;(pipe) remote sent a SUB packet that is too short to be valid&quot;. For pub/sub work, a subscription list was relayed that was invalid.</li>
+<li><code>NITRO_ERR_BAD_HANDSHAKE</code> &quot;(pipe) remote sent a HELLO packet that is too short to be valid&quot;. An invalid <code>HELLO</code> frame was sent.</li>
+<li><code>NITRO_ERR_BAD_SECURE</code> &quot;(pipe) remote sent a secure envelope on an insecure connection&quot;. The remote peer sent a secure frame when the local socket has is not secure (<code>nitro_sockopt_set_secure</code> has not been enabled)</li>
+</ul>
+<p><strong>nitro_sockopt_disable_error_handler</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_sockopt_disable_error_handler(nitro_sockopt_t *opt);</code></pre>
+<p>Disable the default error handler (or any error handler, really).</p>
+<p>This means nothing strange socket behavior will be dropped silently. It is not a great idea to do this.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *opt</code> - The socket options structure to modify</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><strong>nitro_sockopt_destroy</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_sockopt_destroy(nitro_sockopt_t *opt);</code></pre>
+<p>Destroy a socket option object.</p>
+<p>Used very rarely, because <code>nitro_sockopt_t</code> objects given to socket constructors are owned and destroyed by those sockets... and there's not a lot of other reasons to create a <code>nitro_sockopt_t</code>.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *opt</code> - The socket options structure to destroy</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<h2 id="socket-lifetime"><a href="#socket-lifetime">Socket Lifetime</a></h2>
+<p>Creation and destruction of sockets.</p>
+<p><em>Socket Locations</em></p>
+<p>Socket locations look like this:</p>
+<pre><code>protocol://location</code></pre>
+<p>Nitro supports two protocols, &quot;tcp&quot; and &quot;inproc&quot;.</p>
+<p>TCP locations must be given as &quot;<IPv4>:<port>&quot; specifications. Nitro does not currently do DNS resolutions, so you'll need to resolve names at a higher level before creating sockets.</p>
+<p>Inproc locations can be any arbitrary string, but convention dictates it be a reasonable identifer like alphanumberic with dashes.</p>
+<p>Here are some valid locations:</p>
+<pre><code>tcp://127.0.0.1:4444
+tcp://10.1.1.1:443
+inproc://foobar
+inproc://router-database</code></pre>
+<p>There is one special form available for passing to bound tcp sockets:</p>
+<pre><code>tcp://*:443</code></pre>
+<p>This is shorthand for &quot;bind on all interfaces&quot;.</p>
+<p><strong>nitro_socket_bind</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c">nitro_socket_t *nitro_socket_bind(<span class="dt">char</span> *location, nitro_sockopt_t *opt);</code></pre>
+<p>Create a new bound socket at <code>location</code> using options <code>opt</code>.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>char *location</code> - The socket location for binding.</li>
+<li><code>nitro_sockopt_t *opt</code> - The socket options, or NULL for default options.</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>A new socket, or NULL on error. <code>nitro_error()</code> will be set.</p>
+<p>Error values:</p>
+<ul>
+<li><code>NITRO_ERR_PARSE_BAD_TRANSPORT</code> &quot;invalid transport type for socket&quot;. Socket protocol was not &quot;tcp&quot; or &quot;inproc&quot;.</li>
+<li><code>NITRO_ERR_TCP_LOC_NOCOLON</code> &quot;TCP socket location did not contain a colon&quot;.</li>
+<li><code>NITRO_ERR_TCP_LOC_BADPORT</code> &quot;TCP socket location did not contain an integer port number&quot;.</li>
+<li><code>NITRO_ERR_TCP_LOC_BADIPV4</code> &quot;TCP socket location was not a valid IPv4 address (a.b.c.d)&quot;.</li>
+<li><code>NITRO_ERR_BAD_INPROC_OPT</code> &quot;inproc socket creation was given an unsupported socket option&quot;. An inproc socket was probably given an option documented with &quot;Socket Type Restrictions&quot; that require tcp-only.</li>
+<li><code>NITRO_ERR_INPROC_ALREADY_BOUND</code> &quot;another inproc socket is already bound to that location&quot;.</li>
+<li><code>NITRO_ERR_ERRNO</code> A low-level socket operation failed; check errno.</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><strong>nitro_socket_connect</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c">nitro_socket_t *nitro_socket_connect(<span class="dt">char</span> *location, nitro_sockopt_t *opt);</code></pre>
+<p>Create a new connected socket (or, in the case of TCP, that <em>will</em> connect) at <code>location</code> using options <code>opt</code>.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>char *location</code> - The location of a bound socket.</li>
+<li><code>nitro_sockopt_t *opt</code> - The socket options, or NULL for default options.</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>A new socket, or NULL on error. <code>nitro_error()</code> will be set.</p>
+<p>Error values:</p>
+<ul>
+<li><code>NITRO_ERR_PARSE_BAD_TRANSPORT</code> &quot;invalid transport type for socket&quot;. Socket protocol was not &quot;tcp&quot; or &quot;inproc&quot;.</li>
+<li><code>NITRO_ERR_TCP_LOC_NOCOLON</code> &quot;TCP socket location did not contain a colon&quot;.</li>
+<li><code>NITRO_ERR_TCP_LOC_BADPORT</code> &quot;TCP socket location did not contain an integer port number&quot;.</li>
+<li><code>NITRO_ERR_TCP_LOC_BADIPV4</code> &quot;TCP socket location was not a valid IPv4 address (a.b.c.d)&quot;.</li>
+<li><code>NITRO_ERR_BAD_INPROC_OPT</code> &quot;inproc socket creation was given an unsupported socket option&quot;. An inproc socket was probably given an option documented with &quot;Socket Type Restrictions&quot; that require tcp-only.</li>
+<li><code>NITRO_ERR_INPROC_NOT_BOUND</code> &quot;cannot connect to inproc: not bound&quot;. No inproc socket is bound at that location.</li>
+<li><code>NITRO_ERR_ERRNO</code> A low-level socket operation failed; check errno.</li>
+</ul>
+<p><em>Connection Timing Notes</em></p>
+<p>TCP sockets connect asynchronously and continuously as needed. Inproc sockets connect synchronously, during the call to <code>nitro_socket_connect</code>.</p>
+<p>The ramifications of this are that inproc sockets require <code>nitro_socket_bind</code> to be called before any corresponding <code>nitro_socket_connect</code> calls.</p>
+<p><strong>nitro_socket_close</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_socket_close(nitro_socket_t *socket);</code></pre>
+<p>Close a socket and (eventually) destory all its resources.</p>
+<p>For a TCP socket, this means let outgoing traffic flush for the linger time, then destroy.</p>
+<p>For an inproc socket, the socket is closed immediately.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *socket</code> - The socket to close</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>This function is not thread safe in that each socket can only be closed exactly once.</p>
+<p>So if you've distributed socket frame activity across a thread pool, for example, all those threads must stop and before <code>nitro_socket_close</code> is called exactly once.</p>
+<p><em>Destruction Semantics</em></p>
+<p>After calling <code>nitro_socket_close</code>, the application must make no more calls using that socket.</p>
+<h2 id="frame-management"><a href="#frame-management">Frame Management</a></h2>
+<p>Frames are the containers for messages in Nitro. Creating and destroying them efficiently and safely is key to a healthy application.</p>
+<p><strong>nitro_frame_new_copy</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c">nitro_frame_t *nitro_frame_new_copy(<span class="dt">void</span> *data, <span class="dt">uint32_t</span> size);</code></pre>
+<p>The easiest way to create a frame is to use <code>nitro_frame_new_copy</code>. This function copies the buffer <code>data</code> for <code>size</code> bytes onto the heap, and frees its private copy after it is sent.</p>
+<p>Note that if frames are sent using the <code>NITRO_REUSE</code> flags, the copied buffer is reference counted, so you can safely create a new frame with <code>nitro_frame_new_copy</code> and send it many times efficiently without invoking a copy each time.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>void *data</code> - A pointer to the start of your message</li>
+<li><code>uint32_t size</code> - The length of your message</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>A new frame, ready for sending.</p>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><strong>nitro_frame_new</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="kw">typedef</span> <span class="dt">void</span> (*nitro_free_function)(<span class="dt">void</span> *data, <span class="dt">void</span> *baton);
+nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="dt">uint32_t</span> size, nitro_free_function ff, <span class="dt">void</span> *baton);</code></pre>
+<p>The lower-level, zero-copy frame constructor. <code>data</code> must stay valid until nitro calls <code>ff</code>!</p>
+<p>You can control what function to call when nitro is done with your message data.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>void *data</code> - A pointer to the start of your message</li>
+<li><code>uint32_t size</code> - The length of your message</li>
+<li><code>nitro_free_function ff</code> - A function nitro will invoke when it is done using your buffer.</li>
+<li><code>void *baton</code> - Something to pass through as the second argument of your free function.</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>A new frame, ready for sending.</p>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><strong>nitro_frame_new_heap</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c">nitro_frame_t *nitro_frame_new_heap(<span class="dt">void</span> *data, <span class="dt">uint32_t</span> size);</code></pre>
+<p>A zero-copy macro on <code>nitro_frame_new</code> that says <code>data</code> was allocated on the heap using <code>malloc</code> and nitro should call <code>free</code>.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>void *data</code> - A pointer to the start of your message</li>
+<li><code>uint32_t size</code> - The length of your message</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>A new frame, ready for sending.</p>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><strong>nitro_frame_data</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> *nitro_frame_data(nitro_frame_t *fr);</code></pre>
+<p>Return the pointer to the buffer that contains the message data.</p>
+<p>Read-only. Do not manipulate the contents of this buffer!</p>
+<p>Used most often after getting a new frame from <code>nitro_recv</code>.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_frame_t *fr</code> - The frame</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>Pointer to message data.</p>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><strong>nitro_frame_size</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">uint32_t</span> *nitro_frame_size(nitro_frame_t *fr);</code></pre>
+<p>Return the length of valid message data at the pointer returned from <code>nitro_frame_data</code>.</p>
+<p>Used most often after getting a new frame from <code>nitro_recv</code>.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_frame_t *fr</code> - The frame</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>Length of message data.</p>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><strong>nitro_frame_destroy</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_frame_destroy(nitro_frame_t *fr);</code></pre>
+<p>Destroy the frame.</p>
+<p>Technically, this may or may not invoke the <code>nitro_free_function</code> associated with the frame. For performance reasons, Nitro frames are actually reference counted. So while this function indicates the <em>caller</em> is done with the frame, it does not necessarily mean all associated memory will be released, yet.</p>
+<p>Also, many of the functions to send frames take ownership by default of the frames and NULL out your frame pointer. So unless you have a frame you got via <code>nitro_recv</code>, or you used the <code>NITRO_REUSE</code> flag, it is not your responsibility to destroy the frame.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_frame_t *fr</code> - The frame</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<h2 id="receiving-frames"><a href="#receiving-frames">Receiving Frames</a></h2>
+<p><strong>nitro_recv</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c">nitro_frame_t *nitro_recv(nitro_socket_t *s, <span class="dt">int</span> flags);</code></pre>
+<p>As documented in the Concepts, this is the only way to receive frames from a socket.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *s</code> - The socket to receive from.</li>
+<li><code>int flags</code> - Flags to modify receive behavior</li>
+</ul>
+<p><em>Flags</em></p>
+<ul>
+<li><code>NITRO_NOBLOCK</code> - Do not block on this <code>nitro_recv</code> call; return immediately</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>A new frame, or NULL if error.</p>
+<ul>
+<li><code>NITRO_ERR_EAGAIN</code> - No frames were waiting in the incoming socket buffer, and <code>NITRO_NOBLOCK</code> was passed to the <code>nitro_recv</code> call.</li>
+</ul>
+<p><em>Ownership</em></p>
+<p>You own all frames you receive. You must either call <code>nitro_frame_destroy</code>, or forward them on to another socket via a send function.</p>
+<p><em>Thread Safety</em></p>
+<p>Thread safe, including using the same socket in multiple threads.</p>
+<h2 id="sending-frames"><a href="#sending-frames">Sending Frames</a></h2>
+<p><strong>nitro_send</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">int</span> nitro_send(nitro_frame_t **frp, nitro_socket_t *s, <span class="dt">int</span> flags);</code></pre>
+<p>Send a frame <code>*frp</code> to any connected peer on socket <code>s</code>.</p>
+<p>See Concepts for details about behavior.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_frame_t **frp</code> - A pointer to a frame pointer. The frame will be queued and the pointer will be NULLified unless <code>NITRO_REUSE</code> is in flags.</li>
+<li><code>nitro_socket_t *s</code> - The socket to send to.</li>
+<li><code>int flags</code> - Flags to modify send behavior</li>
+</ul>
+<p><em>Flags</em></p>
+<ul>
+<li><code>NITRO_NOBLOCK</code> - Do not block on this <code>nitro_send</code> call; return immediately</li>
+<li><code>NITRO_REUSE</code> - Copy/refcount the frame, and do not NULLify the pointer, so the application can reuse it.</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>0 on success, &lt; 0 on error. <code>nitro_error</code> will be set.</p>
+<ul>
+<li><code>NITRO_ERR_EAGAIN</code> - The high water mark has been hit on the outgoing frame queue, so this operation would have blocked, but <code>NITRO_NOBLOCK</code> was in <code>flags</code>.</li>
+<li><code>NITRO_ERR_INPROC_NO_CONNECTIONS</code> - The send operation was attempted on a bound inproc socket without any current peers.</li>
+</ul>
+<p><em>Ownership</em></p>
+<p>Unless you pass <code>NITRO_REUSE</code> in flags, this function takes ownership of the frame and is responsible for destroying it.</p>
+<p><em>Thread Safety</em></p>
+<p>Thread safe, including using the same socket in multiple threads. Using the same frame in multiple threads is possible but inadvisable.</p>
+<p><strong>nitro_reply</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">int</span> nitro_reply(nitro_frame_t *snd, nitro_frame_t **frp,
+    nitro_socket_t *s, <span class="dt">int</span> flags);</code></pre>
+<p>Send a frame <code>*frp</code> directly to the peer that sent frame <code>snd</code>.</p>
+<p>This is RPC-style behavior; see Concepts for details.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_frame_t *snd</code> - A frame sent by a specific peer that identifies the &quot;return address&quot; for <code>*frp</code>.</li>
+<li><code>nitro_frame_t **frp</code> - A pointer to a frame pointer. The frame will be queued and the pointer will be NULLified unless <code>NITRO_REUSE</code> is in flags.</li>
+<li><code>nitro_socket_t *s</code> - The socket to send to.</li>
+<li><code>int flags</code> - Flags to modify send behavior</li>
+</ul>
+<p><em>Flags</em></p>
+<ul>
+<li><code>NITRO_NOBLOCK</code> - Do not block on this <code>nitro_send</code> call; return immediately</li>
+<li><code>NITRO_REUSE</code> - Copy/refcount the frame, and do not NULLify the pointer, so the application can reuse it.</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>0 on success, &lt; 0 on error. <code>nitro_error</code> will be set.</p>
+<ul>
+<li><code>NITRO_ERR_EAGAIN</code> - The high water mark has been hit on the outgoing frame queue, so this operation would have blocked, but <code>NITRO_NOBLOCK</code> was in <code>flags</code>.</li>
+<li><code>NITRO_ERR_NO_RECIPIENT</code> - The recipient identified by <code>snd</code> is no longer (or never was) in the connection table.</li>
+</ul>
+<p><em>Ownership</em></p>
+<p>Unless you pass <code>NITRO_REUSE</code> in flags, this function takes ownership of the frame and is responsible for destroying it.</p>
+<p><em>Thread Safety</em></p>
+<p>Thread safe, including using the same socket in multiple threads. Using the same frame in multiple threads is possible but inadvisable.</p>
+<p><strong>nitro_relay_fw</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">int</span> nitro_relay_fw(nitro_frame_t *snd, nitro_frame_t **frp,
+    nitro_socket_t *s, <span class="dt">int</span> flags);</code></pre>
+<p>Forward a frame <code>*frp</code> to any peer on socket <code>s</code> while preserving the routing information in received frame <code>snd</code>.</p>
+<p>This is proxy-style behavior; see Concepts for details.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_frame_t *snd</code> - A frame sent by a specific peer that contains a routing stack (a stack of &quot;return addresses&quot;) that should be preserved in <code>*frp</code>.</li>
+<li><code>nitro_frame_t **frp</code> - A pointer to a frame pointer. The frame will be queued and the pointer will be NULLified unless <code>NITRO_REUSE</code> is in flags.</li>
+<li><code>nitro_socket_t *s</code> - The socket to send to.</li>
+<li><code>int flags</code> - Flags to modify send behavior</li>
+</ul>
+<p><em>Flags</em></p>
+<ul>
+<li><code>NITRO_NOBLOCK</code> - Do not block on this <code>nitro_send</code> call; return immediately</li>
+<li><code>NITRO_REUSE</code> - Copy/refcount the frame, and do not NULLify the pointer, so the application can reuse it.</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>0 on success, &lt; 0 on error. <code>nitro_error</code> will be set.</p>
+<ul>
+<li><code>NITRO_ERR_EAGAIN</code> - The high water mark has been hit on the outgoing frame queue, so this operation would have blocked, but <code>NITRO_NOBLOCK</code> was in <code>flags</code>.</li>
+<li><code>NITRO_ERR_INPROC_NO_CONNECTIONS</code> - The send operation was attempted on a bound inproc socket without any current peers.</li>
+</ul>
+<p><em>Ownership</em></p>
+<p>Unless you pass <code>NITRO_REUSE</code> in flags, this function takes ownership of the frame and is responsible for destroying it.</p>
+<p><em>Thread Safety</em></p>
+<p>Thread safe, including using the same socket in multiple threads. Using the same frame in multiple threads is possible but inadvisable.</p>
+<p><strong>nitro_relay_bk</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">int</span> nitro_relay_bk(nitro_frame_t *snd, nitro_frame_t **frp,
+    nitro_socket_t *s, <span class="dt">int</span> flags);</code></pre>
+<p>Pop the top address off the routing stack in <code>snd</code> and forward the frame <code>*frp</code> to that specific peer on socket <code>s</code>.</p>
+<p>This is proxy-style behavior; see Concepts for details.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_frame_t *snd</code> - A frame coming back from a _reply that contains a routing stack that includes the appropriate next hop.</li>
+<li><code>nitro_frame_t **frp</code> - A pointer to a frame pointer. The frame will be queued and the pointer will be NULLified unless <code>NITRO_REUSE</code> is in flags.</li>
+<li><code>nitro_socket_t *s</code> - The socket to send to.</li>
+<li><code>int flags</code> - Flags to modify send behavior</li>
+</ul>
+<p><em>Flags</em></p>
+<ul>
+<li><code>NITRO_NOBLOCK</code> - Do not block on this <code>nitro_send</code> call; return immediately</li>
+<li><code>NITRO_REUSE</code> - Copy/refcount the frame, and do not NULLify the pointer, so the application can reuse it.</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>0 on success, &lt; 0 on error. <code>nitro_error</code> will be set.</p>
+<ul>
+<li><code>NITRO_ERR_EAGAIN</code> - The high water mark has been hit on the outgoing frame queue, so this operation would have blocked, but <code>NITRO_NOBLOCK</code> was in <code>flags</code>.</li>
+<li><code>NITRO_ERR_NO_RECIPIENT</code> - The recipient identified by the top of the routing stack in <code>snd</code> is no longer (or never was) in this socket's connection table.</li>
+</ul>
+<p><em>Ownership</em></p>
+<p>Unless you pass <code>NITRO_REUSE</code> in flags, this function takes ownership of the frame and is responsible for destroying it.</p>
+<p><em>Thread Safety</em></p>
+<p>Thread safe, including using the same socket in multiple threads. Using the same frame in multiple threads is possible but inadvisable.</p>
+<h2 id="publishsubscribe"><a href="#publishsubscribe">Publish/Subscribe</a></h2>
+<p><strong>Stcp_socket_sub/Stcp_socket_unsub</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">int</span> Stcp_socket_sub(nitro_tcp_socket_t *s,
+    <span class="dt">uint8_t</span> *k, size_t length);
+<span class="dt">int</span> Stcp_socket_unsub(nitro_tcp_socket_t *s,
+    <span class="dt">uint8_t</span> *k, size_t length);</code></pre>
+<p>Subscribe or unsubscribe to frames broadcast on channels that begin with prefix <code>k</code> of length <code>length</code>. <code>length</code> must be &lt;255.</p>
+<p>See Concepts for details.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *s</code> - The socket with the subscribtion</li>
+<li><code>uint8_t *k</code> - The channel prefix</li>
+<li><code>size_t length</code> - The length of the prefix</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>0 on success, &lt; 0 on error. <code>nitro_error</code> will be set.</p>
+<ul>
+<li><code>NITRO_ERR_SUB_ALREADY</code> - <code>nitro_sub</code> called with a prefix the socket is already subscribed to.</li>
+<li><code>NITRO_ERR_SUB_MISSING</code> - <code>nitro_unsub</code> called with a prefix the socket is not subscribed to.</li>
+</ul>
+<p><em>Ownership</em></p>
+<p>Sub makes a copy of the key, so it does not alter ownership state of the calling function on the buffer in <code>k</code>.</p>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><strong>nitro_pub</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">int</span> nitro_pub(nitro_frame_t **frp, <span class="dt">const</span> <span class="dt">uint8_t</span> *k,
+    size_t length, nitro_socket_t *s, <span class="dt">int</span> flags);</code></pre>
+<p>Public a frame <code>*frp</code> to all connected peers who have a known subscription to a prefix of channel <code>k</code>.</p>
+<p>See concepts for details.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_frame_t **frp</code> - A pointer to a frame pointer. The frame will be queued and the pointer will be NULLified unless <code>NITRO_REUSE</code> is in flags.</li>
+<li><code>const uint8_t *k</code> - The channel key</li>
+<li><code>size_t length</code> - The length of the channel key</li>
+<li><code>nitro_socket_t *s</code> - The socket to broadcast on</li>
+<li><code>int flags</code> - Flags to modify send behavior</li>
+</ul>
+<p><em>Flags</em></p>
+<ul>
+<li><code>NITRO_REUSE</code> - Copy/refcount the frame, and do not NULLify the pointer, so the application can reuse it.</li>
+</ul>
+<p><em>Return Value</em></p>
+<p>The number of recipients for whom the message was queued.</p>
+<p><em>Ownership</em></p>
+<p>Unless you pass <code>NITRO_REUSE</code> in flags, this function takes ownership of the frame and is responsible for destroying it.</p>
+<p><em>Thread Safety</em></p>
+<p>Thread safe, including using the same socket in multiple threads. Using the same frame in multiple threads is possible but inadvisable.</p>
+<p><em>Special Non-Blocking Behavior</em></p>
+<p>Due to the nature of publishing, there is no <code>NITRO_NOBLOCK</code> flag, because <code>nitro_pub</code> is always nonblocking.</p>
+<p>If a peer subscribed to the channel has a frame queue that is at its high water mark, the delivery will simply be skipped. Ergo, it is possible to drop subscribed messages if socket does not keep up with the message stream.</p>
+<h1 id="faq"><a href="#faq">FAQ</a></h1>
+<p><strong>Q: How is this different than ZeroMQ?</strong></p>
+<p>Nitro is in many ways a reaction to ZeroMQ, and is heavily inspired by it (especially czmq). The team at bu.mp uses ZeroMQ extensively (including shipping it on tens of millions of smartphones), and there's a lot to love about ZMQ. So much so, in fact, that the failings of ZMQ in the attempted applications motivated Nitro--because the basic communication model that ZMQ pioneered is mostly wonderful to use and develop against.</p>
+<p>However, realistically, ZeroMQ was designed for relatively low-concurrency, very high throughput (especially multicast PGM) communication on private, trusted, low-latency networks... not for large scale public Internet services with high connection counts, fickle clients and wobbly links.</p>
+<p>These are some of the design decisions Nitro made that differ from ZeroMQ:</p>
+<ul>
+<li>Nitro provides more transparency about the socket/queue state (client X is connected, queue count is Y) for monitoring reasons and because clients quite often never come back in public networks, so state needs to be cleared, etc.</li>
+<li>Nitro does not commit messages to a particular socket at send() time, but does send() on a general queue and lets peers &quot;work steal&quot; stripes of frames as soon as they have room on their TCP buffer. This makes for a lot more transparency about the high-water mark, constrains the total number of messages that may be lost due to a client disconnect, and can minimize mean latency of receipt of any general message (vs. naive round robin).</li>
+<li>Nitro clears private queues for dead peer sockets instead of leaving them around indefintely in case they return. This fixes one of the biggest issues with doing high-concurrency work in ZeroMQ... an unavoidable memory leak in ROUTER sockets when there is pending data for clients who will never return.</li>
+<li>ZeroMQ (esp 2.X) had some more or less hard coded peer limits (1024), which is far less than a good C daemon on epoll can handle; nitro has no such restrictions</li>
+<li>ZeroMQ does not have any crypto story, so we had to roll our own awkardly using NaCl. With Nitro, we built NaCl in, including a key exchange step, so you don't need to ship keys with every frame.</li>
+<li>ZeroMQ's heritage of private networks has bit us and others with things that are assert()s instead of closes-and-logs. On the public internet, sometimes people with your socket with a random HTTP request. It is also not clear how much attention ZeroMQ has paid to invalid data in the form of attacks on inbound TCP streams, integer overflows, etc. Nitro tries to be paranoid and shuts down bad peers instead of crashing.</li>
+<li>ZeroMQ ROUTER sockets also have some O(n) algorithms, where n is the number of connected peers on a socket; nitro is all O(1)</li>
+<li>In practice we found the &quot;typed socket&quot; paradigm (REQ/REP/PUSH) more of a hindrance than a help. We often ended up with hybrid schemes, like &quot;REQ/maybe REP&quot;, or &quot;REQ/multi REP&quot;. Also, if you want REQ/REP with multiple clients where you do some processing to produce the REP result, you'll need to chain together ROUTER/DEALER. REQ/REP stacks, and make sure you carefully track the address frames. Nitro lets you create any topology you want, and the routing is relatively abstracted from the application developer (you don't need to worry how deep or shallow you are).</li>
+<li>Having the routing information in special MORE frames that have implict rules (socket types X and Y &quot;automatically&quot; generate them, but not Z)</li>
+<li>Socket options have documented rules about when they take effect and when not, but these rules are not enforced by the API so they can bite you. Nitro separates things that must be decided at construction time from those you can modify on the fly (_sub and _unsub, etc).</li>
+<li>Pub/sub based on message body was limiting for us in practice. Oftentimes we wanted a separation of the &quot;channel name&quot; and the message body.</li>
+<li>ZMQ sockets are not thread safe. So the way to make a multicore exploiting RPC service is to chain tcp/ROUTER frontends to an array of inproc backends, each running in a separate pthread. This is a layer of complexity nitro removes by just having sockets be thread afe.</li>
+<li>ZMQ_FD is edge triggered. It's much harder to integrate an edge-triggered interface into other event loops. Though it has a theoretical performance benefit, Nitro uses a level-triggered activity fd to make integration easier for 3rd party binding developers.</li>
+<li>Nitro is written in C. We're just not big C++ fans, and we don't like linking against libstdc++ :-) .</li>
+</ul>
+<p>It's not all upside:</p>
+<ul>
+<li>ZeroMQ is slighly faster (30-40%) on very small (&lt;40 bytes) tcp messages and inproc, Nitros use of locks probably costs it there. (Nitro is somewhat faster on frames &gt; 50-70 bytes).</li>
+<li>Nitro has no equivalent of PGM support, nor will it ever. It doesn't fit the project's goals--Nitro's target users don't usually control the switching hardware to a degree to use PGM. So if you're on a network where very high performance multicast is key, ZMQ is probably a better fit.</li>
+<li>Nitro does not have multi-connect. If that topology is critical to you, ZeroMQ can help (or HAproxy, but this is not as clean or as fast.)</li>
+<li>Nitro is very young, and does not have <em>nearly</em> the language support ZeroMQ has. Chances are if you want to use Nitro in your language of choice, you're going to have to make it happen. Unless your language is C, Python, or Haskell</li>
+<li>ZeroMQ is ported to work on Windows and Mac OS X (as well as smartphone platforms). Nitro has not yet been ported to anything but Linux.</li>
+</ul>
+<h1 id="contactcredits"><a href="#contactcredits">Contact/Credits</a></h1>
+<p>nitro was written by @jamwt, with help from @magicseth and @dowski. We all work for @bumptech.</p>
+<p>Come find us on Freenode/#gonitro</p>
+<p>Bugs</p>
+<p>Pull Requests</p>
+</div>
+</body>
+</html>
