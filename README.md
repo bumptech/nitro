@@ -4,6 +4,8 @@ Nitro
 Nitro is a very fast, flexible, high-level network communication
 library.
 
+http://gonitro.io
+
 Build
 -----
 
@@ -65,6 +67,11 @@ Bindings
 --------
 
 Bindings for Python and Haskell coming soon.
+
+Docs
+----
+
+Find everything you need at the website.  http://gonitro.io
 
 Status
 ------
