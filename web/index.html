@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Bootstrap 101 Template</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap -->
+    <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <link href="//fonts.googleapis.com/css?family=Droid+Sans" rel="stylesheet" type="text/css">
+    <style>
+        .container-narrow {
+            padding: 35px;
+            margin: 0 auto;
+            max-width: 960px;
+            background-image: url(img/hexabump.png);
+            border-left: orange 1px solid;
+            box-shadow: 2px 2px 3px #111;
+        }
+        body {
+            font-family: 'Droid Sans', courier;
+            color: #eee;
+            background-image: url(img/dark_fish_skin.png);
+        }
+        p {
+            line-height: 1.4em;
+        }
+        #logo {
+            display: block;
+            margin: 0 auto;
+        }
+        .spiel {
+            text-align: center;
+            line-height: 1.6em;
+            display: block;
+            font-size: 16pt;
+            width: 600px;
+            margin: 38px auto;
+        }
+
+        .logo-row {
+            margin-bottom: 30px;
+        }
+        .spiel-row {
+            padding-bottom: 28px;
+        }
+        .code-sample {
+            margin: 20px auto;
+            display: block;
+        }
+
+        .main-buttons .btn {
+            margin: 12px 12px;
+        }
+
+        .btn {
+          background-color: gray;
+          background-image: none;
+          background-image: none;
+          background-image: none;
+          background-image: none;
+          background-image: none;
+          background-image: none;
+          background-repeat: no-repeat;
+          filter: none;
+          width: 200px;
+        }
+
+        .btn-warning {
+            background-color: orange;
+        }
+
+        ul {
+            margin-top: 0;
+            padding: 0;
+            list-style-image: url(img/flame.png);
+            font-size: 14pt;
+        }
+
+        li {
+            line-height: 1.6em;
+            margin: 12px 0;
+        }
+
+        .bindings {
+            margin-top: 20px;
+            padding: 10px 0;
+            background: white;
+            border: gray 1px solid;
+            border-radius: 15px;
+            text-align: center;
+            color: orange;
+        }
+
+        .bindings a {
+            display: block;
+            padding: 4px;
+            font-size: 20px;
+        }
+
+        .lang-logo {
+            display: block;
+            margin: 0 auto;
+            max-width: 150px;
+        }
+
+        .bindings-lab {
+            position: relative;
+            left: -10px;
+            top: 35px;
+            -webkit-transform: rotate(270deg);
+            -moz-transform: rotate(270deg);
+            -o-transform: rotate(270deg);
+            writing-mode: lr-tb;
+        }
+
+        .bindings-more-soon {
+            color: #333;
+            vertical-align: middle;
+            font-size: 18px;
+            padding-top: 33px;
+        }
+
+        .bot-stripe {
+            margin: 0;
+            text-align: right;
+            background: orange;
+            font-size: 24px;
+            padding: 12px 0;
+        }
+
+        .bot-cont {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        .bumpit {
+            padding: 0 14px;
+        }
+
+    </style>
+  </head>
+  <body>
+    <div class="container-narrow">
+        <div class="row-fluid logo-row">
+            <div class="span12">
+                <img id="logo" src="img/nitro_logo.png">
+            </div>
+        </div>
+        <div class="row-fluid spiel-row">
+            <div class="span8">
+                <p class="spiel">
+                    Nitro is a library for painlessly writing scalable, fast,<br>
+                    and secure message-passing network applications:
+                </p>
+            </div>
+            <div class="span4 main-buttons">
+                <a class="btn btn-primary btn-warning btn-large"
+                    href="/downloads/nitro-0.1.0.tar.gz">Download</a>
+                <a class="btn btn-primary btn-large"
+                    href="//docs.gonitro.io">Docs</a>
+            </div>
+        </div>
+        <div class="row-fluid">
+            <div class="span8">
+                <iframe class="code-sample" src="test.html" width="500" height="600"></iframe>
+            </div>
+            <div class="span4">
+                <ul>
+                    <li>Millions of messages per second on commodity hardware</li>
+                    <li>Built-in <a href="//nacl.cr.yp.to">NaCL</a>-based encryption,
+                    including certificate validation</li>
+                    <li>Scalable&dash;all connection-related algorithms are O(1)</li>
+                    <li>Fully thread-safe sockets for trivial multicore services</li>
+                    <li>Route tracking supports proxying and RPC-style messaging</li>
+                    <li>Pure C for easy bindings to your language</li>
+                    <li>Runs on Linux; OS X, iOS, and Android soon</li>
+                </ul>
+            </div>
+        </div>
+        <div class="row-fluid bindings">
+            <div class="span12">
+                <div class="row-fluid blists">
+                    <div class="span1">
+                        <div class="bindings-lab">BINDINGS</div>
+                    </div>
+                    <div class="span3">
+                        <img src="img/lang-python.png" class="lang-logo">
+                        <a href="https://github.com/bumptech/nitro-python">pynitro</a>
+                    </div>
+                    <div class="span8 bindings-more-soon">
+                        .. and more soon!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="bot-stripe">
+        <div class="bot-cont">
+        from your friends at &rarr; &rarr; &rarr; &rarr; &rarr; <span class="bumpit">&#9733; 
+        <a href="http://bu.mp/company"><img src="img/bump.png" border="0"></a> &#9733;</span>  &larr;
+        </div>
+    </div>
+    <script src="http://code.jquery.com/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+  </body>
+</html>
+
+<!--
+    * Millions of messages a second on commodity hardware
+    * Built-in NaCl-based security, including certificate validation
+    * Pure C for easy bindings for your language
+    * Runs on Linux; FreeBSD, iOS, and Android in progress
+    * Only O(1) algorithms with respect to socket connection count
+    * First class socket diagnostics
+    * Message tagging to support routing, forwarding, RPC-style reply
+    * Fully thread-safe sockets for trivial multicore services
+-->
