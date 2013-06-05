@@ -19,20 +19,25 @@
 [x] Torture
     - leak-free torture
 [x] error thread safety
+[ ] Ramp up TCP come-alive on write.  Timer + cancel idea.
+[ ] Resolve names
+[ ] Inproc, send/fw on queue full, skip?  go around once?
+[ ] Inproc queuing.. use send queue on
+    bound sock?
 [ ] Safety of async jobs with TCP?
 [ ] XXX HWM BUG
 [ ] Socket Diagnostics (HUP report, stats, query queue sizes, etc)
-[ ] Leak check
 [i] Python bindings
 [i] Haskell bindings
+[ ] Leak check
 [ ] Kill all XXX
 [ ] Re-run style
 [ ] Verify file headers are present and correct in src/*.{c,h}
 [ ] Namespace all _H #defines in headers (add NITRO_)
 [ ] Verify non-exports are static
 [ ] Static Analysis (splint? coverity free?)
-[ ] Document/website/release
 [ ] More tests
     - hwm
     - secure verify
     - eventfd
+[ ] Turn this TODO into github issues!  :-)
