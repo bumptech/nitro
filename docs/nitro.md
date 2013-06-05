@@ -10,10 +10,10 @@ and secure network applications.  Nitro applications
 create bound sockets ("nitro sockets" here being a
 different and higher-level abstraction than BSD sockets)
 that listen at a certain location so that other
-nitro sockets can connect and exchange messages.
+Nitro sockets can connect and exchange messages.
 
-A message, also called a "frame", is the fundamental
-unit of communication between nitro sockets.  When
+A message, wraped in a "frame", is the fundamental
+unit of communication between Nitro sockets.  When
 a frame is sent, it is either received completely
 by another party or not at all.  Application
 developers don't need to worry about boundary
@@ -22,7 +22,7 @@ conditions, message delimiting, etc.
 Sockets can also be set to be "secure", in which
 case NaCL-based public-key encryption is used.
 These secure sockets can be given a required
-certificate the peer socket must present to
+public key the peer socket must present to
 authenticate the connection (and protect against
 man-in-the-middle attacks).
 
@@ -36,7 +36,7 @@ Some use cases for nitro:
 
  * Private network services, like caches, proxies
    (dispatchers/routers), job queues, database
-   communication
+   communication, distributed systems
  * Public internet services, like low-latency
    push-capable services embedded in desktop
    applications or mobile apps
@@ -44,7 +44,6 @@ Some use cases for nitro:
    type work using inproc sockets
  * Pub/sub systems, like network-wide event monitoring,
    newsreaders, etc.
-
 
 Nitro Concepts
 ==============
@@ -55,7 +54,7 @@ Sockets
 The basic bind/connect relationship is the same as BSD
 sockets:
 
- 1. Every nitro connection is done between a bound socket
+ 1. Every Nitro connection is between a bound socket
     and a connected socket.  A socket can only `bind` or
     `connect`, not both (this is enforced via the socket constructors).
  2. Bound sockets may be communicating with many connected sockets
@@ -66,16 +65,16 @@ sockets:
 Frame
 -----
 
- 1. Every frame (save some internal frames) is created by the application
+ 1. Every frame (except some internal frames) is created by the application
     programmer, using `nitro_frame_new_copy` and similar frame constructors.
  2. Frames given to one of the "sending family of functions" will transfer
-    ownership to nitro unless the NITRO_REUSE flag is passed by
+    ownership to Nitro unless the NITRO_REUSE flag is passed by
     the application programmer.
  3. Frames received from `nitro_recv` are owned by the application programmer,
     and must either be destroyed or given back to a "sending family"
     function (for forwarding, etc, thus re-transfering ownership to nitro).
  4. Frames received from inproc sockets can transparently be sent to
-    tcp sockets and vice versa.
+    TCP sockets and vice versa.
 
 Receiving
 ---------
@@ -96,10 +95,10 @@ ranging from simple origin sends to replies and proxy relays.
  1. Nitro send is a "naive send" that will send to any available
     peer socket.
  2. If the socket is a connected socket, the frame is sent to the
-    peer socket if it is currently connected; otherwise queued
+    peer socket if it is currently connected; otherwise it is queued
  3. If the socket is a bound socket, the frame is sent to:
     * On a "tcp" socket, the first peer socket that will accept the
-      write() on the network (when there is room in the outgoing
+      write() on the network (i.e, when there is room in the outgoing
       kernel buffer)
     * On an "inproc" socket, the next peer socket in round-robin order
  4. `nitro_send` will block if the outbound queue is full, unless
@@ -133,7 +132,7 @@ ranging from simple origin sends to replies and proxy relays.
     *back* to the original sender using the top of the routing
     stack in the old frame.
  2. The targeted delivery to the socket in the routing stack follows
-    the same rules as nitro_reply
+    the same rules as nitro_reply.
  3. The "routing frame" and the "message frame" can be (and often are)
     the same frame.
 
@@ -156,7 +155,7 @@ Examples
 ========
 
 *Note: these examples assume you have already used the README.md to
-successfully install nitro and learn how to build nitro programs.
+successfully install Nitro and learn how to build Nitro programs.
 Please review the README.md if this is not so.*
 
 Pipelines
@@ -165,14 +164,18 @@ Pipelines
 The simplest example (and fastest, due to nearly no latency) is a single
 send/recv pipeline.
 
-Every nitro program begins with starting the nitro runtime:
+We'll build to separate programs, called `rec` and `send`.  One
+is the pipeline sender, and the other the receiver.
+
+Let's do the receiver first.  Every Nitro program begins with starting the 
+Nitro runtime:
 
 ~~~~~{.c}
 nitro_runtime_start();
 ~~~~~
 
 This sets up some global locks, a libev event loop, etc, and starts
-the main nitro thread in the background.
+the main Nitro thread in the background.
 
 Then, let's create a bound socket.  This will be the side doing the
 receiving.
@@ -196,8 +199,8 @@ while (1) {
 }
 ~~~~~
 
-Due to the fun of C strings, we copy the given frame into a buffer and
-make sure to set the terminating null byte before we print.
+(Due to the fun of C strings, we copy the given frame into a buffer and
+make sure to set the terminating null byte before we print.)
 
 So, that's about it.  Here's our whole program:
 
@@ -238,12 +241,13 @@ int main(int argc, char **argv) {
 }
 ~~~~~
 
-The differences are that we're connecting to the service instead of binding,
-then calling `nitro_send` on a fixed number of frames.  Notice we're not
-calling `nitro_frame_destroy`; as per the frame ownership rules, `nitro_send`
-is taking ownership of that frame in a zero-copy way.
+The differences between files are that we're connecting to the service
+instead of binding, then calling `nitro_send` on a fixed number of frames.
+Notice we're not calling `nitro_frame_destroy`; as per the frame ownership
+rules, `nitro_send` is taking ownership of that frame in a zero-copy way.
 
-We also sleep one second at the end to let the tcp socket flush before the program ends.
+We also sleep one second at the end to let the TCP socket flush before the
+program ends.
 
 Here's what a compile/run looks like:
 
@@ -293,10 +297,10 @@ Runtime
 int nitro_runtime_start();
 ~~~~~~
 
-Starts up all the nitro thread, sets up global locks, etc.
+Starts up all the Nitro thread, sets up global locks, etc.
 
 This function must be called and must return before calling any other
-nitro functions.
+Nitro functions.
 
 *Return Value*
 
@@ -307,7 +311,8 @@ nitro functions.
 
 *Thread Safety*
 
-Not thread safe.
+Not thread safe.  The runtime must be started exactly once
+(until `nitro_runtime_stop` is called).
 
 **nitro_runtime_stop**
 
@@ -315,9 +320,9 @@ Not thread safe.
 int nitro_runtime_stop();
 ~~~~~~
 
-Stops the nitro thread, cleans up all memory, etc.
+Stops the Nitro thread, cleans up all memory, etc.
 
-This function must not be called until all sockets are 
+This function must not be called until all sockets are
 `nitro_socket_close`ed and destroyed.
 
 For TCP sockets (which have a linger value), this means it is only safe to
@@ -327,7 +332,7 @@ call `nitro_runtime_stop` after the longest linger value has elapsed.
 
 0 on success, < 0 on error.
 
- * `NITRO_ERR_NOT_RUNNING` - The nitro runtime is not currently running
+ * `NITRO_ERR_NOT_RUNNING` - The Nitro runtime is not currently running
    (`nitro_runtime_start` has not been called).
 
 *Thread Safety*
@@ -350,7 +355,7 @@ Nitro tracks detail error codes and has explanations for issues
 that may arise during the execution of your pgoram.
 
 Nitro errors are thread-local, so it is safe to assume the error
-number nitro returns to your thread was triggered by you.
+number Nitro returns to your thread was triggered by you.
 
 **nitro_error**
 
@@ -379,7 +384,7 @@ Produce a user-readable message in english describing the given error.
 *Arguments*
 
  * `NITRO_ERROR error` - The error code in question (typically, returned from
-   `nitro_error`.
+   `nitro_error`.)
 
 *Return Value*
 
@@ -553,7 +558,7 @@ void nitro_sockopt_set_max_message_size(nitro_sockopt_t *opt,
 Set the maximum frame size allowable on this socket.
 
 If a remote connection attempts to send a frame larger than
-this value, the nitro error handler will be invoked and the
+this value, the Nitro error handler will be invoked and the
 connection will be dropped.
 
 Similarly, if the local application attempts to send
@@ -589,7 +594,7 @@ Make this TCP socket a secure socket.
 Frames will be encrypted using NaCL's authenticated,
 public-key encryption (`crypto_box`).
 
-How crypto works in Nitro:
+How crypto works in nitro:
 
  1. Every socket created in Nitro has a socket identity.
  2. The socket identity is actually a `crypto_box` public
@@ -660,10 +665,10 @@ machines!  Do not ship them to untrusted clients.
  * `nitro_socket_t *opt` - The socket options structure to modify
  * `uint8_t *ident` - The identity (`crypto_box` public key) of the
     socket
- * `size_t ident_length` - The length of the identity (nitro will assert
+ * `size_t ident_length` - The length of the identity (Nitro will assert
    if it is not equal to `crypto_box_PUBLICKEYBYTES`
  * `uint8_t *pkey` - The `crypto_box` private key.
- * `size_t pkey_length` - The length of the private key (nitro will assert
+ * `size_t pkey_length` - The length of the private key (Nitro will assert
    if it is not equal to `crypto_box_SECRETKEYBYTES`
 
 *Thread Safety*
@@ -673,7 +678,7 @@ Reentrant and thread safe.
 *Default Value*
 
 By default, as long as `nitro_sockopt_set_secure` is enabled,
-nitro will generate a random keypair (using `crypto_box_keypair`) whose
+Nitro will generate a random keypair (using `crypto_box_keypair`) whose
 lifetime ends with the socket.
 
 *Socket Type Limitations*
@@ -699,7 +704,7 @@ The public key provided here corresponds to one given to
  * `nitro_socket_t *opt` - The socket options structure to modify
  * `uint8_t *ident` - The identity (`crypto_box` public key) of the
     socket
- * `size_t ident_length` - The length of the identity (nitro will assert
+ * `size_t ident_length` - The length of the identity (Nitro will assert
    if it is not equal to `crypto_box_PUBLICKEYBYTES`
 
 *Thread Safety*
@@ -708,7 +713,7 @@ Reentrant and thread safe.
 
 *Default Value*
 
-By default nitro will accept encrypted packets
+By default Nitro will accept encrypted packets
 from any peer providing any public key.
 
 *Socket Type Limitations*
@@ -724,11 +729,11 @@ void nitro_sockopt_set_error_handler(nitro_sockopt_t *opt,
     nitro_error_handler handler, void *baton);
 ~~~~~
 
-Set a handler for any errors that occur on the nitro thread
+Set a handler for any errors that occur on the Nitro thread
 during communication with TCP sockets.
 
-This handler will be invoked from the nitro thread, so it should
-do its work quickly and return.  No TCP nitro traffic will
+This handler will be invoked from the Nitro thread, so it should
+do its work quickly and return.  No TCP Nitro traffic will
 take place while your custom handler is executed.
 
 *Arguments*
@@ -763,10 +768,10 @@ Using `nitro_log_error` and `nitro_errmsg`.
  * `NITRO_ERR_MAX_FRAME_EXCEEDED` "(pipe) remote tried to send a frame larger than the maximum allowable size".
    The remote peer attempted to send a frame larger
    than the specified maximum allowable size.
- * `NITRO_ERR_BAD_PROTOCOL_VERSION` "(pipe) remote sent a nitro protocol version that is unsupported by this application".
+ * `NITRO_ERR_BAD_PROTOCOL_VERSION` "(pipe) remote sent a Nitro protocol version that is unsupported by this application".
    A frame header contained a protocol version field that
    was either invalid or not implemented by this version
-   of Nitro.
+   of nitro.
  * `NITRO_ERR_INVALID_CLEAR` "(pipe) remote sent a unencrypted message over a secure socket".
    After `HELLO`, a non-encrypted message was sent by
    remote peer to this secure socket.
@@ -990,7 +995,7 @@ must make no more calls using that socket.
 Frame Management
 ----------------
 
-Frames are the containers for messages in Nitro.
+Frames are the containers for messages in nitro.
 Creating and destroying them efficiently and
 safely is key to a healthy application.
 
@@ -1033,7 +1038,7 @@ nitro_frame_t *nitro_frame_new(void *data, uint32_t size, nitro_free_function ff
 ~~~~~
 
 The lower-level, zero-copy frame constructor.
-`data` must stay valid until nitro calls `ff`!
+`data` must stay valid until Nitro calls `ff`!
 
 You can control what function to call when nitro
 is done with your message data.
@@ -1042,7 +1047,7 @@ is done with your message data.
 
  * `void *data` - A pointer to the start of your message
  * `uint32_t size` - The length of your message
- * `nitro_free_function ff` - A function nitro will invoke
+ * `nitro_free_function ff` - A function Nitro will invoke
    when it is done using your buffer.
  * `void *baton` - Something to pass through as the second argument
    of your free function.
