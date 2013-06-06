@@ -352,7 +352,7 @@ Errors
 ------
 
 Nitro tracks detail error codes and has explanations for issues
-that may arise during the execution of your pgoram.
+that may arise during the execution of your program.
 
 Nitro errors are thread-local, so it is safe to assume the error
 number Nitro returns to your thread was triggered by you.
