@@ -70,6 +70,7 @@ nitro_queue_t *nitro_queue_new(int capacity,
     q->baton = baton;
     q->send_target = QUEUE_FD_BUFFER_GUESS;
     pthread_mutex_init(&q->lock, NULL);
+    pthread_cond_init(&q->trigger, NULL);
     nitro_queue_grow(q, 0);
 
     return q;
