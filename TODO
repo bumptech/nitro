@@ -41,3 +41,4 @@
     - secure verify
     - eventfd
 [ ] Turn this TODO into github issues!  :-)
+[ ] TCP Keep Alive
