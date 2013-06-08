@@ -1,0 +1,457 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		64EF4870176297FF000C3A89 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF486F176297FF000C3A89 /* UIKit.framework */; };
+		64EF4872176297FF000C3A89 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF4871176297FF000C3A89 /* Foundation.framework */; };
+		64EF4874176297FF000C3A89 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF4873176297FF000C3A89 /* CoreGraphics.framework */; };
+		64EF487A176297FF000C3A89 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 64EF4878176297FF000C3A89 /* InfoPlist.strings */; };
+		64EF487C176297FF000C3A89 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 64EF487B176297FF000C3A89 /* main.m */; };
+		64EF4880176297FF000C3A89 /* BMPAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 64EF487F176297FF000C3A89 /* BMPAppDelegate.m */; };
+		64EF4882176297FF000C3A89 /* Default.png in Resources */ = {isa = PBXBuildFile; fileRef = 64EF4881176297FF000C3A89 /* Default.png */; };
+		64EF4884176297FF000C3A89 /* Default@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 64EF4883176297FF000C3A89 /* Default@2x.png */; };
+		64EF4886176297FF000C3A89 /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 64EF4885176297FF000C3A89 /* Default-568h@2x.png */; };
+		64EF4889176297FF000C3A89 /* MainStoryboard_iPhone.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 64EF4887176297FF000C3A89 /* MainStoryboard_iPhone.storyboard */; };
+		64EF488C176297FF000C3A89 /* MainStoryboard_iPad.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 64EF488A176297FF000C3A89 /* MainStoryboard_iPad.storyboard */; };
+		64EF488F176297FF000C3A89 /* BMPViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 64EF488E176297FF000C3A89 /* BMPViewController.m */; };
+		64EF489B17629889000C3A89 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF489A17629889000C3A89 /* CoreFoundation.framework */; };
+		64EF48A117629889000C3A89 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 64EF489F17629889000C3A89 /* InfoPlist.strings */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		64EF486C176297FF000C3A89 /* NitroTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NitroTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		64EF486F176297FF000C3A89 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		64EF4871176297FF000C3A89 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		64EF4873176297FF000C3A89 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		64EF4877176297FF000C3A89 /* NitroTest-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "NitroTest-Info.plist"; sourceTree = "<group>"; };
+		64EF4879176297FF000C3A89 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		64EF487B176297FF000C3A89 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		64EF487D176297FF000C3A89 /* NitroTest-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NitroTest-Prefix.pch"; sourceTree = "<group>"; };
+		64EF487E176297FF000C3A89 /* BMPAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BMPAppDelegate.h; sourceTree = "<group>"; };
+		64EF487F176297FF000C3A89 /* BMPAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BMPAppDelegate.m; sourceTree = "<group>"; };
+		64EF4881176297FF000C3A89 /* Default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Default.png; sourceTree = "<group>"; };
+		64EF4883176297FF000C3A89 /* Default@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default@2x.png"; sourceTree = "<group>"; };
+		64EF4885176297FF000C3A89 /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
+		64EF4888176297FF000C3A89 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = en; path = en.lproj/MainStoryboard_iPhone.storyboard; sourceTree = "<group>"; };
+		64EF488B176297FF000C3A89 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = en; path = en.lproj/MainStoryboard_iPad.storyboard; sourceTree = "<group>"; };
+		64EF488D176297FF000C3A89 /* BMPViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BMPViewController.h; sourceTree = "<group>"; };
+		64EF488E176297FF000C3A89 /* BMPViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BMPViewController.m; sourceTree = "<group>"; };
+		64EF489917629889000C3A89 /* NitroFramework.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NitroFramework.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		64EF489A17629889000C3A89 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		64EF489E17629889000C3A89 /* NitroFramework-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "NitroFramework-Info.plist"; sourceTree = "<group>"; };
+		64EF48A017629889000C3A89 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		64EF48A217629889000C3A89 /* NitroFramework-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NitroFramework-Prefix.pch"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		64EF4869176297FF000C3A89 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				64EF4870176297FF000C3A89 /* UIKit.framework in Frameworks */,
+				64EF4872176297FF000C3A89 /* Foundation.framework in Frameworks */,
+				64EF4874176297FF000C3A89 /* CoreGraphics.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		64EF489617629889000C3A89 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				64EF489B17629889000C3A89 /* CoreFoundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		64EF4863176297FF000C3A89 = {
+			isa = PBXGroup;
+			children = (
+				64EF4875176297FF000C3A89 /* NitroTest */,
+				64EF489C17629889000C3A89 /* NitroFramework */,
+				64EF486E176297FF000C3A89 /* Frameworks */,
+				64EF486D176297FF000C3A89 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		64EF486D176297FF000C3A89 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				64EF486C176297FF000C3A89 /* NitroTest.app */,
+				64EF489917629889000C3A89 /* NitroFramework.framework */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		64EF486E176297FF000C3A89 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				64EF486F176297FF000C3A89 /* UIKit.framework */,
+				64EF4871176297FF000C3A89 /* Foundation.framework */,
+				64EF4873176297FF000C3A89 /* CoreGraphics.framework */,
+				64EF489A17629889000C3A89 /* CoreFoundation.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		64EF4875176297FF000C3A89 /* NitroTest */ = {
+			isa = PBXGroup;
+			children = (
+				64EF487E176297FF000C3A89 /* BMPAppDelegate.h */,
+				64EF487F176297FF000C3A89 /* BMPAppDelegate.m */,
+				64EF4887176297FF000C3A89 /* MainStoryboard_iPhone.storyboard */,
+				64EF488A176297FF000C3A89 /* MainStoryboard_iPad.storyboard */,
+				64EF488D176297FF000C3A89 /* BMPViewController.h */,
+				64EF488E176297FF000C3A89 /* BMPViewController.m */,
+				64EF4876176297FF000C3A89 /* Supporting Files */,
+			);
+			path = NitroTest;
+			sourceTree = "<group>";
+		};
+		64EF4876176297FF000C3A89 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				64EF4877176297FF000C3A89 /* NitroTest-Info.plist */,
+				64EF4878176297FF000C3A89 /* InfoPlist.strings */,
+				64EF487B176297FF000C3A89 /* main.m */,
+				64EF487D176297FF000C3A89 /* NitroTest-Prefix.pch */,
+				64EF4881176297FF000C3A89 /* Default.png */,
+				64EF4883176297FF000C3A89 /* Default@2x.png */,
+				64EF4885176297FF000C3A89 /* Default-568h@2x.png */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		64EF489C17629889000C3A89 /* NitroFramework */ = {
+			isa = PBXGroup;
+			children = (
+				64EF489D17629889000C3A89 /* Supporting Files */,
+			);
+			path = NitroFramework;
+			sourceTree = "<group>";
+		};
+		64EF489D17629889000C3A89 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				64EF489E17629889000C3A89 /* NitroFramework-Info.plist */,
+				64EF489F17629889000C3A89 /* InfoPlist.strings */,
+				64EF48A217629889000C3A89 /* NitroFramework-Prefix.pch */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		64EF48A61762992B000C3A89 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		64EF486B176297FF000C3A89 /* NitroTest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 64EF4892176297FF000C3A89 /* Build configuration list for PBXNativeTarget "NitroTest" */;
+			buildPhases = (
+				64EF4868176297FF000C3A89 /* Sources */,
+				64EF4869176297FF000C3A89 /* Frameworks */,
+				64EF486A176297FF000C3A89 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NitroTest;
+			productName = NitroTest;
+			productReference = 64EF486C176297FF000C3A89 /* NitroTest.app */;
+			productType = "com.apple.product-type.application";
+		};
+		64EF489817629889000C3A89 /* NitroFramework */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 64EF48A317629889000C3A89 /* Build configuration list for PBXNativeTarget "NitroFramework" */;
+			buildPhases = (
+				64EF489517629889000C3A89 /* Sources */,
+				64EF48A61762992B000C3A89 /* Headers */,
+				64EF489617629889000C3A89 /* Frameworks */,
+				64EF489717629889000C3A89 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NitroFramework;
+			productName = NitroFramework;
+			productReference = 64EF489917629889000C3A89 /* NitroFramework.framework */;
+			productType = "com.apple.product-type.bundle";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		64EF4864176297FF000C3A89 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				CLASSPREFIX = BMP;
+				LastUpgradeCheck = 0460;
+				ORGANIZATIONNAME = Bump;
+			};
+			buildConfigurationList = 64EF4867176297FF000C3A89 /* Build configuration list for PBXProject "NitroTest" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 64EF4863176297FF000C3A89;
+			productRefGroup = 64EF486D176297FF000C3A89 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				64EF486B176297FF000C3A89 /* NitroTest */,
+				64EF489817629889000C3A89 /* NitroFramework */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		64EF486A176297FF000C3A89 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				64EF487A176297FF000C3A89 /* InfoPlist.strings in Resources */,
+				64EF4882176297FF000C3A89 /* Default.png in Resources */,
+				64EF4884176297FF000C3A89 /* Default@2x.png in Resources */,
+				64EF4886176297FF000C3A89 /* Default-568h@2x.png in Resources */,
+				64EF4889176297FF000C3A89 /* MainStoryboard_iPhone.storyboard in Resources */,
+				64EF488C176297FF000C3A89 /* MainStoryboard_iPad.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		64EF489717629889000C3A89 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				64EF48A117629889000C3A89 /* InfoPlist.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		64EF4868176297FF000C3A89 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				64EF487C176297FF000C3A89 /* main.m in Sources */,
+				64EF4880176297FF000C3A89 /* BMPAppDelegate.m in Sources */,
+				64EF488F176297FF000C3A89 /* BMPViewController.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		64EF489517629889000C3A89 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		64EF4878176297FF000C3A89 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				64EF4879176297FF000C3A89 /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		64EF4887176297FF000C3A89 /* MainStoryboard_iPhone.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				64EF4888176297FF000C3A89 /* en */,
+			);
+			name = MainStoryboard_iPhone.storyboard;
+			sourceTree = "<group>";
+		};
+		64EF488A176297FF000C3A89 /* MainStoryboard_iPad.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				64EF488B176297FF000C3A89 /* en */,
+			);
+			name = MainStoryboard_iPad.storyboard;
+			sourceTree = "<group>";
+		};
+		64EF489F17629889000C3A89 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				64EF48A017629889000C3A89 /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		64EF4890176297FF000C3A89 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 6.1;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		64EF4891176297FF000C3A89 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 6.1;
+				OTHER_CFLAGS = "-DNS_BLOCK_ASSERTIONS=1";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		64EF4893176297FF000C3A89 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "NitroTest/NitroTest-Prefix.pch";
+				INFOPLIST_FILE = "NitroTest/NitroTest-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Debug;
+		};
+		64EF4894176297FF000C3A89 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "NitroTest/NitroTest-Prefix.pch";
+				INFOPLIST_FILE = "NitroTest/NitroTest-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Release;
+		};
+		64EF48A417629889000C3A89 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "NitroFramework/NitroFramework-Prefix.pch";
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				INFOPLIST_FILE = "NitroFramework/NitroFramework-Info.plist";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				IPHONEOS_DEPLOYMENT_TARGET = 5.0;
+				MACH_O_TYPE = mh_object;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				WRAPPER_EXTENSION = framework;
+			};
+			name = Debug;
+		};
+		64EF48A517629889000C3A89 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				COMBINE_HIDPI_IMAGES = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "NitroFramework/NitroFramework-Prefix.pch";
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				INFOPLIST_FILE = "NitroFramework/NitroFramework-Info.plist";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				IPHONEOS_DEPLOYMENT_TARGET = 5.0;
+				MACH_O_TYPE = mh_object;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				WRAPPER_EXTENSION = framework;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		64EF4867176297FF000C3A89 /* Build configuration list for PBXProject "NitroTest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				64EF4890176297FF000C3A89 /* Debug */,
+				64EF4891176297FF000C3A89 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		64EF4892176297FF000C3A89 /* Build configuration list for PBXNativeTarget "NitroTest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				64EF4893176297FF000C3A89 /* Debug */,
+				64EF4894176297FF000C3A89 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+		64EF48A317629889000C3A89 /* Build configuration list for PBXNativeTarget "NitroFramework" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				64EF48A417629889000C3A89 /* Debug */,
+				64EF48A517629889000C3A89 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 64EF4864176297FF000C3A89 /* Project object */;
+}
