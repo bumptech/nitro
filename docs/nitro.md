@@ -1706,7 +1706,7 @@ These are some of the design decisions Nitro made that differ from ZeroMQ:
  * Nitro is written in C.  We prefer C, and we don't like
    linking against libstdc++ :-) .
 
-It's not all upside:
+As always, though, there are pros and cons:
 
  * On very small (<40 byte) TCP messages and inproc messages,
    ZeroMQ is faster (30-40%) than Nitro;

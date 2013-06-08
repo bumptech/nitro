@@ -857,7 +857,7 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 <li>ZMQ_FD is edge triggered. It's much harder to integrate an edge-triggered interface into other event loops. Though it has a theoretical performance benefit, Nitro uses a level-triggered activity fd to make integration easier for 3rd party binding developers.</li>
 <li>Nitro is written in C. We prefer C, and we don't like linking against libstdc++ :-) .</li>
 </ul>
-<p>It's not all upside:</p>
+<p>As always, though, there are pros and cons:</p>
 <ul>
 <li>On very small (&lt;40 byte) TCP messages and inproc messages, ZeroMQ is faster (30-40%) than Nitro; Nitro's use of mutex/cond on socket queues probably costs it there.<br /> Nitro is somewhat faster, though, on frames &gt; 50-70 bytes).</li>
 <li>Nitro has no equivalent of PGM support, nor will it ever. It doesn't fit the project's goals. Nitro's target users don't usually control the switching hardware to a degree to use PGM. So if you're on a network where very high performance multicast is key, ZMQ is probably a better fit.</li>
