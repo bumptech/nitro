@@ -12,7 +12,7 @@ different and higher-level abstraction than BSD sockets)
 that listen at a certain location so that other
 Nitro sockets can connect and exchange messages.
 
-A message, wraped in a "frame", is the fundamental
+A message, wrapped in a "frame", is the fundamental
 unit of communication between Nitro sockets.  When
 a frame is sent, it is either received completely
 by another party or not at all.  Application
@@ -20,14 +20,16 @@ developers don't need to worry about boundary
 conditions, message delimiting, etc.
 
 Sockets can also be set to be "secure", in which
-case NaCL-based public-key encryption is used.
+case NaCl-based public-key encryption is used.
 These secure sockets can be given a required
 public key the peer socket must present to
 authenticate the connection (and protect against
 man-in-the-middle attacks).
 
-Sockets can either be of protocol "tcp" or "inproc";
-inproc sockets are thin (but API-compatible) wrappers
+Sockets can either be protocol "tcp" or "inproc".
+TCP sockets actually push the message frames between
+hosts over a TCP/IP network.
+Inproc sockets are thin (but API-compatible) wrappers
 on top of thread-safe message queues to help with
 multithreaded in-process message passing or to provide
 abstraction/generalization of local vs. remote services.
@@ -58,7 +60,7 @@ sockets:
     and a connected socket.  A socket can only `bind` or
     `connect`, not both (this is enforced via the socket constructors).
  2. Bound sockets may be communicating with many connected sockets
- 3. Connected sockets are only ever communicating with one bound socket
+ 3. Connected sockets are only ever communicating with one bound socket.
  4. Connected sockets will attempt reconnection if the connection is
     interrupted; messages sent while disconnected are queued.
 
@@ -67,11 +69,11 @@ Frame
 
  1. Every frame (except some internal frames) is created by the application
     programmer, using `nitro_frame_new_copy` and similar frame constructors.
- 2. Frames given to one of the "sending family of functions" will transfer
+ 2. Frames given to one of the sending functions will transfer
     ownership to Nitro unless the NITRO_REUSE flag is passed by
     the application programmer.
  3. Frames received from `nitro_recv` are owned by the application programmer,
-    and must either be destroyed or given back to a "sending family"
+    and must either be destroyed or given back to a sending 
     function (for forwarding, etc, thus re-transfering ownership to nitro).
  4. Frames received from inproc sockets can transparently be sent to
     TCP sockets and vice versa.
@@ -82,37 +84,38 @@ Receiving
  1. `nitro_recv` is the only way to retrieve incoming frames from a
     socket.
  2. `nitro_recv` will block until a socket is available unless a NOBLOCK
-    flag is given; otherwise, it will return NITRO_ERR_AGAIN
+    flag is given; otherwise, it will return NITRO_ERR_EAGAIN
 
 Sending
 -------
 
-There are a few different functions in the "sending family of functions",
-ranging from simple origin sends to replies and proxy relays.
+There are a few different functions in the that can send
+frames in slightly different ways ranging from simple sends 
+to replies and proxy relays.
 
 **nitro_send**
 
- 1. Nitro send is a "naive send" that will send to any available
+ 1. `nitro_send` is a "naive" send that will deliver to any available
     peer socket.
  2. If the socket is a connected socket, the frame is sent to the
     peer socket if it is currently connected; otherwise it is queued
  3. If the socket is a bound socket, the frame is sent to:
-    * On a "tcp" socket, the first peer socket that will accept the
+    * On a tcp socket, the first peer socket that will accept the
       write() on the network (i.e, when there is room in the outgoing
       kernel buffer)
-    * On an "inproc" socket, the next peer socket in round-robin order
+    * On an inproc socket, the next peer socket in round-robin order
  4. `nitro_send` will block if the outbound queue is full, unless
-    a NOBLOCK flag is given; then it will return NITRO_ERR_AGAIN
+    a NOBLOCK flag is given; then it will return NITRO_ERR_EAGAIN
 
 **nitro_reply**
 
  1. Commonly used on a bound socket with lots of peers, `nitro_reply`
     lets you send a frame *back* to a particular peer.  The peer is
-    identified from envelope information in a frame that came from
+    identified by a frame they originally sent and was dequeued via
     `nitro_recv`.
- 2. If the socket is still a connected peer, `nitro_reply` will attempt
-    delivery; otherwise, an error is returned and the frame is
-    discarded.
+ 2. If the destination socket is still a connected peer, 
+    `nitro_reply` will attempt delivery to it; otherwise, an error is 
+    returned and the frame is discarded.
 
 **nitro_relay_fw**
 
@@ -142,14 +145,14 @@ Pub and Sub
 **nitro_sub/nitro_unsub**
 
  1. Subscribe or unsubscribe to some bytestring prefix.  The subscriptions
-    are registered with any peer frames.  (Note: even over the network,
+    are registered with any peer connections.  (Note: even over the network,
     so published messages are sender-filtered).
 
 **nitro_pub**
 
  1. Publish a frame to a given key.  All peers who are subscribing
-    to a prefix of that key will receive the message
- 2. The return value is the number of peers who were sent the message
+    to a prefix of that key will receive the message.
+ 2. The return value is the number of peers who were sent the message.
 
 Examples
 ========
@@ -167,7 +170,7 @@ send/recv pipeline.
 We'll build to separate programs, called `rec` and `send`.  One
 is the pipeline sender, and the other the receiver.
 
-Let's do the receiver first.  Every Nitro program begins with starting the 
+Let's write the receiver first.  Every Nitro program begins with starting the 
 Nitro runtime:
 
 ~~~~~{.c}
@@ -199,7 +202,7 @@ while (1) {
 }
 ~~~~~
 
-(Due to the fun of C strings, we copy the given frame into a buffer and
+(Due to the dangerous nature of C strings, we copy the given frame into a buffer and
 make sure to set the terminating null byte before we print.)
 
 So, that's about it.  Here's our whole program:
@@ -223,7 +226,7 @@ int main(int argc, char **argv) {
 }
 ~~~~~
 
-Let's move through the sender more quickly:
+The sender is very similar, so here's the whole program:
 
 ~~~~~{.c}
 #include <nitro.h>
@@ -367,7 +370,7 @@ Returns the last error to occur on this thread (the "current" error).
 
 *Return Value*
 
-The current error.
+The current error.  NITRO_ERR_NONE means there is no error set.
 
 *Thread Safety*
 
@@ -388,11 +391,15 @@ Produce a user-readable message in english describing the given error.
 
 *Return Value*
 
-A cstring containing the user-readable description of the given error.
+A string containing the user-readable description of the given error.
 
 *Thread Safety*
 
 Reentrant and thread safe.
+
+*Ownership*
+
+The returned string is a static global.  You do not need to free it.
 
 Logging
 -------
@@ -411,7 +418,8 @@ void nitro_log_error(char *location, char *format, ...)
 ~~~~~
 
 Write a printf-style formatted string to stderr, prefixing the line
-with the current time and location.
+with the current time and location.  `err` and `warn` are
+shortened versions of `error` and `warning` respectively.
 
 *Arguments*
 
@@ -591,7 +599,7 @@ void nitro_sockopt_set_secure(nitro_sockopt_t *opt,
 
 Make this TCP socket a secure socket.
 
-Frames will be encrypted using NaCL's authenticated,
+Frames will be encrypted using NaCl's authenticated,
 public-key encryption (`crypto_box`).
 
 How crypto works in nitro:
@@ -607,7 +615,9 @@ How crypto works in nitro:
  5. Subsequent frames are all sent in a `SECURE` frame
     wrapper.  This payload is a nonce and a encrypted
     bytestring that contains the real frame (including
-    frame envelope).  When socket A sends a frame F to
+    frame envelope).  
+ 6. The encrypted bytestrings are generated like so:
+    When socket A sends a frame F to
     socket B, A encrypts F using
     (B.public_key, A.private_key, nonce).  Socket
     B decrypts back to F using
@@ -622,6 +632,13 @@ to be invoked and the peer to be dropped.
 
  * `nitro_socket_t *opt` - The socket options structure to modify
  * `int enabled` - 1 or 0, to enable or disable encryption.
+
+*Security Note*
+
+Without also requiring that a *specific* certificate be provided
+by the peer (via `nitro_sockopt_set_required_remote_ident`), this
+function *does not provide authentication alone* and is vulnerable
+to man-in-the-middle attacks.
 
 *Thread Safety*
 
@@ -657,8 +674,8 @@ the public key from this pair and require that this key
 be the one sent exchanged in the `HELLO`.
 
 You can create a valid keypair using `crypto_box_keypair`
-from NaCL.  Keep your private keys safe on your production
-machines!  Do not ship them to untrusted clients.
+from NaCl.  Keep your private keys safe on your production
+machines!  Do not ship them to clients.
 
 *Arguments*
 
@@ -696,7 +713,7 @@ void nitro_sockopt_set_required_remote_ident(nitro_sockopt_t *opt,
 Require that this secure TCP socket only accept frames from
 peers who provide a known identity (public key).
 
-The public key provided here corresponds to one given to
+The public key provided here must correspond to one given to
 `nitro_sockopt_set_secure_identity` on the remote peer.
 
 *Arguments*
@@ -734,7 +751,7 @@ during communication with TCP sockets.
 
 This handler will be invoked from the Nitro thread, so it should
 do its work quickly and return.  No TCP Nitro traffic will
-take place while your custom handler is executed.
+take place while your custom handler is being executed.
 
 *Arguments*
 
@@ -792,6 +809,13 @@ Using `nitro_log_error` and `nitro_errmsg`.
    has is not secure (`nitro_sockopt_set_secure` has not
    been enabled)
 
+*Practical Consideration*
+
+Though you should always be on your toes, many of these protocol errors
+about invalid frames and invalid keys are in practice more likely to
+be because you have something misconfigured (HTTP request to a nitro port,
+for example) than because something malicious is going on.
+
 **nitro_sockopt_disable_error_handler**
 
 ~~~~~{.c}
@@ -801,8 +825,8 @@ void nitro_sockopt_disable_error_handler(nitro_sockopt_t *opt);
 Disable the default error handler (or any error handler,
 really).
 
-This means nothing strange socket behavior will be
-dropped silently. It is not a great idea to do this.
+This means strange socket behavior will be
+dropped silently--not advisable.
 
 *Arguments*
 
@@ -823,7 +847,8 @@ Destroy a socket option object.
 Used very rarely, because `nitro_sockopt_t` objects
 given to socket constructors are owned and destroyed
 by those sockets... and there's not a lot of other
-reasons to create a `nitro_sockopt_t`.
+reasons to create a `nitro_sockopt_t` besides giving
+it to a socket.
 
 *Arguments*
 
@@ -840,7 +865,8 @@ Creation and destruction of sockets.
 
 *Socket Locations*
 
-Socket locations look like this:
+Socket locations given to `bind` and `connect` are
+of this form:
 
 ~~~~~
 protocol://location
@@ -851,11 +877,12 @@ Nitro supports two protocols, "tcp" and "inproc".
 TCP locations must be given as "<IPv4>:<port>"
 specifications.  Nitro does not currently do
 DNS resolutions, so you'll need to resolve names
-at a higher level before creating sockets.
+at a higher level before creating sockets.  Nitro
+also does not currently support IPv6.
 
 Inproc locations can be any arbitrary string,
-but convention dictates it be a reasonable
-identifer like alphanumberic with dashes.
+but by convention it should be a reasonable
+identifer like alphanumeric with dashes.
 
 Here are some valid locations:
 
@@ -895,7 +922,7 @@ Create a new bound socket at `location` using options
 A new socket, or NULL on error.  `nitro_error()`
 will be set.
 
-Error values:
+Possible errors:
 
  * `NITRO_ERR_PARSE_BAD_TRANSPORT` "invalid transport type for socket".
    Socket protocol was not "tcp" or "inproc".
@@ -933,7 +960,7 @@ that *will* connect) at `location` using options
 A new socket, or NULL on error.  `nitro_error()`
 will be set.
 
-Error values:
+Possible Errors:
 
  * `NITRO_ERR_PARSE_BAD_TRANSPORT` "invalid transport type for socket".
    Socket protocol was not "tcp" or "inproc".
@@ -985,12 +1012,13 @@ socket can only be closed exactly once.
 So if you've distributed socket frame activity
 across a thread pool, for example, all those
 threads must stop and before `nitro_socket_close`
-is called exactly once.
+is called.
 
 *Destruction Semantics*
 
 After calling `nitro_socket_close`, the application
-must make no more calls using that socket.
+must make no more calls involving that socket.  Doing
+so could cause nondeterministic behavior and crashes.
 
 Frame Management
 ----------------
@@ -1007,8 +1035,8 @@ nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size);
 
 The easiest way to create a frame is to use
 `nitro_frame_new_copy`.  This function copies
-the buffer `data` for `size` bytes onto the heap,
-and frees its private copy after it is sent.
+the buffer at pointer `data` for `size` bytes
+onto the heap, and frees its private copy after it is sent.
 
 Note that if frames are sent using the
 `NITRO_REUSE` flags,
@@ -1040,7 +1068,7 @@ nitro_frame_t *nitro_frame_new(void *data, uint32_t size, nitro_free_function ff
 The lower-level, zero-copy frame constructor.
 `data` must stay valid until Nitro calls `ff`!
 
-You can control what function to call when nitro
+You provide the function to call when nitro
 is done with your message data.
 
 *Arguments*
@@ -1066,9 +1094,9 @@ Reentrant and thread safe.
 nitro_frame_t *nitro_frame_new_heap(void *data, uint32_t size);
 ~~~~~
 
-A zero-copy macro on `nitro_frame_new` that says `data` was
-allocated on the heap using `malloc` and nitro
-should call `free`.
+A zero-copy macro on `nitro_frame_new` that tells nitro
+you allocated `data` on the heap using `malloc` and nitro
+should call `free` when it's finished.
 
 *Arguments*
 
@@ -1083,6 +1111,18 @@ A new frame, ready for sending.
 
 Reentrant and thread safe.
 
+*Implementation Note*
+
+This function is equal to:
+
+~~~~~{.c}
+void run_free(void *region, void *unused) {
+    free(region);
+}
+#define nitro_frame_new_heap(data, size)\
+    nitro_frame_new(data, size, run_free, NULL)
+~~~~~
+
 **nitro_frame_data**
 
 ~~~~~{.c}
@@ -1094,8 +1134,10 @@ the message data.
 
 Read-only. Do not manipulate the contents of this buffer!
 
-Used most often after getting a new frame from
-`nitro_recv`.
+After getting a new frame from `nitro_recv` this
+function is almost always used to deserialize the
+message body into something structural that can
+be processed.
 
 *Arguments*
 
@@ -1118,8 +1160,8 @@ uint32_t *nitro_frame_size(nitro_frame_t *fr);
 Return the length of valid message data
 at the pointer returned from `nitro_frame_data`.
 
-Used most often after getting a new frame from
-`nitro_recv`.
+Like `nitro_frame_data`, used most often after getting 
+a new frame from `nitro_recv`.
 
 *Arguments*
 
@@ -1149,7 +1191,7 @@ this function indicates the *caller* is done
 with the frame, it does not necessarily mean
 all associated memory will be released, yet.
 
-Also, many of the functions to send frames
+Keep in mind that many of the functions to send frames
 take ownership by default of the frames and
 NULL out your frame pointer.  So unless you
 have a frame you got via `nitro_recv`, or
@@ -1189,6 +1231,8 @@ way to receive frames from a socket.
 *Return Value*
 
 A new frame, or NULL if error.
+
+Possible Errors:
 
  * `NITRO_ERR_EAGAIN` - No frames were waiting in the
    incoming socket buffer, and `NITRO_NOBLOCK` was
@@ -1238,6 +1282,8 @@ See Concepts for details about behavior.
 *Return Value*
 
 0 on success, < 0 on error.  `nitro_error` will be set.
+
+Possible Errors:
 
  * `NITRO_ERR_EAGAIN` - The high water mark has
    been hit on the outgoing frame queue, so
@@ -1295,6 +1341,8 @@ This is RPC-style behavior; see Concepts for details.
 
 0 on success, < 0 on error.  `nitro_error` will be set.
 
+Possible Errors:
+
  * `NITRO_ERR_EAGAIN` - The high water mark has
    been hit on the outgoing frame queue, so
    this operation would have blocked, but
@@ -1350,6 +1398,8 @@ This is proxy-style behavior; see Concepts for details.
 *Return Value*
 
 0 on success, < 0 on error.  `nitro_error` will be set.
+
+Possible Errors:
 
  * `NITRO_ERR_EAGAIN` - The high water mark has
    been hit on the outgoing frame queue, so
@@ -1409,6 +1459,8 @@ This is proxy-style behavior; see Concepts for details.
 
 0 on success, < 0 on error.  `nitro_error` will be set.
 
+Possible Errors:
+
  * `NITRO_ERR_EAGAIN` - The high water mark has
    been hit on the outgoing frame queue, so
    this operation would have blocked, but
@@ -1456,6 +1508,8 @@ See Concepts for details.
 *Return Value*
 
 0 on success, < 0 on error.  `nitro_error` will be set.
+
+Possible Errors:
 
  * `NITRO_ERR_SUB_ALREADY` - `nitro_sub` called with a
    prefix the socket is already subscribed to.
@@ -1535,7 +1589,7 @@ keep up with the message stream.
 FAQ
 ===
 
-**Q: Great, but I don't want to write my service in C. Where's a binding for
+**Q: I don't want to write my service in C. Where's a binding for
 my language?**
 
 Unfortunately, Nitro doesn't have many language bindings yet.  If you write
@@ -1546,12 +1600,13 @@ we'll probably work on Java soon after that.
 
 **Q: What about other platforms?**
 
-Porting to other POSIX (*BSD) systems should be easy and
-we're going to have iOS and Android soon.
+We're working on ports to iOS and Android, and while
+we have no other ports planned, porting to other POSIX 
+systems like *BSD should be pretty straightforward.
 
 **Q: What about Windows?**
 
-Aye.  That's a bigger effort and one that's frankly not a priority for us.
+Oy.  That's a bigger effort and one that's frankly not a priority for us.
 If someone out there wants to put some effort into the port, that'd be great.
 
 **Q: There are a few reference to "high water mark".  What's that about?  Is it like
@@ -1570,15 +1625,15 @@ names changing for long-running services.
 
 **Q: How is this different than ZeroMQ?**
 
-Nitro is in many ways a reaction to ZeroMQ, and is heavily
-inspired by it (especially czmq).  The team at bu.mp uses ZeroMQ
-extensively (including shipping it on tens of millions of smartphones),
-and there's a lot to love about ZMQ.  So much so, in fact, that the
-failings of ZMQ in the attempted applications motivated Nitro--because
-the basic communication model that ZMQ pioneered is mostly wonderful
-to use and develop against.
+Nitro is in many ways a reaction to ZeroMQ (ZMQ), and is heavily
+inspired by it (especially czmq).  The team at bu.mp (that wrote
+Nitro) uses ZeroMQ extensively, including shipping it on tens of
+millions of smartphones, and there's a lot to love about ZMQ.  
+So much, in fact, that the deficiencies of ZMQ we encountered 
+motivated Nitro--because the basic communication model that ZMQ
+pioneered is mostly wonderful to use and develop against.
 
-However, realistically, ZeroMQ was designed for relatively
+However ZeroMQ was designed for relatively
 low-concurrency, very high throughput (especially multicast PGM)
 communication on private, trusted, low-latency networks... not for large
 scale public Internet services with high connection counts, fickle clients
@@ -1593,18 +1648,18 @@ These are some of the design decisions Nitro made that differ from ZeroMQ:
  * Nitro does not commit messages to a particular socket at send() time,
    but does send() on a general queue and lets peers "work steal"
    stripes of frames as soon as they have room on their TCP buffer.
-   This makes for a lot more transparency about the high-water mark,
-   constrains the total number of messages that may be lost due to a
-   client disconnect, and can minimize mean latency of receipt of
+   This makes for a lot more transparency about the "true" high-water mark
+   for a socket, it constrains the total number of messages that may be lost due to a
+   client disconnect, and it can minimize mean latency of receipt of
    any general message (vs. naive round robin).
  * Nitro clears private queues for dead peer sockets instead of leaving
    them around indefintely in case they return.  This fixes one of
-   the biggest issues with doing high-concurrency work in ZeroMQ...
+   the biggest issues with doing high-concurrency work in ZeroMQ:
    an unavoidable memory leak in ROUTER sockets when there is pending
    data for clients who will never return.
  * ZeroMQ (esp 2.X) had some more or less hard coded peer limits
    (1024), which is far less than a good C daemon on epoll can handle;
-   nitro has no such restrictions
+   nitro has no such restrictions.
  * ZeroMQ does not have any crypto story, so we had to roll our
    own awkardly using NaCl.  With Nitro, we built NaCl in, including
    a key exchange step, so you don't need to ship keys with every
@@ -1615,21 +1670,26 @@ These are some of the design decisions Nitro made that differ from ZeroMQ:
    HTTP request.  It is also not clear how much attention ZeroMQ
    has paid to invalid data in the form of attacks on inbound TCP
    streams, integer overflows, etc.  Nitro tries to be paranoid
-   and shuts down bad peers instead of crashing.
+   and it shuts down bad peers instead of crashing.
  * ZeroMQ ROUTER sockets also have some O(n) algorithms, where n is
-   the number of connected peers on a socket; nitro is all O(1)
+   the number of connected peers on a socket; nitro is all O(1).
+   This doesn't matter much when you have 5 or 10 or 50 big server
+   systems pushing loads to each other on a private network, but
+   it sucks when you have 50,000 mostly-idle clients on high-latency
+   Internet links.
  * In practice we found the "typed socket" paradigm (REQ/REP/PUSH)
    more of a hindrance than a help.  We often ended up with hybrid
    schemes, like "REQ/maybe REP", or "REQ/multi REP".  Also, if you
    want REQ/REP with multiple clients where you do some processing to
    produce the REP result, you'll need to chain together ROUTER/DEALER.
-   REQ/REP stacks, and make sure you carefully track the address frames.
+   REQ/REP stacks and make sure you carefully track the address frames.
    Nitro lets you create any topology you want, and the routing is
-   relatively abstracted from the application developer (you don't need
-   to worry how deep or shallow you are).
- * Having the routing information in special MORE frames that have implict
-   rules (socket types X and Y "automatically" generate them, but not Z)
- * Socket options have documented rules about when they take effect and
+   relatively abstracted from the application developer--you don't need
+   to worry how deep or shallow you are, for example.
+ * We found having the ZMQ's routing information in special MORE frames that have implict
+   rules that differ on the basis of socket types (DEALER will generate it,
+   REQ will not) cumbersome.
+ * ZMQ Socket options have documented rules about when they take effect and
    when not, but these rules are not enforced by the API so they can bite
    you.  Nitro separates things that must be decided at construction time
    from those you can modify on the fly (_sub and _unsub, etc).
@@ -1643,25 +1703,26 @@ These are some of the design decisions Nitro made that differ from ZeroMQ:
    interface into other event loops.  Though it has a theoretical performance
    benefit, Nitro uses a level-triggered activity fd to make integration
    easier for 3rd party binding developers.
- * Nitro is written in C.  We're just not big C++ fans, and we don't like
+ * Nitro is written in C.  We prefer C, and we don't like
    linking against libstdc++ :-) .
 
 It's not all upside:
 
- * ZeroMQ is slighly faster (30-40%) on very small (<40 bytes) tcp messages
-   and inproc,  Nitros use of locks probably costs it there.  (Nitro is
-   somewhat faster on frames > 50-70 bytes).
+ * On very small (<40 byte) TCP messages and inproc messages,
+   ZeroMQ is faster (30-40%) than Nitro;
+   Nitro's use of mutex/cond on socket queues probably costs it there.  
+   Nitro is somewhat faster, though, on frames > 50-70 bytes).
  * Nitro has no equivalent of PGM support, nor will it ever. It doesn't
-   fit the project's goals--Nitro's target users don't usually control
+   fit the project's goals. Nitro's target users don't usually control
    the switching hardware to a degree to use PGM.
    So if you're on a network where very high performance multicast
    is key, ZMQ is probably a better fit.
- * Nitro does not have multi-connect.  If that topology is critical to you,
+ * Nitro does not have multi-host connect.  If that topology is critical to you,
    ZeroMQ can help (or HAproxy, but this is not as clean or as fast.)
- * Nitro is very young, and does not have _nearly_ the language support ZeroMQ
+ * Nitro is very young, and does not have *nearly* the language support ZeroMQ
    has.  Chances are if you want to use Nitro in your language of choice, you're
    going to have to make it happen.  Unless your language is C, Python, or Haskell
- * ZeroMQ is ported to work on Windows (as well as smartphone platforms).
+ * ZeroMQ is ported to work on Windows and lots of other places.
    Nitro has not yet been ported to anything but Linux and Mac OS X.
 
 Contact/Credits
