@@ -37,7 +37,7 @@ code > span.er { color: #c3bf9f; }
 <header>
 <h1 class="title">Nitro Docs</h1>
 <h2 class="author">Jamie Turner</h2>
-<h3 class="date">June 2nd, 2013</h3>
+<h3 class="date">June 7th, 2013</h3>
 </header>
 <nav id="TOC">
 <ul>
@@ -810,7 +810,7 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 <p>Unfortunately, Nitro doesn't have many language bindings yet. If you write one, please drop us a line and we'll add it to the home page.</p>
 <p>Python and Haskell bindings are being developed by member of the Nitro project; we'll probably work on Java soon after that.</p>
 <p><strong>Q: What about other platforms?</strong></p>
-<p>There are only a few places where Nitro does something linux-specific (like eventfd vs. pipe), so porting to other POSIX systems should be easy and we're going to have Mac OS X, iOS, and Android soon.</p>
+<p>Porting to other POSIX (*BSD) systems should be easy and we're going to have iOS and Android soon.</p>
 <p><strong>Q: What about Windows?</strong></p>
 <p>Aye. That's a bigger effort and one that's frankly not a priority for us. If someone out there wants to put some effort into the port, that'd be great.</p>
 <p><strong>Q: There are a few reference to &quot;high water mark&quot;. What's that about? Is it like ZeroMQ's high water mark?</strong></p>
@@ -843,7 +843,7 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 <li>Nitro has no equivalent of PGM support, nor will it ever. It doesn't fit the project's goals--Nitro's target users don't usually control the switching hardware to a degree to use PGM. So if you're on a network where very high performance multicast is key, ZMQ is probably a better fit.</li>
 <li>Nitro does not have multi-connect. If that topology is critical to you, ZeroMQ can help (or HAproxy, but this is not as clean or as fast.)</li>
 <li>Nitro is very young, and does not have <em>nearly</em> the language support ZeroMQ has. Chances are if you want to use Nitro in your language of choice, you're going to have to make it happen. Unless your language is C, Python, or Haskell</li>
-<li>ZeroMQ is ported to work on Windows and Mac OS X (as well as smartphone platforms). Nitro has not yet been ported to anything but Linux.</li>
+<li>ZeroMQ is ported to work on Windows (as well as smartphone platforms). Nitro has not yet been ported to anything but Linux and Mac OS X.</li>
 </ul>
 <h1 id="contactcredits"><a href="#contactcredits">Contact/Credits</a></h1>
 <p>nitro was written by @jamwt, with help from @magicseth and @dowski. We all work for @bumptech.</p>

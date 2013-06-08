@@ -1,6 +1,6 @@
 %Nitro Docs
 %Jamie Turner
-%June 2nd, 2013
+%June 7th, 2013
 
 Introducing Nitro
 =================
@@ -1546,9 +1546,8 @@ we'll probably work on Java soon after that.
 
 **Q: What about other platforms?**
 
-There are only a few places where Nitro does something linux-specific (like
-eventfd vs. pipe), so porting to other POSIX systems should be easy and
-we're going to have Mac OS X, iOS, and Android soon.
+Porting to other POSIX (*BSD) systems should be easy and
+we're going to have iOS and Android soon.
 
 **Q: What about Windows?**
 
@@ -1662,8 +1661,8 @@ It's not all upside:
  * Nitro is very young, and does not have _nearly_ the language support ZeroMQ
    has.  Chances are if you want to use Nitro in your language of choice, you're
    going to have to make it happen.  Unless your language is C, Python, or Haskell
- * ZeroMQ is ported to work on Windows and Mac OS X (as well as smartphone platforms).
-   Nitro has not yet been ported to anything but Linux.
+ * ZeroMQ is ported to work on Windows (as well as smartphone platforms).
+   Nitro has not yet been ported to anything but Linux and Mac OS X.
 
 Contact/Credits
 ===============
