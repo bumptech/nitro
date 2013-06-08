@@ -295,14 +295,16 @@ int main(int argc, char **argv) {
         gettimeofday(&tv, NULL);
         send_st->stoptime = tv.tv_sec + job_time;
         pthread_create(&job_threads[i], NULL, do_sender, send_st);
-        write(1, ".", 1);
+        int r = write(1, ".", 1);
+        (void)r;
     }
 
     void *res;
     printf("\nWaiting for %d jobs:\n", num_jobs);
     for (i=0; i < num_jobs; ++i) {
         pthread_join(job_threads[i], &res);
-        write(1, ".", 1);
+        int r = write(1, ".", 1);
+        (void)r;
     }
     printf("\n ~~ successfully processed %d RPCs ~~\n", all_done);
 
