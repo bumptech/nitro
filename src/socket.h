@@ -84,6 +84,7 @@ typedef enum {
     nitro_queue_t *q_recv;\
     /* Event fd (for integration with other event loops) */\
     int event_fd;\
+    int write_pipe;\
     /* Parent socket */\
     void *parent;\
     /* Subscription trie */\
@@ -142,7 +143,7 @@ typedef struct nitro_inproc_socket_t {
 
     pthread_rwlock_t link_lock;
     struct nitro_inproc_socket_t *links;
-    _Atomic (struct nitro_inproc_socket_t *)current;
+    struct nitro_inproc_socket_t *current;
     nitro_counted_buffer_t *bind_counter;
 
     struct nitro_inproc_socket_t *prev;

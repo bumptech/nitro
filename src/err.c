@@ -194,5 +194,5 @@ void nitro_err_stop() {
 }
 
 void nitro_error_log_handler(int err, void *baton) {
-    nitro_log_err("error-logger", nitro_errmsg(err));
+    nitro_log_err("error-logger", "%s", nitro_errmsg(err));
 }

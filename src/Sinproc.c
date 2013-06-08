@@ -91,8 +91,8 @@ void Sinproc_socket_bound_add_conn(nitro_inproc_socket_t *b,
         SOCKET_IDENT_LENGTH, c);
 
     CDL_PREPEND(b->links, c);
-    if (!atomic_load(&b->current)) {
-        atomic_init(&b->current, c);
+    if (!b->current) {
+        b->current = c;
     }
     c->links = b;
     nitro_counted_buffer_incref(b->bind_counter);
@@ -106,8 +106,8 @@ void Sinproc_socket_bound_rm_conn(nitro_inproc_socket_t *b,
 
     HASH_DELETE(bound_hh, b->registry, c);
 
-    if (atomic_load(&b->current) == c) {
-        atomic_init(&b->current, (c->next == c) ? NULL : c->next);
+    if (b->current == c) {
+        b->current =  (c->next == c) ? NULL : c->next;
     }
     CDL_DELETE(b->links, c);
     pthread_rwlock_unlock(&b->link_lock);
@@ -154,7 +154,7 @@ int Sinproc_socket_bind(nitro_inproc_socket_t *s, char *location) {
     s->bound = 1;
     s->bind_counter = nitro_counted_buffer_new(s, free_inproc, NULL);
     pthread_rwlock_init(&s->link_lock, NULL); 
-    atomic_init(&s->current, NULL);
+    s->current = NULL;
 
     HASH_FIND(hh, the_runtime->inprocs, location, strlen(location), match);
     if (match) {
@@ -215,13 +215,13 @@ static int Sinproc_socket_send_general(nitro_inproc_socket_t *s,  nitro_frame_t 
     int ret = -1;
     if (s->bound) {
         pthread_rwlock_rdlock(&s->link_lock);
-        volatile nitro_inproc_socket_t *try = atomic_load(&s->current);
+        volatile nitro_inproc_socket_t *try = s->current;
         if (try == NULL) {
             nitro_set_error(NITRO_ERR_INPROC_NO_CONNECTIONS);
         } else {
             int ok = 0;
             while (!ok) {
-                ok = atomic_compare_exchange_strong(
+                ok = __sync_bool_compare_and_swap(
                     &s->current, &try, try->next);
             }
             ret = nitro_queue_push(try->q_recv, fr,

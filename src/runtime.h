@@ -21,7 +21,7 @@ typedef struct nitro_runtime {
 
     int random_fd;
 
-    _Atomic (int)num_sock;
+    int num_sock;
 } nitro_runtime;
 
 extern nitro_runtime *the_runtime;

@@ -47,15 +47,20 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <pthread.h>
-#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef __linux__
 #include <sys/eventfd.h>
+#endif /* __linux__ */
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
+#ifdef __APPLE__
+#include <sys/types.h>
+#include <sys/uio.h>
+#endif /* __APPLE__ */
 
 #include "uthash/utlist.h"
 #include "uthash/uthash.h"

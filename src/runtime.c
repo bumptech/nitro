@@ -73,7 +73,7 @@ int nitro_runtime_start() {
     pthread_mutex_init(&the_runtime->l_inproc, NULL);
     pthread_mutex_init(&the_runtime->l_async, NULL);
 
-    atomic_init(&the_runtime->num_sock, 0);
+    the_runtime->num_sock = 0;
 
     the_runtime->random_fd = open("/dev/urandom", O_RDONLY);
 
@@ -88,7 +88,7 @@ int nitro_runtime_stop() {
         return NITRO_ERR_NOT_RUNNING;
     }
 
-    assert(atomic_load(&the_runtime->num_sock) == 0);
+    assert(the_runtime->num_sock == 0);
     nitro_async_t *a = nitro_async_new(NITRO_ASYNC_DIE);
     nitro_async_schedule(a);
     void *res;

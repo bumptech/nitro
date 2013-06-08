@@ -179,9 +179,17 @@ void Stcp_socket_recv_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, v
     nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)p;
     if (s->opt->want_eventfd && st == NITRO_QUEUE_STATE_EMPTY) {
         /* clear the "has data" bit */
+#ifdef __linux__
         uint64_t buf;
         int evread = read(s->event_fd, &buf, sizeof(uint64_t));
         assert(evread == sizeof(uint64_t));
+#else
+        char buf[512];
+        int evread = 0; 
+        while (evread >= 0) {
+            evread = read(s->event_fd, &buf, sizeof(buf));
+        }
+#endif
     }
     else if (st == NITRO_QUEUE_STATE_FULL) {
         Stcp_socket_disable_reads(s);
@@ -1080,9 +1088,15 @@ void Stcp_parse_socket_buffer(nitro_pipe_t *p) {
         /* If we got some data frames, and we're using an eventfd
            for embedding, make sure it gets triggered as readable */
         if (parse_state.got_data_frames && s->opt->want_eventfd) {
+#ifdef __linux__
             uint64_t inc = 1;
             int evwrote = write(s->event_fd, (char *)(&inc), sizeof(inc));
             assert(evwrote == sizeof(inc));
+#else
+            char w = 1;
+            int evwrote = write(s->event_fd, (char *)(&w), 1);
+            (void) evwrote;
+#endif
         }
 
         int to_copy = size - (parse_state.cursor - start);
