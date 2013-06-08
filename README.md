@@ -11,10 +11,9 @@ Build
 
 You need:
 
- 0. Linux (platforms besides linux/amd64 not tested yet)
+ 0. Linux or Mac OS X
  1. redo ( https://github.com/apenwarr/redo )
- 2. gcc-4.7 ( Ubuntu 12.04 does not have this by default! )
- 3. libev development libraries installed
+ 2. libev development libraries installed
 
 Then:
 
