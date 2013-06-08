@@ -65,7 +65,7 @@ void *s_1(void *p) {
     }
 
     if (!s) {
-        fprintf(stderr, nitro_errmsg(nitro_error()));
+        fprintf(stderr, "%s\n", nitro_errmsg(nitro_error()));
         assert(s);
     }
 
