@@ -90,7 +90,7 @@ void *s_1(void *p) {
 
 struct t_2 {
     int got[10000];
-    _Atomic (int)tot;
+    int tot;
     nitro_socket_t *s;
     pthread_t kids[10];
     int each[10];
@@ -107,7 +107,7 @@ void *r_2(void *p) {
         g = *(int*)nitro_frame_data(fr);
         res->got[g] = 1;
         nitro_frame_destroy(fr);
-        int amt = atomic_fetch_add(&res->tot, 1);
+        int amt = __sync_fetch_and_add(&res->tot, 1);
         ++me;
         if (amt >= 9999) {
             break;
@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
 
     struct t_2 acc2;
     bzero(&acc2, sizeof(acc2));
-    atomic_init(&acc2.tot, 0);
+    acc2.tot = 0;
 
     int i = 0;
     nitro_sockopt_t *opt = nitro_sockopt_new();
