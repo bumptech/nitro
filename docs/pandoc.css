@@ -87,3 +87,9 @@ dd p {
         text-align: center;
         }
 
+strong {
+    color: orange;
+    size: 18px;
+    border-left: orange 2px solid;
+    padding-left: 6px;
+}
