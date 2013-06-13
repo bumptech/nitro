@@ -36,7 +36,10 @@
 #include "frame.h"
 #include "cbuffer.h"
 
-
+extern void nitro_frame_stack_pop(nitro_frame_t *f);
+extern void nitro_frame_stack_push_sender(nitro_frame_t *f);
+extern void *nitro_frame_data(nitro_frame_t *fr);
+extern uint32_t nitro_frame_size(nitro_frame_t *fr);
 
 static inline void nitro_frame_cleanup(void *fp, void *unused) {
     nitro_frame_t *f = (nitro_frame_t *)fp;
@@ -138,32 +141,14 @@ void nitro_frame_set_sender(nitro_frame_t *f,
     }
 }
 
-inline void nitro_frame_stack_pop(nitro_frame_t *f) {
-    if (f->num_ident > 0) {
-        --(f->num_ident);
-    }
-}
-
-inline void nitro_frame_stack_push_sender(nitro_frame_t *f) {
-    f->push_sender = 1;
-}
-
 nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size) {
     char *n = malloc(size);
     memmove(n, data, size);
     return nitro_frame_new(n, size, just_free, NULL);
 }
 
-inline void *nitro_frame_data(nitro_frame_t *fr) {
-    return fr->data;
-}
 
-inline uint32_t nitro_frame_size(nitro_frame_t *fr) {
-    return fr->size;
-}
-
-
-inline struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num) {
+struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num) {
     if (fr->iovec_set) {
         *num = fr->iovec_set;
         return (struct iovec *)fr->iovs;
@@ -211,7 +196,7 @@ inline struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num) {
     return (struct iovec *)fr->iovs;
 }
 
-inline int nitro_frame_iovs_advance(nitro_frame_t *fr, 
+int nitro_frame_iovs_advance(nitro_frame_t *fr, 
     struct iovec *vecs, int index, int offset, int *done) {
     int ret = -1;
 

@@ -56,7 +56,13 @@ int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
     nitro_frame_t **remain, 
     nitro_queue_encrypt_frame_cb encrypt, void *enc_baton);
 void nitro_queue_destroy(nitro_queue_t *q);
-inline int nitro_queue_count(nitro_queue_t *q);
+
+inline int nitro_queue_count(
+    nitro_queue_t *q)
+{
+    return q->count;
+}
+
 typedef nitro_frame_t *(*nitro_queue_frame_generator)(void *baton);
 void nitro_queue_move(nitro_queue_t *src, nitro_queue_t *dst);
 

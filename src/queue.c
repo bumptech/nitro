@@ -5,6 +5,8 @@
 #include "queue.h"
 #include "buffer.h"
 
+extern inline int nitro_queue_count(nitro_queue_t *q);
+
 #define QUEUE_GROWTH_FACTOR 3
 
 #define NITRO_MAX_IOV IOV_MAX
@@ -52,12 +54,6 @@ static void nitro_queue_grow(nitro_queue_t *q, int suggestion) {
     for (i=0; i < extra; i++) {
         q->head[got + i] = q->q[i];
     }
-}
-
-inline int nitro_queue_count(
-    nitro_queue_t *q)
-{
-    return q->count;
 }
 
 nitro_queue_t *nitro_queue_new(int capacity,

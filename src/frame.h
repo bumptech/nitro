@@ -75,10 +75,8 @@ nitro_frame_t *nitro_frame_new_prealloc(void *data, uint32_t size, nitro_counted
 nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size);
 #define nitro_frame_new_heap(d, size) nitro_frame_new(d, size, just_free, NULL)
 
-inline void *nitro_frame_data(nitro_frame_t *fr);
-inline uint32_t nitro_frame_size(nitro_frame_t *fr);
-inline struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num);
-inline int nitro_frame_iovs_advance(nitro_frame_t *fr,
+struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num);
+int nitro_frame_iovs_advance(nitro_frame_t *fr,
     struct iovec *vecs, int index, int offset, int *done);
 void nitro_frame_iovs_reset(nitro_frame_t *fr);
 void nitro_frame_set_sender(nitro_frame_t *f,
@@ -86,8 +84,6 @@ void nitro_frame_set_sender(nitro_frame_t *f,
 void nitro_frame_clone_stack(nitro_frame_t *fr, nitro_frame_t *to);
 void nitro_frame_set_stack(nitro_frame_t *f, const uint8_t *data,
     nitro_counted_buffer_t *buf, uint8_t num);
-inline void nitro_frame_stack_push_sender(nitro_frame_t *f);
-inline void nitro_frame_stack_pop(nitro_frame_t *f);
 void nitro_frame_extend_stack(nitro_frame_t *fr, nitro_frame_t *to);
 
 #define nitro_frame_destroy(f) {\
@@ -102,5 +98,24 @@ nitro_key_t *nitro_key_new(const uint8_t *data, uint8_t length,
     nitro_counted_buffer_t *buf);
 int nitro_key_compare(nitro_key_t *k1, nitro_key_t *k2);
 void nitro_key_destroy(nitro_key_t *k);
+
+inline void nitro_frame_stack_pop(nitro_frame_t *f) {
+    if (f->num_ident > 0) {
+        --(f->num_ident);
+    }
+}
+
+inline void nitro_frame_stack_push_sender(nitro_frame_t *f) {
+    f->push_sender = 1;
+}
+
+inline void *nitro_frame_data(nitro_frame_t *fr) {
+    return fr->data;
+}
+
+inline uint32_t nitro_frame_size(nitro_frame_t *fr) {
+    return fr->size;
+}
+
 
 #endif /* FRAME_H */
