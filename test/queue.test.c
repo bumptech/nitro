@@ -98,7 +98,7 @@ void *pipe_consume(void *p) {
     return NULL;
 }
 
-inline nitro_frame_t *make_frames(void *p) {
+static inline nitro_frame_t *make_frames(void *p) {
     int *i = (int *)p;
     if (*i == CONSUME_COUNT)
         return NULL;
