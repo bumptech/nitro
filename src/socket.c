@@ -18,7 +18,7 @@ nitro_socket_t *nitro_socket_new(nitro_sockopt_t *opt) {
 
     if (us->opt->want_eventfd) {
 #ifdef __linux__
-        us->event_fd = eventfd(0, EFD_NONBLOCK | EFD_SEMAPHORE);
+        us->event_fd = eventfd(0, EFD_NONBLOCK);
 #else
         int pipes[2];
         int r = pipe(pipes);
