@@ -21,6 +21,8 @@ Then:
 
     $ redo nacl
 
+*Note: this could take 5-20 minutes*
+
 **Build Nitro**
 
     $ redo
