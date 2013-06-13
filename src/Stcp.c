@@ -106,7 +106,8 @@ static int Stcp_nonblocking_socket_new() {
  * for "all interfaces" (0.0.0.0)
  */
 static int Stcp_parse_location(char *p_location,
-                              struct sockaddr_in *addr) {
+                              struct sockaddr_in *addr,
+                              int any_ok) {
     char *location = alloca(strlen(p_location) + 1);
     strcpy(location, p_location);
     char *split = strchr(location, ':');
@@ -122,6 +123,9 @@ static int Stcp_parse_location(char *p_location,
 
     char buf[50] = {0};
     if (!strcmp(location, "*")) {
+        if (!any_ok) {
+            return nitro_set_error(NITRO_ERR_TCP_BAD_ANY);
+        }
         strcpy(buf, "0.0.0.0");
     }
     else {
@@ -228,7 +232,7 @@ void Stcp_create_queues(nitro_tcp_socket_t *s) {
  * location.
  */
 int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
-    int r = Stcp_parse_location(location, &s->location);
+    int r = Stcp_parse_location(location, &s->location, 0);
 
     if (r) {
         /* Note - error detail set by parse_tcp_location */
@@ -264,7 +268,7 @@ int Stcp_socket_connect(nitro_tcp_socket_t *s, char *location) {
  * Turn a newly-created socket into a TCP/bind socket.
  */
 int Stcp_socket_bind(nitro_tcp_socket_t *s, char *location) {
-    int r = Stcp_parse_location(location, &s->location);
+    int r = Stcp_parse_location(location, &s->location, 1);
     s->outbound = 0;
 
     if (r) {

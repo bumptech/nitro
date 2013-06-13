@@ -75,6 +75,10 @@ char *nitro_errmsg(NITRO_ERROR error) {
         return "TCP socket location was not a valid IPv4 address (a.b.c.d)";
         break;
 
+    case NITRO_ERR_TCP_BAD_ANY:
+        return "The '*' address specification for any interface is only valid for bind, not connect";
+        break;
+
     case NITRO_ERR_PARSE_BAD_TRANSPORT:
         return "invalid transport type for socket";
         break;
