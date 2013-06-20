@@ -152,7 +152,7 @@ char *nitro_errmsg(NITRO_ERROR error) {
         break;
 
     default:
-        assert(error);
+        assert(0 && error);
         break;
     }
 
