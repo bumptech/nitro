@@ -1595,13 +1595,14 @@ my language?**
 Unfortunately, Nitro doesn't have many language bindings yet.  If you write
 one, please drop us a line and we'll add it to the home page.
 
-Python and Haskell bindings are being developed by member of the Nitro project;
-we'll probably work on Java soon after that.
+Python, Haskell, and Objective-C/iOS bindings are being developed by
+members of the Nitro project; we'll probably work on Java/Android
+soon after that.
 
 **Q: What about other platforms?**
 
 We're working on ports to iOS and Android, and while
-we have no other ports planned, porting to other POSIX 
+we have no other ports planned, porting to other POSIX
 systems like *BSD should be pretty straightforward.
 
 **Q: What about Windows?**
