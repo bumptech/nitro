@@ -1,6 +1,6 @@
 %Nitro Docs
 %Jamie Turner
-%June 7th, 2013
+%June 20th, 2013
 
 Introducing Nitro
 =================
