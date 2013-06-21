@@ -72,7 +72,7 @@ Bindings for Python and Haskell coming soon.
 Docs
 ----
 
-Find everything you need at the website.  http://gonitro.io
+http://docs.gonitro.io
 
 Status
 ------
