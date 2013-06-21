@@ -152,7 +152,7 @@ char *nitro_errmsg(NITRO_ERROR error) {
         break;
 
     default:
-        fprintf(stderr, "%d: non-nitro error", error);
+        nitro_log_error("err", "unmatched error: %d", error);
         assert(0);
         break;
     }
