@@ -1,6 +1,8 @@
-%Nitro Docs
+%The Nitro Codex
 %Jamie Turner
 %June 20th, 2013
+
+*Current for: nitro-0.1.1*
 
 Introducing Nitro
 =================
