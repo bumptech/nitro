@@ -1726,6 +1726,14 @@ As always, though, there are pros and cons:
  * ZeroMQ is ported to work on Windows and lots of other places.
    Nitro has not yet been ported to anything but Linux and Mac OS X.
 
+**Q: With the domain gonitro.io, I expected something written for
+(or in) golang.  Does this have anything to do with go?**
+
+No.  Go is a cool language, and we might have a go port soon if we can
+talk @xb95 into writing it :-), but nitro proper is written in C and
+has nothing directly to do with golang.  Hey, good domain names are hard
+to come by.
+
 Contact/Credits
 ===============
 
