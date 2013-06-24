@@ -179,7 +179,7 @@ int nitro_set_error(NITRO_ERROR e) {
     void *p;
     INT_TO_PTR(p, e);
     pthread_setspecific(err_key, p);
-    return e;
+    return -1;
 }
 
 void nitro_clear_error() {
