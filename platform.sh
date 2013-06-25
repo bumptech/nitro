@@ -6,8 +6,9 @@ if [ -z "`find $HERE/nacl-* -name "libnacl.a"`" ]; then
     exit 1;
 fi
 
-export NACL_LIB=$(dirname `find $HERE/nacl-* -name "libnacl.a" | head -1`)
-export NACL_INC=$(dirname `find $HERE/nacl-* -name crypto_box.h | head -1`)
+ARCH=`uname -p`
+export NACL_LIB=$(dirname `find $HERE/nacl-* -name "libnacl.a" | grep $ARCH`)
+export NACL_INC=$(dirname `find $HERE/nacl-* -name crypto_box.h | grep $ARCH`)
 
 EXTRA_LDFLAGS=""
 
@@ -16,6 +17,10 @@ if [ -z "$CC" ]; then
 fi
 if test $platform == "Darwin"; then 
     echo " ---> Configured for Darwin">&2;
+    EXTRA_LDFLAGS="-L/usr/local/lib $NACL_LIB/libnacl.a $NACL_LIB/randombytes.o $NACL_LIB/cpucycles.o"
+    CC="$CC -I/usr/local/include"
+elif test $platform == "FreeBSD"; then 
+    echo " ---> Configured for FreeBSD">&2;
     EXTRA_LDFLAGS="-L/usr/local/lib $NACL_LIB/libnacl.a $NACL_LIB/randombytes.o $NACL_LIB/cpucycles.o"
     CC="$CC -I/usr/local/include"
 elif test $platform == "Linux"; then

@@ -57,7 +57,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
 #include <sys/types.h>
 #include <sys/uio.h>
 #endif /* __APPLE__ */
