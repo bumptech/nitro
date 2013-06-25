@@ -6,7 +6,11 @@ if [ -z "`find $HERE/nacl-* -name "libnacl.a"`" ]; then
     exit 1;
 fi
 
-ARCH=`uname -p`
+ARCH=`uname -m`
+
+if [ "$ARCH" = "x86_64" ]; then
+    ARCH=amd64
+fi
 export NACL_LIB=$(dirname `find $HERE/nacl-* -name "libnacl.a" | grep $ARCH`)
 export NACL_INC=$(dirname `find $HERE/nacl-* -name crypto_box.h | grep $ARCH`)
 
