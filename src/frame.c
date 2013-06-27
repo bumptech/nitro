@@ -250,3 +250,10 @@ void nitro_key_destroy(nitro_key_t *k) {
     nitro_counted_buffer_decref(k->buf);
     free(k);
 }
+
+void nitro_frame_clear(nitro_frame_t *fr) {
+    nitro_counted_buffer_decref(fr->buffer);
+    fr->data = NULL;
+    fr->size = 0;
+    fr->buffer = nitro_counted_buffer_new(NULL, free_nothing, NULL);
+}

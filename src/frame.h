@@ -73,6 +73,7 @@ nitro_frame_t *nitro_frame_copy_partial(nitro_frame_t *f, struct iovec *vecs);
 nitro_frame_t *nitro_frame_new(void *data, uint32_t size, nitro_free_function ff, void *baton);
 nitro_frame_t *nitro_frame_new_prealloc(void *data, uint32_t size, nitro_counted_buffer_t *buffer);
 nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size);
+void nitro_frame_clear(nitro_frame_t *fr);
 #define nitro_frame_new_heap(d, size) nitro_frame_new(d, size, just_free, NULL)
 
 struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num);
