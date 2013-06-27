@@ -186,7 +186,7 @@ void Stcp_socket_recv_queue_stat(NITRO_QUEUE_STATE st, NITRO_QUEUE_STATE last, v
 #ifdef __linux__
         uint64_t buf;
         int evread = read(s->event_fd, &buf, sizeof(uint64_t));
-        assert(evread == sizeof(uint64_t));
+        assert(evread == sizeof(uint64_t) || (evread < 0 && errno == EAGAIN));
 #else
         char buf[512];
         int evread = 0; 
