@@ -22,15 +22,23 @@ nitro_socket_t *nitro_socket_new(nitro_sockopt_t *opt) {
 #else
         int pipes[2];
         int r = pipe(pipes);
-        assert(!r);
-        us->event_fd = pipes[0];
-        us->write_pipe = pipes[1];
-        int flags = fcntl(us->event_fd, F_GETFL, 0);
-        fcntl(us->event_fd, F_SETFL, flags | O_NONBLOCK);
-        flags = fcntl(us->write_pipe, F_GETFL, 0);
-        fcntl(us->write_pipe, F_SETFL, flags | O_NONBLOCK);
+        if (r) {
+            us->event_fd = -1;
+        } else {
+            us->event_fd = pipes[0];
+            us->write_pipe = pipes[1];
+            int flags = fcntl(us->event_fd, F_GETFL, 0);
+            fcntl(us->event_fd, F_SETFL, flags | O_NONBLOCK);
+            flags = fcntl(us->write_pipe, F_GETFL, 0);
+            fcntl(us->write_pipe, F_SETFL, flags | O_NONBLOCK);
+        }
 #endif
-        assert(us->event_fd >= 0);
+        if (us->event_fd < 0) {
+            nitro_set_error(NITRO_ERR_ERRNO);
+            nitro_sockopt_destroy(opt);
+            free(sock);
+            return NULL;
+        }
     }
 
     // XXX add socket to list for diagnostics
