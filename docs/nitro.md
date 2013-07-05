@@ -935,7 +935,7 @@ Possible errors:
    An inproc socket was probably given an option documented with "Socket Type Restrictions"
    that require tcp-only.
  * `NITRO_ERR_INPROC_ALREADY_BOUND` "another inproc socket is already bound to that location".
- * `NITRO_ERR_ERRNO` A low-level socket operation failed; check errno.
+ * `NITRO_ERR_ERRNO` A low-level socket operation failed (like EMFILE); check errno.
 
 *Thread Safety*
 
@@ -974,7 +974,7 @@ Possible Errors:
    that require tcp-only.
  * `NITRO_ERR_INPROC_NOT_BOUND` "cannot connect to inproc: not bound".
    No inproc socket is bound at that location.
- * `NITRO_ERR_ERRNO` A low-level socket operation failed; check errno.
+ * `NITRO_ERR_ERRNO` A low-level socket operation failed (like EMFILE); check errno.
 
 *Connection Timing Notes*
 
