@@ -236,6 +236,9 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
     }
 
     nitro_queue_issue_callbacks(q, old_count);
+    if (q->capacity && old_count == q->capacity && q->count < old_count) {
+        pthread_cond_broadcast(&q->trigger);
+    }
     if (q->count && ret > 0) {
         q->send_target = ret >  QUEUE_FD_BUFFER_GUESS ? QUEUE_FD_BUFFER_GUESS : ret;
     }
