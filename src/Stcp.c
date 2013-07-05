@@ -1395,7 +1395,7 @@ int Stcp_socket_reply(nitro_tcp_socket_t *s,
 
     if (p) {
         nitro_frame_clone_stack(snd, fr);
-        ret = nitro_queue_push(p->q_send, fr, !(flags & NITRO_NOWAIT));
+        ret = nitro_queue_push(p->q_send, fr, 0);
     } else {
         nitro_set_error(NITRO_ERR_NO_RECIPIENT);
     }
@@ -1475,7 +1475,7 @@ int Stcp_socket_relay_bk(nitro_tcp_socket_t *s,
         if (p) {
             nitro_frame_clone_stack(snd, fr);
             nitro_frame_stack_pop(fr);
-            ret = nitro_queue_push(p->q_send, fr, !(flags & NITRO_NOWAIT));
+            ret = nitro_queue_push(p->q_send, fr, 0);
         } else {
             nitro_set_error(NITRO_ERR_NO_RECIPIENT);
         }

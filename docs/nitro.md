@@ -1316,6 +1316,8 @@ int nitro_reply(nitro_frame_t *snd, nitro_frame_t **frp,
 ~~~~~
 
 Send a frame `*frp` directly to the peer that sent frame `snd`.
+`nitro_reply` will never block, so the NITRO_NOBLOCK is
+ignored (it is considered always true).
 
 This is RPC-style behavior; see Concepts for details.
 
@@ -1333,8 +1335,6 @@ This is RPC-style behavior; see Concepts for details.
 
 *Flags*
 
- * `NITRO_NOBLOCK` - Do not block on this `nitro_send`
-   call; return immediately
  * `NITRO_REUSE` - Copy/refcount the frame, and
    do not NULLify the pointer, so the application
    can reuse it.
@@ -1346,9 +1346,7 @@ This is RPC-style behavior; see Concepts for details.
 Possible Errors:
 
  * `NITRO_ERR_EAGAIN` - The high water mark has
-   been hit on the outgoing frame queue, so
-   this operation would have blocked, but
-   `NITRO_NOBLOCK` was in `flags`.
+   been hit on the outgoing frame queue.
  * `NITRO_ERR_NO_RECIPIENT` - The recipient identified
    by `snd` is no longer (or never was) in the connection table.
 
@@ -1434,6 +1432,8 @@ int nitro_relay_bk(nitro_frame_t *snd, nitro_frame_t **frp,
 Pop the top address off the routing stack in `snd`
 and forward the frame `*frp` to that specific
 peer on socket `s`.
+`nitro_relay_bk` will never block, so the NITRO_NOBLOCK
+flag is ignored (it is considered always true).
 
 This is proxy-style behavior; see Concepts for details.
 
@@ -1451,8 +1451,6 @@ This is proxy-style behavior; see Concepts for details.
 
 *Flags*
 
- * `NITRO_NOBLOCK` - Do not block on this `nitro_send`
-   call; return immediately
  * `NITRO_REUSE` - Copy/refcount the frame, and
    do not NULLify the pointer, so the application
    can reuse it.
@@ -1464,9 +1462,7 @@ This is proxy-style behavior; see Concepts for details.
 Possible Errors:
 
  * `NITRO_ERR_EAGAIN` - The high water mark has
-   been hit on the outgoing frame queue, so
-   this operation would have blocked, but
-   `NITRO_NOBLOCK` was in `flags`.
+   been hit on the outgoing frame queue.
  * `NITRO_ERR_NO_RECIPIENT` - The recipient identified
    by the top of the routing stack in `snd` is no longer
    (or never was) in this socket's connection table.

@@ -251,8 +251,7 @@ static int Sinproc_socket_send_to_ident(nitro_inproc_socket_t *s, uint8_t *ident
         if (try == NULL) {
             nitro_set_error(NITRO_ERR_NO_RECIPIENT);
         } else {
-            ret = nitro_queue_push(try->q_recv, fr,
-               !(flags & NITRO_NOWAIT));
+            ret = nitro_queue_push(try->q_recv, fr, 0);
         }
         pthread_rwlock_unlock(&s->link_lock);
     } else {
