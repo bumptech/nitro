@@ -1155,7 +1155,12 @@ void Stcp_bind_callback(
                 return;
             case EMFILE:
             case ENFILE:
-                perror("{nitro} file descriptor max reached:"); 
+                nitro_log_error("tcp/accept", "cannot accept(), cannot create file descriptor");
+                nitro_set_error(NITRO_ERR_ERRNO);
+                if (s->opt->error_handler) {
+                    s->opt->error_handler(nitro_error(),
+                        s->opt->error_handler_baton);
+                }
                 return;
             default:
                 /* the stipulation is we have our logic screwed
