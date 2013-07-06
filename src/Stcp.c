@@ -45,6 +45,14 @@
 
 #define TCP_INBUF (64 * 1024)
 
+/* For Mac OS X */
+#ifndef TCP_KEEPIDLE
+# define TCP_KEEPIDLE TCP_KEEPALIVE
+#endif
+#ifndef SOL_TCP
+# define SOL_TCP IPPROTO_TCP
+#endif
+
 /* EV callbacks, declaration */
 void Stcp_bind_callback(
     struct ev_loop *loop, 
@@ -77,22 +85,34 @@ void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd);
 void Stcp_destroy_pipe(nitro_pipe_t *p);
 void Stcp_socket_start_connect(nitro_tcp_socket_t *s);
 
-/*
- * Stcp_nonblocking_socket_new
- * ---------------------------
- *
- * Create a new IPv4/TCP socket and setup nonblocking I/O
- */
-static int Stcp_nonblocking_socket_new() {
-    int s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    assert(s >= 0);
+static void Stcp_set_socket_options(int s, int alive_time) {
     int flag = 1;
     int r = ioctl(s, FIONBIO, &flag);
     assert(r == 0);
 
     /* TCP NOWAIT */
     int state = 1;
-    setsockopt(s, IPPROTO_TCP, TCP_NODELAY, &state, sizeof(state));
+    r = setsockopt(s, IPPROTO_TCP, TCP_NODELAY, &state, sizeof(state));
+    assert(!r);
+
+    /* TCP keep-alive */
+    r = setsockopt(s, SOL_TCP, TCP_KEEPIDLE, &alive_time, sizeof(alive_time));
+    assert(!r);
+}
+
+/*
+ * Stcp_nonblocking_socket_new
+ * ---------------------------
+ *
+ * Create a new IPv4/TCP socket and setup nonblocking I/O
+ */
+static int Stcp_nonblocking_socket_new(int alive_time) {
+    int s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (s < 0) {
+        return nitro_set_error(NITRO_ERR_ERRNO);
+    }
+
+    Stcp_set_socket_options(s, alive_time);
 
     return s;
 }
@@ -283,7 +303,11 @@ int Stcp_socket_bind(nitro_tcp_socket_t *s, char *location) {
         1.0, 1.0);
     s->sub_send_timer.data = s;
 
-    s->bound_fd = Stcp_nonblocking_socket_new();
+    s->bound_fd = Stcp_nonblocking_socket_new(s->opt->tcp_keep_alive);
+    if (s->bound_fd < 0) {
+        return -1;
+    }
+
 
     int t = 1;
     setsockopt(s->bound_fd, SOL_SOCKET, SO_REUSEADDR, &t, sizeof(int));
@@ -516,7 +540,15 @@ void Stcp_connect_cb(
 void Stcp_socket_start_connect(nitro_tcp_socket_t *s) {
     NITRO_THREAD_CHECK;
 
-    s->connect_fd = Stcp_nonblocking_socket_new();
+    s->connect_fd = Stcp_nonblocking_socket_new(s->opt->tcp_keep_alive);
+    if (s->connect_fd < 0) {
+        nitro_log_error("tcp/connect", "connect failed to create socket");
+        if (s->opt->error_handler) {
+            s->opt->error_handler(nitro_error(),
+                s->opt->error_handler_baton);
+        }
+        return;
+    }
 
     ev_io_init(&s->connect_io,
     Stcp_connect_cb, s->connect_fd, EV_WRITE);
@@ -1168,6 +1200,8 @@ void Stcp_bind_callback(
                 assert(0); // unusual error on accept()
         }
     }
+
+    Stcp_set_socket_options(fd, s->opt->tcp_keep_alive);
     Stcp_make_pipe(s, fd);
 }
 

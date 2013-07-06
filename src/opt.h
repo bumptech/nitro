@@ -21,6 +21,7 @@ typedef struct nitro_sockopt_t {
     uint8_t pkey[crypto_box_SECRETKEYBYTES];
 
     int secure;
+    int tcp_keep_alive;
 
     int has_remote_ident;
     uint8_t required_remote_ident[SOCKET_IDENT_LENGTH];
@@ -46,6 +47,7 @@ void nitro_sockopt_set_secure(nitro_sockopt_t *opt, int enabled);
 void nitro_sockopt_set_required_remote_ident(nitro_sockopt_t *opt,
     uint8_t *ident, size_t ident_length);
 void nitro_sockopt_set_want_eventfd(nitro_sockopt_t *opt, int want_eventfd);
+void nitro_sockopt_set_tcp_keep_alive(nitro_sockopt_t *opt, int alive_time);
 void nitro_sockopt_set_error_handler(nitro_sockopt_t *opt,
     nitro_error_handler handler, void *baton);
 void nitro_sockopt_disable_error_handler(nitro_sockopt_t *opt);

@@ -15,6 +15,7 @@ nitro_sockopt_t *nitro_sockopt_new() {
     opt->close_linger = 1.0;
     opt->reconnect_interval = 0.2; /* seconds */
     opt->max_message_size = 16 * NITRO_MB;
+    opt->tcp_keep_alive = 5; /* seconds */
 
     opt->error_handler = nitro_error_log_handler;
     return opt;
@@ -73,6 +74,10 @@ void nitro_sockopt_set_secure_identity(nitro_sockopt_t *opt,
 void nitro_sockopt_set_secure(nitro_sockopt_t *opt,
     int enabled) {
     opt->secure = enabled;
+}
+
+void nitro_sockopt_set_tcp_keep_alive(nitro_sockopt_t *opt, int alive_time) {
+    opt->tcp_keep_alive = alive_time;
 }
 
 void nitro_sockopt_set_required_remote_ident(nitro_sockopt_t *opt,
