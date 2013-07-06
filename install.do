@@ -22,5 +22,5 @@ echo "Name: nitro";
 echo "Description: The nitro library";
 echo "Version: 0.1";
 echo "Cflags: -std=gnu99 -I\${includedir}/nitro"
-echo "Libs: -L\${libdir} -lnitro -lev -pthread";
+echo "Libs: -L\${libdir} -lnitro -lev -lsodium -pthread";
 ) > $PREFIX/lib/pkgconfig/nitro.pc
