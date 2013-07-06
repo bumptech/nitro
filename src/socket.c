@@ -78,7 +78,6 @@ nitro_socket_t *nitro_socket_new(nitro_sockopt_t *opt) {
         }
     }
 
-    // XXX add socket to list for diagnostics
     __sync_fetch_and_add(&the_runtime->num_sock, 1);
     return sock;
 }

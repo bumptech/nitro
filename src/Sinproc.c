@@ -69,7 +69,6 @@ void Sinproc_create_queues(nitro_inproc_socket_t *s) {
 }
 
 void Sinproc_socket_destroy(nitro_inproc_socket_t *s) {
-    // free everything XXX
     nitro_queue_destroy(s->q_recv);
     nitro_socket_destroy(SOCKET_PARENT(s));
 }
