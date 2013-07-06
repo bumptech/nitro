@@ -63,7 +63,7 @@ Bindings, Docs, Etc.
 
 Check out the website:
 
-http://docs.gonitro.io
+http://gonitro.io
 
 Status
 ------
