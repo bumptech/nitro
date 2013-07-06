@@ -65,7 +65,7 @@ int nitro_runtime_start();
 int nitro_runtime_stop();
 
 #define NITRO_THREAD_CHECK {\
-    assert(pthread_equal(pthread_self(), the_runtime->the_thread));\
-}
+        assert(pthread_equal(pthread_self(), the_runtime->the_thread));\
+    }
 
 #endif /* RUNTIME_H */

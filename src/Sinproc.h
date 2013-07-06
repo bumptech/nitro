@@ -54,10 +54,10 @@ int Sinproc_socket_reply(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_fra
 int Sinproc_socket_relay_fw(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t **frp, int flags);
 int Sinproc_socket_relay_bk(nitro_inproc_socket_t *s, nitro_frame_t *snd, nitro_frame_t **frp, int flags);
 int Sinproc_socket_sub(nitro_inproc_socket_t *s,
-    uint8_t *k, size_t length);
+                       uint8_t *k, size_t length);
 int Sinproc_socket_unsub(nitro_inproc_socket_t *s,
-    uint8_t *k, size_t length);
+                         uint8_t *k, size_t length);
 int Sinproc_socket_pub(nitro_inproc_socket_t *s,
-    nitro_frame_t **frp, uint8_t *k, size_t length, int flags);
+                       nitro_frame_t **frp, uint8_t *k, size_t length, int flags);
 
 #endif /* NITRO_SINPROC_H */

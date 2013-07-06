@@ -43,6 +43,7 @@ char *nitro_errmsg(NITRO_ERROR error) {
     case NITRO_ERR_NONE:
         return "(no error)";
         break;
+
     case NITRO_ERR_EAGAIN:
         return "socket queue operation would block";
         break;

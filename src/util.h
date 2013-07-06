@@ -45,5 +45,4 @@ void cbuffer_decref(void *data, void *bufptr);
 void free_nothing(void *unused1, void *unused2);
 uint8_t *memdup(uint8_t *src, size_t s);
 
-
 #endif /* UTIL_H */

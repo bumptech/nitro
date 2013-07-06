@@ -1,7 +1,7 @@
 /*
  * Nitro
  *
- * queue.h - Queues hold messages on their way in or out of 
+ * queue.h - Queues hold messages on their way in or out of
  *           nitro sockets.
  *
  *  -- LICENSE --
@@ -77,31 +77,30 @@ typedef struct nitro_queue_t {
 } nitro_queue_t;
 
 nitro_queue_t *nitro_queue_new(int capacity,
-    nitro_queue_state_changed queue_cb, void *baton);
+                               nitro_queue_state_changed queue_cb, void *baton);
 
 nitro_frame_t *nitro_queue_pull(nitro_queue_t *q, int wait);
 int nitro_queue_push(nitro_queue_t *q, nitro_frame_t *f,
-    int wait);
-int nitro_queue_fd_write(nitro_queue_t *q, int fd, 
-    nitro_frame_t *partial,
-    nitro_frame_t **remain);
-typedef nitro_frame_t * (*nitro_queue_encrypt_frame_cb)(nitro_frame_t *, void *); 
-int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd, 
-    nitro_frame_t *partial,
-    nitro_frame_t **remain, 
-    nitro_queue_encrypt_frame_cb encrypt, void *enc_baton);
+                     int wait);
+int nitro_queue_fd_write(nitro_queue_t *q, int fd,
+                         nitro_frame_t *partial,
+                         nitro_frame_t **remain);
+typedef nitro_frame_t *(*nitro_queue_encrypt_frame_cb)(nitro_frame_t *, void *);
+int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
+                                   nitro_frame_t *partial,
+                                   nitro_frame_t **remain,
+                                   nitro_queue_encrypt_frame_cb encrypt, void *enc_baton);
 void nitro_queue_destroy(nitro_queue_t *q);
 
 inline int nitro_queue_count(
-    nitro_queue_t *q)
-{
+    nitro_queue_t *q) {
     return q->count;
 }
 
 typedef nitro_frame_t *(*nitro_queue_frame_generator)(void *baton);
 void nitro_queue_move(nitro_queue_t *src, nitro_queue_t *dst);
 
-void nitro_queue_consume(nitro_queue_t *q, 
-    nitro_queue_frame_generator gen,
-    void *baton);
+void nitro_queue_consume(nitro_queue_t *q,
+                         nitro_queue_frame_generator gen,
+                         void *baton);
 #endif /* QUEUE_H */

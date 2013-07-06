@@ -33,8 +33,8 @@
  *
  */
 
- // think through max size of buffer, and preventing
- // integer overruns
+// think through max size of buffer, and preventing
+// integer overruns
 
 #include "common.h"
 #include "buffer.h"
@@ -50,6 +50,7 @@ static void nitro_buffer_grow(nitro_buffer_t *buf) {
             buf->alloc <<= 3;
         }
     }
+
     buf->area = realloc(buf->area, buf->alloc);
 }
 
@@ -62,6 +63,7 @@ nitro_buffer_t *nitro_buffer_new() {
 void nitro_buffer_append(nitro_buffer_t *buf, const char *s, int bytes) {
     int old_size = buf->size;
     buf->size += bytes;
+
     if (buf->size > buf->alloc) {
         nitro_buffer_grow(buf);
     }

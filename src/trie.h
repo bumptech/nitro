@@ -56,13 +56,12 @@ typedef struct nitro_prefix_trie_node {
 typedef void (*nitro_prefix_trie_search_callback)
 (const uint8_t *pfx, uint8_t length, nitro_prefix_trie_mem *members, void *baton);
 
-
 void nitro_prefix_trie_search(
     nitro_prefix_trie_node *t, const uint8_t *rep, uint8_t length,
     nitro_prefix_trie_search_callback cb, void *baton);
 void nitro_prefix_trie_add(nitro_prefix_trie_node **t,
-    const uint8_t *rep, uint8_t length, void *ptr);
+                           const uint8_t *rep, uint8_t length, void *ptr);
 int nitro_prefix_trie_del(nitro_prefix_trie_node *t,
-    const uint8_t *rep, uint8_t length, void *ptr);
+                          const uint8_t *rep, uint8_t length, void *ptr);
 
 #endif /* TRIE_H */

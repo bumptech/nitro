@@ -67,23 +67,23 @@ typedef struct nitro_sockopt_t {
 nitro_sockopt_t *nitro_sockopt_new();
 void nitro_sockopt_set_hwm(nitro_sockopt_t *opt, int hwm);
 void nitro_sockopt_set_hwm_detail(nitro_sockopt_t *opt, int hwm_in,
-    int hwm_out_general, int hwm_out_private);
+                                  int hwm_out_general, int hwm_out_private);
 void nitro_sockopt_set_close_linger(nitro_sockopt_t *opt,
-    double close_linger);
+                                    double close_linger);
 void nitro_sockopt_set_reconnect_interval(nitro_sockopt_t *opt,
-    double reconnect_interval);
+        double reconnect_interval);
 void nitro_sockopt_set_max_message_size(nitro_sockopt_t *opt,
-    uint32_t max_message_size);
+                                        uint32_t max_message_size);
 void nitro_sockopt_set_secure_identity(nitro_sockopt_t *opt,
-    uint8_t *ident, size_t ident_length,
-    uint8_t *pkey, size_t pkey_length);
+                                       uint8_t *ident, size_t ident_length,
+                                       uint8_t *pkey, size_t pkey_length);
 void nitro_sockopt_set_secure(nitro_sockopt_t *opt, int enabled);
 void nitro_sockopt_set_required_remote_ident(nitro_sockopt_t *opt,
-    uint8_t *ident, size_t ident_length);
+        uint8_t *ident, size_t ident_length);
 void nitro_sockopt_set_want_eventfd(nitro_sockopt_t *opt, int want_eventfd);
 void nitro_sockopt_set_tcp_keep_alive(nitro_sockopt_t *opt, int alive_time);
 void nitro_sockopt_set_error_handler(nitro_sockopt_t *opt,
-    nitro_error_handler handler, void *baton);
+                                     nitro_error_handler handler, void *baton);
 void nitro_sockopt_disable_error_handler(nitro_sockopt_t *opt);
 void nitro_sockopt_destroy(nitro_sockopt_t *opt);
 

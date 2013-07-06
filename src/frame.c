@@ -44,12 +44,15 @@ extern uint32_t nitro_frame_size(nitro_frame_t *fr);
 static inline void nitro_frame_cleanup(void *fp, void *unused) {
     nitro_frame_t *f = (nitro_frame_t *)fp;
     nitro_counted_buffer_decref(f->buffer);
+
     if (f->ident_buffer) {
         nitro_counted_buffer_decref(f->ident_buffer);
     }
+
     if (f->sender_buffer) {
         nitro_counted_buffer_decref(f->sender_buffer);
     }
+
     free(f);
 }
 
@@ -63,15 +66,21 @@ nitro_frame_t *nitro_frame_copy_partial(nitro_frame_t *f, struct iovec *vecs) {
     nitro_frame_t *result = malloc(sizeof(nitro_frame_t));
     memcpy(result, f, sizeof(nitro_frame_t));
     nitro_counted_buffer_incref(f->buffer);
-    if (f->ident_buffer)
+
+    if (f->ident_buffer) {
         nitro_counted_buffer_incref(f->ident_buffer);
-    if (f->sender_buffer)
+    }
+
+    if (f->sender_buffer) {
         nitro_counted_buffer_incref(f->sender_buffer);
+    }
+
     result->myref = nitro_counted_buffer_new(result, nitro_frame_cleanup, NULL);
 
     if (vecs) {
         nitro_frame_set_iovec(result, vecs);
     }
+
     return result;
 }
 
@@ -93,7 +102,7 @@ nitro_frame_t *nitro_frame_new_prealloc(void *data, uint32_t size, nitro_counted
 }
 
 void nitro_frame_set_stack(nitro_frame_t *f, const uint8_t *data,
-    nitro_counted_buffer_t *buf, uint8_t num) {
+                           nitro_counted_buffer_t *buf, uint8_t num) {
     f->ident_buffer = buf;
     nitro_counted_buffer_incref(buf);
     f->num_ident = num;
@@ -105,6 +114,7 @@ void nitro_frame_clone_stack(nitro_frame_t *fr, nitro_frame_t *to) {
         if (to->ident_buffer) {
             nitro_counted_buffer_decref(to->ident_buffer);
         }
+
         to->num_ident = fr->num_ident;
         to->ident_data = fr->ident_data;
         to->ident_buffer = fr->ident_buffer;
@@ -116,26 +126,30 @@ void nitro_frame_extend_stack(nitro_frame_t *fr, nitro_frame_t *to) {
     if (to->ident_buffer) {
         nitro_counted_buffer_decref(to->ident_buffer);
     }
+
     to->num_ident = fr->num_ident + (fr->sender ? 1 : 0);
     to->ident_data = malloc(SOCKET_IDENT_LENGTH * to->num_ident);
     to->ident_buffer = nitro_counted_buffer_new(to->ident_data, just_free, NULL);
+
     if (fr->num_ident) {
         memcpy(to->ident_data, fr->ident_data, SOCKET_IDENT_LENGTH * fr->num_ident);
     }
 
     if (fr->sender) {
         memcpy(to->ident_data + (SOCKET_IDENT_LENGTH * fr->num_ident),
-            fr->sender, SOCKET_IDENT_LENGTH);
+               fr->sender, SOCKET_IDENT_LENGTH);
     }
 }
 
 void nitro_frame_set_sender(nitro_frame_t *f,
-    uint8_t *sender, nitro_counted_buffer_t *buf) {
+                            uint8_t *sender, nitro_counted_buffer_t *buf) {
     if (f->sender_buffer) {
         nitro_counted_buffer_decref(f->sender_buffer);
     }
+
     f->sender_buffer = buf;
     f->sender = sender;
+
     if (buf) {
         nitro_counted_buffer_incref(buf);
     }
@@ -146,7 +160,6 @@ nitro_frame_t *nitro_frame_new_copy(void *data, uint32_t size) {
     memmove(n, data, size);
     return nitro_frame_new(n, size, just_free, NULL);
 }
-
 
 struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num) {
     if (fr->iovec_set) {
@@ -159,14 +172,15 @@ struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num) {
     fr->tcp_header.packet_type = fr->type;
 
     fr->tcp_header.num_ident = fr->push_sender ?
-        fr->num_ident + 1 : fr->num_ident;
+                               fr->num_ident + 1 : fr->num_ident;
     fr->tcp_header.flags = 0;
     fr->tcp_header.frame_size = fr->size;
 
-    fr->iovs[0].iov_base = (void*)&fr->tcp_header;
+    fr->iovs[0].iov_base = (void *)&fr->tcp_header;
     fr->iovs[0].iov_len = sizeof(nitro_protocol_header);
     fr->iovs[1].iov_base = nitro_frame_data(fr);
     fr->iovs[1].iov_len = fr->size;
+
     if (fr->num_ident) {
         fr->iovs[2].iov_base = fr->ident_data;
         fr->iovs[2].iov_len = fr->num_ident * SOCKET_IDENT_LENGTH;
@@ -175,29 +189,27 @@ struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num) {
             fr->iovs[3].iov_base = fr->sender;
             fr->iovs[3].iov_len = SOCKET_IDENT_LENGTH;
             fr->iovec_set = 4;
-        }
-        else {
+        } else {
             fr->iovec_set = 3;
             fr->iovs[3].iov_len = 0;
         }
-    }
-    else if (fr->push_sender) {
+    } else if (fr->push_sender) {
         fr->iovs[2].iov_base = fr->sender;
         fr->iovs[2].iov_len = SOCKET_IDENT_LENGTH;
         fr->iovec_set = 3;
         fr->iovs[3].iov_len = 0;
-    }
-    else {
+    } else {
         fr->iovec_set = 2;
         fr->iovs[2].iov_len = fr->iovs[3].iov_len = 0;
     }
+
     *num = fr->iovec_set;
 
     return (struct iovec *)fr->iovs;
 }
 
-int nitro_frame_iovs_advance(nitro_frame_t *fr, 
-    struct iovec *vecs, int index, int offset, int *done) {
+int nitro_frame_iovs_advance(nitro_frame_t *fr,
+                             struct iovec *vecs, int index, int offset, int *done) {
     int ret = -1;
 
     struct iovec *mv = &(vecs[index]);
@@ -207,9 +219,8 @@ int nitro_frame_iovs_advance(nitro_frame_t *fr,
         mv->iov_len = 0;
         mv->iov_base = NULL;
         *done = (index == fr->iovec_set - 1) ?
-            1 : 0;
-    }
-    else {
+                1 : 0;
+    } else {
         ret = offset;
         mv->iov_len -= offset;
         mv->iov_base = ((char *)mv->iov_base) + offset;
@@ -223,9 +234,9 @@ void nitro_frame_iovs_reset(nitro_frame_t *fr) {
     fr->iovec_set = 0;
 }
 
-nitro_key_t *nitro_key_new(const uint8_t *data, uint8_t length, 
-    nitro_counted_buffer_t *buf) {
-    nitro_key_t *k; 
+nitro_key_t *nitro_key_new(const uint8_t *data, uint8_t length,
+                           nitro_counted_buffer_t *buf) {
+    nitro_key_t *k;
     ZALLOC(k);
     nitro_counted_buffer_incref(buf);
 

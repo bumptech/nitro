@@ -1,7 +1,7 @@
 /*
  * Nitro
  *
- * queue.c - Queues hold messages on their way in or out of 
+ * queue.c - Queues hold messages on their way in or out of
  *           nitro sockets.
  *
  *  -- LICENSE --
@@ -51,18 +51,19 @@ extern inline int nitro_queue_count(nitro_queue_t *q);
 static void nitro_queue_issue_callbacks(nitro_queue_t *q, int old_count);
 
 static void nitro_queue_grow(nitro_queue_t *q, int suggestion) {
-    /* Assumed 
-      1. lock is held 
+    /* Assumed
+      1. lock is held
       2. suggestion <= capacity
     */
 
     suggestion = (q->capacity && suggestion > q->capacity) ? q->capacity : suggestion;
     int size;
+
     if (!q->size) {
         size = INITIAL_QUEUE_SZ;
     } else {
         size = (q->capacity && (q->size << QUEUE_GROWTH_FACTOR) > q->capacity) ?
-            q->capacity : (q->size << QUEUE_GROWTH_FACTOR);
+               q->capacity : (q->size << QUEUE_GROWTH_FACTOR);
     }
 
     while (size < suggestion) {
@@ -86,14 +87,14 @@ static void nitro_queue_grow(nitro_queue_t *q, int suggestion) {
     int extra = q->count - got;
 
     int i;
-    for (i=0; i < extra; i++) {
+
+    for (i = 0; i < extra; i++) {
         q->head[got + i] = q->q[i];
     }
 }
 
 nitro_queue_t *nitro_queue_new(int capacity,
-    nitro_queue_state_changed queue_cb, void *baton)
-{
+                               nitro_queue_state_changed queue_cb, void *baton) {
     nitro_queue_t *q;
     ZALLOC(q);
     q->capacity = capacity;
@@ -108,7 +109,7 @@ nitro_queue_t *nitro_queue_new(int capacity,
 }
 
 nitro_frame_t *nitro_queue_pull(nitro_queue_t *q,
-    int wait) {
+                                int wait) {
     nitro_frame_t *ptr = NULL;
     pthread_mutex_lock(&q->lock);
 
@@ -118,12 +119,14 @@ nitro_frame_t *nitro_queue_pull(nitro_queue_t *q,
             nitro_set_error(NITRO_ERR_EAGAIN);
             return NULL;
         }
+
         pthread_cond_wait(&q->trigger, &q->lock);
     }
 
     ptr = *q->head;
     q->head++;
     q->count--;
+
     /* Wrap? */
     if (q->head == q->end) {
         q->head = q->q;
@@ -134,18 +137,21 @@ nitro_frame_t *nitro_queue_pull(nitro_queue_t *q,
     if (q->capacity && q->count == (q->capacity - 1)) {
         pthread_cond_broadcast(&q->trigger);
     }
+
     pthread_mutex_unlock(&q->lock);
     return ptr;
 }
 
-int nitro_queue_push(nitro_queue_t *q, 
-    nitro_frame_t *f, int wait) {
+int nitro_queue_push(nitro_queue_t *q,
+                     nitro_frame_t *f, int wait) {
     pthread_mutex_lock(&q->lock);
+
     while (q->capacity && q->count == q->capacity) {
         if (!wait) {
             pthread_mutex_unlock(&q->lock);
             return nitro_set_error(NITRO_ERR_EAGAIN);
         }
+
         pthread_cond_wait(&q->trigger, &q->lock);
     }
 
@@ -157,6 +163,7 @@ int nitro_queue_push(nitro_queue_t *q,
     *q->tail = f;
     q->tail++;
     q->count++;
+
     if (q->tail == q->end) {
         q->tail = q->q;
     }
@@ -175,9 +182,9 @@ int nitro_queue_push(nitro_queue_t *q,
 #define IOV_TOTAL(i) ((i[0].iov_len) + (i[1].iov_len) + (i[2].iov_len) + (i[3].iov_len))
 
 /* "internal" functions, mass population and eviction */
-int nitro_queue_fd_write(nitro_queue_t *q, int fd, 
-    nitro_frame_t *partial,
-    nitro_frame_t **remain) {
+int nitro_queue_fd_write(nitro_queue_t *q, int fd,
+                         nitro_frame_t *partial,
+                         nitro_frame_t **remain) {
     /* Does gather IO to avoid copying buffers around */
     pthread_mutex_lock(&q->lock);
     int actual_iovs = 0;
@@ -206,8 +213,10 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
         actual_iovs += num;
         ++iter;
         --temp_count;
-        if (iter == q->end)
+
+        if (iter == q->end) {
             iter = q->q;
+        }
     }
 
     if (!accum_bytes) {
@@ -216,7 +225,7 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
 
     int actual_bytes = writev(fd, (const struct iovec *)vectors, actual_iovs);
 
-    /* On error, we don't move the queue pointers at all. 
+    /* On error, we don't move the queue pointers at all.
        We'll let the caller sort out the errno. */
     if (actual_bytes == -1) {
         nitro_set_error(NITRO_ERR_ERRNO);
@@ -231,10 +240,12 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
        at the end, update its iovectors to represent the fractional
        state and return it as a "remainder" (but still pop it off
        this queue) */
-    int i = 0, r = 0, done=0;
+    int i = 0, r = 0, done = 0;
     *remain = NULL;
+
     if (partial) {
         i = 0;
+
         do {
             r = nitro_frame_iovs_advance(partial, partial->iovs, i++, actual_bytes, &done);
             actual_bytes -= r;
@@ -244,14 +255,16 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
             nitro_frame_destroy(partial);
         } else {
             assert(!actual_bytes);
-             *remain = partial;
+            *remain = partial;
         }
     }
+
     while (actual_bytes) {
         nitro_frame_t *fr = *q->head;
         struct iovec scratch[4];
         memcpy(scratch, fr->iovs, sizeof(scratch));
         i = 0;
+
         do {
             r = nitro_frame_iovs_advance(fr, scratch, i++, actual_bytes, &done);
             actual_bytes -= r;
@@ -265,15 +278,20 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
         }
 
         q->head++;
-        if (q->head == q->end)
+
+        if (q->head == q->end) {
             q->head = q->q;
+        }
+
         q->count--;
     }
 
     nitro_queue_issue_callbacks(q, old_count);
+
     if (q->capacity && old_count == q->capacity && q->count < old_count) {
         pthread_cond_broadcast(&q->trigger);
     }
+
     if (q->count && ret > 0) {
         q->send_target = ret >  QUEUE_FD_BUFFER_GUESS ? QUEUE_FD_BUFFER_GUESS : ret;
     }
@@ -283,10 +301,10 @@ out:
     return ret;
 }
 
-int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd, 
-    nitro_frame_t *partial,
-    nitro_frame_t **remain, 
-    nitro_queue_encrypt_frame_cb encrypt, void *enc_baton) {
+int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
+                                   nitro_frame_t *partial,
+                                   nitro_frame_t **remain,
+                                   nitro_queue_encrypt_frame_cb encrypt, void *enc_baton) {
     *remain = NULL;
     int res = 0;
 
@@ -294,8 +312,10 @@ int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
 
     if (!current) {
         nitro_frame_t *clear = nitro_queue_pull(q, 0);
+
         if (clear) {
             current = encrypt(clear, enc_baton);
+
             if (!current) {
                 res = -1;
             }
@@ -306,6 +326,7 @@ int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
         int num;
         struct iovec *f_vs = nitro_frame_iovs(current, &num);
         int bwrite = writev(fd, f_vs, num);
+
         if (bwrite == -1) {
             if (!OKAY_ERRNO) {
                 res = -1;
@@ -314,6 +335,7 @@ int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
             } else {
                 *remain = current;
             }
+
             break;
         }
 
@@ -321,16 +343,20 @@ int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
         res += bwrite;
         int i;
         int done = 0;
-        for (i=0; bwrite > 0 && !done; ++i) {
+
+        for (i = 0; bwrite > 0 && !done; ++i) {
             // modify in-place.. we own the frame privately
             bwrite -= nitro_frame_iovs_advance(
-                current, current->iovs, i, bwrite, &done);
+                          current, current->iovs, i, bwrite, &done);
         }
+
         if (done) {
             nitro_frame_destroy(current);
             nitro_frame_t *clear = nitro_queue_pull(q, 0);
+
             if (clear) {
                 current = encrypt(clear, enc_baton);
+
                 if (!current) {
                     res = -1;
                 }
@@ -344,10 +370,10 @@ int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
 }
 
 #define MIN3(a, b, c) (\
-    (a < b) ? \
-        (a < c ? a : c) :\
-        (b < c ? b : c))
-        
+                       (a < b) ? \
+                       (a < c ? a : c) :\
+                           (b < c ? b : c))
+
 void nitro_queue_move(nitro_queue_t *src, nitro_queue_t *dst) {
     pthread_mutex_lock(&dst->lock);
     assert(!dst->capacity);
@@ -359,6 +385,7 @@ void nitro_queue_move(nitro_queue_t *src, nitro_queue_t *dst) {
     nitro_frame_t **src_q = NULL;
     nitro_frame_t **src_head = NULL;
     nitro_frame_t **src_end = NULL;
+
     if (src_count) {
         src_q = src->q;
         src_head = src->head;
@@ -392,9 +419,9 @@ void nitro_queue_move(nitro_queue_t *src, nitro_queue_t *dst) {
 
     while (1) {
         int copy_now = MIN3(
-            (dst->end - f_dst),
-            (src_end - f_src),
-            copy_left);
+                           (dst->end - f_dst),
+                           (src_end - f_src),
+                           copy_left);
 
         memcpy(
             f_dst,
@@ -408,6 +435,7 @@ void nitro_queue_move(nitro_queue_t *src, nitro_queue_t *dst) {
         if (f_dst == dst->end) {
             f_dst = dst->q;
         }
+
         if (f_src == src_end) {
             f_src = src_q;
         }
@@ -431,36 +459,39 @@ void nitro_queue_destroy(nitro_queue_t *q) {
     while (q->head != q->tail) {
         nitro_frame_destroy(*q->head);
         q->head++;
-        if (q->head == q->end)
+
+        if (q->head == q->end) {
             q->head = q->q;
+        }
     }
+
     free(q->q);
     free(q);
 }
 
-static void nitro_queue_issue_callbacks(nitro_queue_t *q, 
-    int old_count) {
+static void nitro_queue_issue_callbacks(nitro_queue_t *q,
+                                        int old_count) {
     if (!q->state_callback) {
         return;
     }
 
     int old_state = (old_count == 0 ? NITRO_QUEUE_STATE_EMPTY :
-        ((q->capacity && old_count == q->capacity) ? NITRO_QUEUE_STATE_FULL :
-            NITRO_QUEUE_STATE_CONTENTS));
+                     ((q->capacity && old_count == q->capacity) ? NITRO_QUEUE_STATE_FULL :
+                      NITRO_QUEUE_STATE_CONTENTS));
 
     /* 1. EMPTY to FULL|CONTENTS */
     if (old_count == 0 && q->count) {
         q->state_callback(
             (!q->capacity || q->count < q->capacity) ?
-                NITRO_QUEUE_STATE_CONTENTS :
-                NITRO_QUEUE_STATE_FULL, old_state, q->baton);
-    } 
-    
+            NITRO_QUEUE_STATE_CONTENTS :
+            NITRO_QUEUE_STATE_FULL, old_state, q->baton);
+    }
+
     /* 2. FULL|CONTENTS to EMPTY */
     else if (old_count > 0 && !q->count) {
         q->state_callback(NITRO_QUEUE_STATE_EMPTY, old_state, q->baton);
-    } 
-    
+    }
+
     else if (q->capacity) {
         /* 3. FULL to CONTENTS */
         if (old_count == q->capacity && q->count < q->capacity) {
@@ -473,18 +504,20 @@ static void nitro_queue_issue_callbacks(nitro_queue_t *q,
     }
 }
 
-void nitro_queue_consume(nitro_queue_t *q, 
-    nitro_queue_frame_generator gen,
-    void *baton) {
+void nitro_queue_consume(nitro_queue_t *q,
+                         nitro_queue_frame_generator gen,
+                         void *baton) {
     pthread_mutex_lock(&q->lock);
 
     int old_count = q->count;
 
     while (!q->capacity || q->count < q->capacity) {
         nitro_frame_t *fr = gen(baton);
+
         if (!fr) {
             break;
         }
+
         if (q->count == q->size) {
             nitro_queue_grow(q, 0);
         }

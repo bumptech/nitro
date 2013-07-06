@@ -84,20 +84,19 @@ typedef struct nitro_pipe_t {
     UT_hash_handle hh;
 } nitro_pipe_t;
 
-
 #define INPROC_PREFIX "inproc://"
 #define TCP_PREFIX "tcp://"
 
 #define SOCKET_CALL(s, name, args...) \
     (s->trans == NITRO_SOCKET_TCP ? \
-        Stcp_socket_##name(&(s->stype.tcp), ## args) : \
-        Sinproc_socket_##name(&(s->stype.inproc), ## args));
+     Stcp_socket_##name(&(s->stype.tcp), ## args) : \
+     Sinproc_socket_##name(&(s->stype.inproc), ## args));
 
 #define SOCKET_SET_PARENT(s) {\
-    if(s->trans == NITRO_SOCKET_TCP)\
-        s->stype.tcp.parent = s;\
-    else\
-        s->stype.inproc.parent = s;\
+        if(s->trans == NITRO_SOCKET_TCP)\
+            s->stype.tcp.parent = s;\
+        else\
+            s->stype.inproc.parent = s;\
     }
 
 #define SOCKET_PARENT(s) ((nitro_socket_t *)s->parent)
@@ -107,7 +106,6 @@ typedef enum {
     NITRO_SOCKET_TCP,
     NITRO_SOCKET_INPROC,
 } NITRO_SOCKET_TRANSPORT;
-
 
 #define SOCKET_COMMON_FIELDS\
     /* Given Location */\
@@ -125,7 +123,7 @@ typedef enum {
     nitro_prefix_trie_node *subs;\
     /* Local "want subscription" list */\
     nitro_key_t *sub_keys;\
-
+     
 typedef struct nitro_universal_socket_t {
     SOCKET_COMMON_FIELDS
 } nitro_universal_socket_t;
@@ -139,7 +137,7 @@ typedef struct nitro_tcp_socket_t {
     nitro_queue_t *q_send;
     nitro_queue_t *q_empty;
     ev_timer close_timer;
-    
+
     /* Pipes need to be locked during map
        lookup, mutation by libev thread, etc */
     pthread_mutex_t l_pipes;
@@ -208,6 +206,5 @@ nitro_socket_t *nitro_socket_bind(char *location, nitro_sockopt_t *opt);
 nitro_socket_t *nitro_socket_connect(char *location, nitro_sockopt_t *opt);
 void nitro_socket_close(nitro_socket_t *s);
 NITRO_SOCKET_TRANSPORT socket_parse_location(char *location, char **next);
-
 
 #endif /* SOCKET_H */

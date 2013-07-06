@@ -54,12 +54,12 @@ void Stcp_pipe_enable_write(nitro_pipe_t *p);
 int Stcp_socket_relay_fw(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t **frp, int flags);
 int Stcp_socket_relay_bk(nitro_tcp_socket_t *s, nitro_frame_t *snd, nitro_frame_t **frp, int flags);
 int Stcp_socket_sub(nitro_tcp_socket_t *s,
-    uint8_t *k, size_t length);
+                    uint8_t *k, size_t length);
 int Stcp_socket_unsub(nitro_tcp_socket_t *s,
-    uint8_t *k, size_t length);
+                      uint8_t *k, size_t length);
 int Stcp_socket_pub(nitro_tcp_socket_t *s,
-    nitro_frame_t **frp, const uint8_t *k,
-    size_t length, int flags);
+                    nitro_frame_t **frp, const uint8_t *k,
+                    size_t length, int flags);
 
 void Stcp_register_pipe(nitro_tcp_socket_t *s, nitro_pipe_t *p);
 nitro_pipe_t *Stcp_lookup_pipe(nitro_tcp_socket_t *s, uint8_t *ident);

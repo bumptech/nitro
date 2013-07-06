@@ -56,7 +56,7 @@ void nitro_async_schedule(nitro_async_t *a) {
     LL_APPEND(the_runtime->async_queue, a);
     pthread_mutex_unlock(&the_runtime->l_async);
     ev_async_send(the_runtime->the_loop,
-        &the_runtime->thread_wake);
+                  &the_runtime->thread_wake);
 }
 
 static void nitro_async_handle(nitro_async_t *a) {
@@ -67,19 +67,25 @@ static void nitro_async_handle(nitro_async_t *a) {
         } else {
             SOCKET_CALL(a->u.enable_writes.socket, enable_writes);
         }
+
         break;
+
     case NITRO_ASYNC_ENABLE_READS:
         SOCKET_CALL(a->u.bind_listen.socket, enable_reads);
         break;
+
     case NITRO_ASYNC_DIE:
         ev_break(the_runtime->the_loop, EVBREAK_ALL);
         break;
+
     case NITRO_ASYNC_BIND_LISTEN:
         SOCKET_CALL(a->u.bind_listen.socket, bind_listen);
         break;
+
     case NITRO_ASYNC_CONNECT:
         SOCKET_CALL(a->u.connect.socket, start_connect);
         break;
+
     case NITRO_ASYNC_CLOSE:
         SOCKET_CALL(a->u.close.socket, start_shutdown);
         break;

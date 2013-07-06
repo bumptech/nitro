@@ -56,6 +56,7 @@ nitro_socket_t *nitro_socket_new(nitro_sockopt_t *opt) {
 #else
         int pipes[2];
         int r = pipe(pipes);
+
         if (r) {
             us->event_fd = -1;
         } else {
@@ -66,7 +67,9 @@ nitro_socket_t *nitro_socket_new(nitro_sockopt_t *opt) {
             flags = fcntl(us->write_pipe, F_GETFL, 0);
             fcntl(us->write_pipe, F_SETFL, flags | O_NONBLOCK);
         }
+
 #endif
+
         if (us->event_fd < 0) {
             nitro_set_error(NITRO_ERR_ERRNO);
             nitro_sockopt_destroy(opt);

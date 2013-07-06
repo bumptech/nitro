@@ -68,12 +68,12 @@ typedef struct nitro_protocol_header {
 
 #define FRAME_BZERO_SIZE \
     ((sizeof(void *) * 3) + \
-    (sizeof(char) * 4))
+     (sizeof(char) * 4))
 
 typedef struct nitro_frame_t {
-    /* NOTE: careful about order here!  
+    /* NOTE: careful about order here!
     fields that must be zeroed should
-    be first.. adjust FRAME_BZERO_SIZE 
+    be first.. adjust FRAME_BZERO_SIZE
     above if you add fields */
 
     /* START bzero() region */
@@ -113,25 +113,25 @@ void nitro_frame_clear(nitro_frame_t *fr);
 
 struct iovec *nitro_frame_iovs(nitro_frame_t *fr, int *num);
 int nitro_frame_iovs_advance(nitro_frame_t *fr,
-    struct iovec *vecs, int index, int offset, int *done);
+                             struct iovec *vecs, int index, int offset, int *done);
 void nitro_frame_iovs_reset(nitro_frame_t *fr);
 void nitro_frame_set_sender(nitro_frame_t *f,
-    uint8_t *sender, nitro_counted_buffer_t *buf);
+                            uint8_t *sender, nitro_counted_buffer_t *buf);
 void nitro_frame_clone_stack(nitro_frame_t *fr, nitro_frame_t *to);
 void nitro_frame_set_stack(nitro_frame_t *f, const uint8_t *data,
-    nitro_counted_buffer_t *buf, uint8_t num);
+                           nitro_counted_buffer_t *buf, uint8_t num);
 void nitro_frame_extend_stack(nitro_frame_t *fr, nitro_frame_t *to);
 
 #define nitro_frame_destroy(f) {\
-    nitro_counted_buffer_decref((f)->myref);\
-}
+        nitro_counted_buffer_decref((f)->myref);\
+    }
 
 #define nitro_frame_incref(f) {\
-    nitro_counted_buffer_incref((f)->myref);\
-}
+        nitro_counted_buffer_incref((f)->myref);\
+    }
 
-nitro_key_t *nitro_key_new(const uint8_t *data, uint8_t length, 
-    nitro_counted_buffer_t *buf);
+nitro_key_t *nitro_key_new(const uint8_t *data, uint8_t length,
+                           nitro_counted_buffer_t *buf);
 int nitro_key_compare(nitro_key_t *k1, nitro_key_t *k2);
 void nitro_key_destroy(nitro_key_t *k);
 
@@ -152,6 +152,5 @@ inline void *nitro_frame_data(nitro_frame_t *fr) {
 inline uint32_t nitro_frame_size(nitro_frame_t *fr) {
     return fr->size;
 }
-
 
 #endif /* FRAME_H */
