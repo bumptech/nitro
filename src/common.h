@@ -35,7 +35,7 @@
 #ifndef NITRO_COMMON_H
 #define NITRO_COMMON_H
 
-#include <crypto_box.h>
+#include <sodium.h>
 
 #define SOCKET_IDENT_LENGTH crypto_box_PUBLICKEYBYTES
 

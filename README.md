@@ -11,17 +11,12 @@ Build
 
 You need:
 
- 0. Linux or Mac OS X
- 1. redo ( https://github.com/apenwarr/redo )
- 2. libev development libraries installed
+ 0. Linux, Mac OS X, FreeBSD... something Unix-y
+ 1. redo, a build tool ( https://github.com/apenwarr/redo )
+ 2. libev development libraries installed ( something like `apt-get install libev-dev` )
+ 3. libsodium ( https://github.com/jedisct1/libsodium )
 
 Then:
-
-**Build Nacl**
-
-    $ redo nacl
-
-*Note: this could take 5-20 minutes*
 
 **Build Nitro**
 
@@ -34,7 +29,6 @@ Then:
 **Install Nitro**
 
     $ sudo redo install
-
 
 Build Note
 ----------
@@ -64,13 +58,10 @@ Examples
 
 You can find examples in the `examples/` directory in the distribution.
 
-Bindings
+Bindings, Docs, Etc.
 --------
 
-Bindings for Python and Haskell coming soon.
-
-Docs
-----
+Check out the website:
 
 http://docs.gonitro.io
 

@@ -65,6 +65,7 @@ int nitro_runtime_start() {
     }
 
     nitro_err_start();
+    sodium_init();
 
     ZALLOC(the_runtime);
     signal(SIGPIPE, handle_pipe); /* ignore sigpipe */
