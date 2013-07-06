@@ -1,7 +1,7 @@
 /*
  * Nitro
  *
- * tcp.c - TCP sockets are sockets designed to transmit frames between
+ * Stcp.c - TCP sockets are sockets designed to transmit frames between
  *         different machines on a TCP/IP network
  *
  *  -- LICENSE --

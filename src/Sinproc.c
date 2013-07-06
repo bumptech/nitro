@@ -1,8 +1,9 @@
 /*
  * Nitro
  *
- * tcp.c - TCP sockets are sockets designed to transmit frames between
- *         different machines on a TCP/IP network
+ * Sinproc.c - Inproc sockets are in-process sockets, thin wrappers
+ *             around thread-safe queues that are API-compatible
+ *             with TCP sockets.
  *
  *  -- LICENSE --
  *

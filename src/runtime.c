@@ -1,8 +1,8 @@
 /*
  * Nitro
  *
- * setup.c - Implementation of start/stop and environment initialization
- *           for a nitro application
+ * runtime.c - Implementation of start/stop and environment initialization
+ *             for a nitro application
  *
  *  -- LICENSE --
  *

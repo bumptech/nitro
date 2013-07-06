@@ -1,7 +1,7 @@
 /*
  * Nitro
  *
- * api.c - Public API
+ * nitro.c - Public API
  *
  *  -- LICENSE --
  *

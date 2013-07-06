@@ -1,7 +1,7 @@
 /*
  * Nitro
  *
- * nitro-common.h - Common includes
+ * common.h - Common includes
  *
  *  -- LICENSE --
  *

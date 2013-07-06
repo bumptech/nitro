@@ -33,8 +33,8 @@
  *
  */
 
-#ifndef ASYNC_H
-#define ASYNC_H
+#ifndef NITRO_ASYNC_H
+#define NITRO_ASYNC_H
 #include "common.h"
 
 #include "socket.h"
