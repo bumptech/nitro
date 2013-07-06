@@ -52,6 +52,9 @@ typedef struct nitro_runtime {
     pthread_mutex_t l_inproc;
     nitro_inproc_socket_t *inprocs;
 
+    pthread_mutex_t l_socks;
+    nitro_socket_t *socks;
+
     ev_async thread_wake;
 
     int random_fd;

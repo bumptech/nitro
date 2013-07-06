@@ -81,7 +81,7 @@ void Stcp_socket_close_cb(
 
 /* Various FW declaration */
 void Stcp_socket_disable_reads(nitro_tcp_socket_t *s);
-void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd);
+void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd, struct sockaddr_in *addr);
 void Stcp_destroy_pipe(nitro_pipe_t *p);
 void Stcp_socket_start_connect(nitro_tcp_socket_t *s);
 
@@ -525,7 +525,7 @@ void Stcp_connect_cb(
 
     if (!t || errno == EISCONN || !errno) {
         ev_io_stop(the_runtime->the_loop, &s->connect_io);
-        Stcp_make_pipe(s, s->connect_fd);
+        Stcp_make_pipe(s, s->connect_fd, NULL);
         s->connect_fd = -1;
     } else if (errno == EINPROGRESS || errno == EINTR || errno == EALREADY) {
         /* do nothing, we'll get phoned home again... */
@@ -630,7 +630,7 @@ void Stcp_destroy_pipe(nitro_pipe_t *p) {
  * bound nitro sockets) or via a connect() (on connected
  * nitro sockets).
  */
-void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd) {
+void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd, struct sockaddr_in *addr) {
     NITRO_THREAD_CHECK;
     nitro_pipe_t *p = Stcp_pipe_new(s);
     p->fd = fd;
@@ -654,6 +654,16 @@ void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd) {
     ev_io_start(the_runtime->the_loop,
                 &p->ior);
 
+    p->born = now_double();
+
+    if (addr) {
+        char tmp[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &(addr->sin_addr),
+            tmp, INET_ADDRSTRLEN);
+
+        snprintf(p->remote_location, sizeof(p->remote_location),
+            "%s:%d", tmp, addr->sin_port);
+    }
 }
 
 /*
@@ -1063,6 +1073,9 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                 return NULL;
             }
 
+            __sync_fetch_and_add(&st->s->stat_recv, 1);
+            __sync_fetch_and_add(&st->p->stat_recv, 1);
+
             if (!*bbuf_p) {
                 /* it is official, we will consume data... */
 
@@ -1236,7 +1249,9 @@ void Stcp_bind_callback(
     }
 
     Stcp_set_socket_options(fd, s->opt->tcp_keep_alive);
-    Stcp_make_pipe(s, fd);
+
+    assert(addr.sa_family == AF_INET);
+    Stcp_make_pipe(s, fd, (struct sockaddr_in *)&addr);
 }
 
 /*
@@ -1279,6 +1294,7 @@ void Stcp_pipe_out_cb(
 
     int r = 0;
     int tried = 0;
+    int fwritten = 0;
 
     if (!p->us_handshake) {
         nitro_frame_t *hello = nitro_frame_new_copy(
@@ -1290,7 +1306,7 @@ void Stcp_pipe_out_cb(
         if (s->opt->secure) {
             r = nitro_queue_fd_write(
                     s->q_empty,
-                    p->fd, p->partial, &(p->partial));
+                    p->fd, p->partial, &(p->partial), &fwritten);
 
             if (r < 0 && !OKAY_ERRNO) {
                 if (s->opt->error_handler) {
@@ -1301,6 +1317,7 @@ void Stcp_pipe_out_cb(
                 Stcp_destroy_pipe(p);
                 return;
             }
+            __sync_fetch_and_add(&p->bytes_sent, r);
         }
     }
 
@@ -1311,6 +1328,7 @@ void Stcp_pipe_out_cb(
 
     }
 
+    fwritten = 0;
     if (p->partial || nitro_queue_count(p->q_send)) {
         tried = 1;
 
@@ -1319,11 +1337,14 @@ void Stcp_pipe_out_cb(
             r = nitro_queue_fd_write_encrypted(
                     p->q_send,
                     p->fd, p->partial, &(p->partial),
+                    &fwritten,
                     Stcp_encrypt_frame, p);
         } else {
             r = nitro_queue_fd_write(
                     p->q_send,
-                    p->fd, p->partial, &(p->partial));
+                    p->fd, p->partial, &(p->partial),
+                    &fwritten
+                    );
         }
 
         if (r < 0 && OKAY_ERRNO) {
@@ -1339,10 +1360,14 @@ void Stcp_pipe_out_cb(
             Stcp_destroy_pipe(p);
             return;
         }
+        __sync_fetch_and_add(&s->stat_direct, fwritten);
+        __sync_fetch_and_add(&p->stat_direct, fwritten);
+        __sync_fetch_and_add(&p->bytes_sent, r);
     }
 
     /* Note -- using truncate frame as heuristic
        to guess kernel buffer is full*/
+    fwritten = 0;
     if ((!tried || !p->partial) && nitro_queue_count(s->q_send)) {
         tried = 1;
 
@@ -1351,12 +1376,15 @@ void Stcp_pipe_out_cb(
             r = nitro_queue_fd_write_encrypted(
                     s->q_send,
                     p->fd, p->partial, &(p->partial),
+                    &fwritten,
                     Stcp_encrypt_frame, p);
 
         } else {
             r = nitro_queue_fd_write(
                     s->q_send,
-                    p->fd, p->partial, &(p->partial));
+                    p->fd, p->partial, &(p->partial),
+                    &fwritten
+                    );
         }
 
         if (r < 0 && OKAY_ERRNO) {
@@ -1372,6 +1400,9 @@ void Stcp_pipe_out_cb(
             Stcp_destroy_pipe(p);
             return;
         }
+        __sync_fetch_and_add(&s->stat_sent, fwritten);
+        __sync_fetch_and_add(&p->stat_sent, fwritten);
+        __sync_fetch_and_add(&p->bytes_sent, r);
     }
 
     if (!tried) {
@@ -1413,6 +1444,7 @@ void Stcp_pipe_in_cb(
     }
 
     nitro_buffer_extend(p->in_buffer, r);
+    __sync_fetch_and_add(&p->bytes_recv, r);
 
     Stcp_parse_socket_buffer(p);
 
@@ -1868,4 +1900,91 @@ nitro_pipe_t *Stcp_pipe_new(nitro_tcp_socket_t *s) {
     pthread_mutex_unlock(&s->l_pipes);
 
     return p;
+}
+
+void Stcp_socket_describe(nitro_tcp_socket_t *s, nitro_buffer_t *buf) {
+    int amt = 500;
+    char *ptr = nitro_buffer_prepare(buf, &amt);
+
+    double now = now_double();
+    pthread_mutex_lock(&s->l_pipes);
+
+    int written;
+    if (s->outbound) {
+        char remote[9];
+        if (s->pipes) {
+            if (s->pipes->them_handshake) {
+                snprintf(remote, 9, "%02x%02x%02x%02x",
+                    s->pipes->remote_ident[0],
+                    s->pipes->remote_ident[1],
+                    s->pipes->remote_ident[2],
+                    s->pipes->remote_ident[3]);
+            } else {
+                strcpy(remote, "????????");
+            }
+        } else {
+            strcpy(remote, "(none)");
+        }
+        written = snprintf(ptr, amt, "C-%02x%02x%02x%02x tcp://%s (remote=%s, secure=%s, gen_q=%u, recv_q=%u gen_tot=%" PRIu64 ", recv_tot=%" PRIu64 ")\n", 
+            SOCKET_UNIVERSAL(s)->opt->ident[0],
+            SOCKET_UNIVERSAL(s)->opt->ident[1],
+            SOCKET_UNIVERSAL(s)->opt->ident[2],
+            SOCKET_UNIVERSAL(s)->opt->ident[3],
+            s->given_location,
+            remote,
+            s->opt->secure ? "yes" : "no",
+            nitro_queue_count(s->q_send),
+            nitro_queue_count(s->q_recv),
+            s->stat_sent,
+            s->stat_recv
+            );
+        nitro_buffer_extend(buf, written);
+    } else {
+        written = snprintf(ptr, amt, "B-%02x%02x%02x%02x tcp://%s (peers=%d, secure=%s, gen_q=%u, recv_q=%u, gen_tot=%" PRIu64 ", recv_tot=%" PRIu64 ", direct_tot=%" PRIu64 ")\n", 
+            SOCKET_UNIVERSAL(s)->opt->ident[0],
+            SOCKET_UNIVERSAL(s)->opt->ident[1],
+            SOCKET_UNIVERSAL(s)->opt->ident[2],
+            SOCKET_UNIVERSAL(s)->opt->ident[3],
+            s->given_location,
+            s->num_pipes,
+            s->opt->secure ? "yes" : "no",
+            nitro_queue_count(s->q_send),
+            nitro_queue_count(s->q_recv),
+            s->stat_sent,
+            s->stat_recv,
+            s->stat_direct
+            );
+        nitro_buffer_extend(buf, written);
+
+        nitro_pipe_t *p;
+        CDL_FOREACH(s->pipes, p) {
+            amt = 500;
+            ptr = nitro_buffer_prepare(buf, &amt);
+
+            char remote[9];
+            if (p->them_handshake) {
+                snprintf(remote, 9, "%02x%02x%02x%02x",
+                    p->remote_ident[0],
+                    p->remote_ident[1],
+                    p->remote_ident[2],
+                    p->remote_ident[3]);
+            } else {
+                strcpy(remote, "????????");
+            }
+            written = snprintf(ptr, amt, "  -> %s on %s for %.1fs (gen=%" PRIu64 ", recv=%" PRIu64 ", direct=%" PRIu64 ", direct_q=%u, bytes_out=%" PRIu64 ", bytes_in=%" PRIu64 ")\n",
+                remote,
+                p->remote_location,
+                now - p->born,
+                p->stat_sent,
+                p->stat_recv,
+                p->stat_direct,
+                nitro_queue_count(p->q_send),
+                p->bytes_sent,
+                p->bytes_recv
+                );
+            nitro_buffer_extend(buf, written);
+        }
+    }
+
+    pthread_mutex_unlock(&s->l_pipes);
 }

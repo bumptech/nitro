@@ -73,11 +73,17 @@ typedef struct nitro_pipe_t {
 
     void *the_socket;
 
-    /* XXX for inproc, paired socket */
-    void *dest_socket;
-
     struct nitro_pipe_t *prev;
     struct nitro_pipe_t *next;
+
+    uint64_t stat_sent;
+    uint64_t stat_recv;
+    uint64_t stat_direct;
+    uint64_t bytes_sent;
+    uint64_t bytes_recv;
+    double born;
+
+    char remote_location[50];
 
     nitro_key_t *sub_keys;
 
@@ -165,6 +171,10 @@ typedef struct nitro_tcp_socket_t {
 
     nitro_counted_buffer_t *sub_data;
     uint32_t sub_data_length;
+
+    uint64_t stat_sent;
+    uint64_t stat_recv;
+    uint64_t stat_direct;
 } nitro_tcp_socket_t;
 
 typedef struct nitro_inproc_socket_t {
@@ -174,6 +184,7 @@ typedef struct nitro_inproc_socket_t {
     UT_hash_handle hh;
 
     pthread_rwlock_t link_lock;
+    int num_links;
     struct nitro_inproc_socket_t *links;
     struct nitro_inproc_socket_t *current;
     nitro_counted_buffer_t *bind_counter;
@@ -183,6 +194,8 @@ typedef struct nitro_inproc_socket_t {
 
     int bound;
     int dead;
+
+    uint64_t stat_recv;
 
     struct nitro_inproc_socket_t *registry;
     UT_hash_handle bound_hh;
@@ -197,6 +210,9 @@ typedef struct nitro_socket_t {
         nitro_tcp_socket_t tcp;
         nitro_inproc_socket_t inproc;
     } stype;
+
+    struct nitro_socket_t *prev;
+    struct nitro_socket_t *next;
 
 } nitro_socket_t;
 

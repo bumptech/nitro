@@ -60,4 +60,6 @@ int Sinproc_socket_unsub(nitro_inproc_socket_t *s,
 int Sinproc_socket_pub(nitro_inproc_socket_t *s,
                        nitro_frame_t **frp, uint8_t *k, size_t length, int flags);
 
+void Sinproc_socket_describe(nitro_inproc_socket_t *s, nitro_buffer_t *buf);
+
 #endif /* NITRO_SINPROC_H */

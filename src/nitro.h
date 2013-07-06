@@ -42,6 +42,7 @@
 #include "Stcp.h"
 #include "Sinproc.h"
 #include "log.h"
+#include "stat.h"
 
 #define NITRO_REUSE (1 << 0)
 #define NITRO_NOWAIT (1 << 1)
@@ -55,5 +56,7 @@
 #define nitro_unsub(s, k, l) SOCKET_CALL(s, unsub, k, l)
 #define nitro_pub(fr, k, l, s, f) SOCKET_CALL(s, pub, fr, k, l, f)
 #define nitro_eventfd(s) ((s)->stype.univ.event_fd)
+
+#define nitro_enable_stats stat_register_handler
 
 #endif

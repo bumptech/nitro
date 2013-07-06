@@ -66,5 +66,6 @@ nitro_pipe_t *Stcp_lookup_pipe(nitro_tcp_socket_t *s, uint8_t *ident);
 void Stcp_unregister_pipe(nitro_tcp_socket_t *s, nitro_pipe_t *p);
 nitro_pipe_t *Stcp_pipe_new(nitro_tcp_socket_t *s);
 void Stcp_pipe_destroy(nitro_pipe_t *p, nitro_tcp_socket_t *s);
+void Stcp_socket_describe(nitro_tcp_socket_t *s, nitro_buffer_t *buf);
 
 #endif /* NITRO_STCP_H */

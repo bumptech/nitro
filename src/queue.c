@@ -184,12 +184,15 @@ int nitro_queue_push(nitro_queue_t *q,
 /* "internal" functions, mass population and eviction */
 int nitro_queue_fd_write(nitro_queue_t *q, int fd,
                          nitro_frame_t *partial,
-                         nitro_frame_t **remain) {
+                         nitro_frame_t **remain,
+                         int *frames_written
+                         ) {
     /* Does gather IO to avoid copying buffers around */
     pthread_mutex_lock(&q->lock);
     int actual_iovs = 0;
     int accum_bytes = 0;
     int ret = 0;
+    int fwritten = 0;
     nitro_frame_t **iter = q->head;
     struct iovec vectors[NITRO_MAX_IOV];
 
@@ -253,6 +256,7 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
 
         if (done) {
             nitro_frame_destroy(partial);
+            ++fwritten;
         } else {
             assert(!actual_bytes);
             *remain = partial;
@@ -272,6 +276,7 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
 
         if (done) {
             nitro_frame_destroy(fr);
+            ++fwritten;
         } else {
             assert(!actual_bytes);
             *remain = nitro_frame_copy_partial(fr, scratch);
@@ -298,15 +303,18 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
 
 out:
     pthread_mutex_unlock(&q->lock);
+    *frames_written = fwritten;
     return ret;
 }
 
 int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
                                    nitro_frame_t *partial,
                                    nitro_frame_t **remain,
+                                   int *frames_written,
                                    nitro_queue_encrypt_frame_cb encrypt, void *enc_baton) {
     *remain = NULL;
     int res = 0;
+    int fwritten = 0;
 
     nitro_frame_t *current = partial;
 
@@ -352,6 +360,7 @@ int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
 
         if (done) {
             nitro_frame_destroy(current);
+            ++fwritten;
             nitro_frame_t *clear = nitro_queue_pull(q, 0);
 
             if (clear) {
@@ -365,6 +374,8 @@ int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
             }
         }
     }
+
+    *frames_written = fwritten;
 
     return res;
 }

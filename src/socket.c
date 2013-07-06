@@ -78,7 +78,10 @@ nitro_socket_t *nitro_socket_new(nitro_sockopt_t *opt) {
         }
     }
 
+    pthread_mutex_lock(&the_runtime->l_socks);
+    DL_APPEND(the_runtime->socks, sock);
     __sync_fetch_and_add(&the_runtime->num_sock, 1);
+    pthread_mutex_unlock(&the_runtime->l_socks);
     return sock;
 }
 
@@ -98,6 +101,10 @@ NITRO_SOCKET_TRANSPORT socket_parse_location(char *location, char **next) {
 }
 
 void nitro_socket_destroy(nitro_socket_t *s) {
+    pthread_mutex_lock(&the_runtime->l_socks);
+    DL_DELETE(the_runtime->socks, s);
+    pthread_mutex_unlock(&the_runtime->l_socks);
+
     nitro_universal_socket_t *us = &s->stype.univ;
     nitro_sockopt_destroy(us->opt);
     free(us->given_location);

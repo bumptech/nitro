@@ -84,11 +84,13 @@ int nitro_queue_push(nitro_queue_t *q, nitro_frame_t *f,
                      int wait);
 int nitro_queue_fd_write(nitro_queue_t *q, int fd,
                          nitro_frame_t *partial,
-                         nitro_frame_t **remain);
+                         nitro_frame_t **remain,
+                         int *frames_written);
 typedef nitro_frame_t *(*nitro_queue_encrypt_frame_cb)(nitro_frame_t *, void *);
 int nitro_queue_fd_write_encrypted(nitro_queue_t *q, int fd,
                                    nitro_frame_t *partial,
                                    nitro_frame_t **remain,
+                                   int *frames_written,
                                    nitro_queue_encrypt_frame_cb encrypt, void *enc_baton);
 void nitro_queue_destroy(nitro_queue_t *q);
 

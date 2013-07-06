@@ -152,6 +152,7 @@ void * do_sender(void *p) {
 int main(int argc, char **argv) {
     unsigned int base;
     nitro_runtime_start();
+    nitro_enable_stats();
     if (argc > 1) {
         base = atol(argv[1]);
     } else {

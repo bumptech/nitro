@@ -72,6 +72,7 @@ int nitro_runtime_start() {
     pthread_mutex_init(&the_runtime->l_tcp_connect, NULL);
     pthread_mutex_init(&the_runtime->l_inproc, NULL);
     pthread_mutex_init(&the_runtime->l_async, NULL);
+    pthread_mutex_init(&the_runtime->l_socks, NULL);
 
     the_runtime->num_sock = 0;
 
