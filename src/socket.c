@@ -78,6 +78,8 @@ nitro_socket_t *nitro_socket_new(nitro_sockopt_t *opt) {
         }
     }
 
+    pthread_mutex_init(&us->l_stats, NULL);
+
     pthread_mutex_lock(&the_runtime->l_socks);
     DL_APPEND(the_runtime->socks, sock);
     __sync_fetch_and_add(&the_runtime->num_sock, 1);

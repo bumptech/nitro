@@ -1104,8 +1104,8 @@ static nitro_frame_t *Stcp_parse_next_frame(void *baton) {
                 return NULL;
             }
 
-            __sync_fetch_and_add(&st->s->stat_recv, 1);
-            __sync_fetch_and_add(&st->p->stat_recv, 1);
+            INCR_STAT(st->s, &st->s->stat_recv, 1);
+            INCR_STAT(st->s, &st->p->stat_recv, 1);
 
             if (!*bbuf_p) {
                 /* it is official, we will consume data... */
@@ -1349,7 +1349,7 @@ void Stcp_pipe_out_cb(
                 return;
             }
 
-            __sync_fetch_and_add(&p->bytes_sent, r);
+            INCR_STAT(s, &p->bytes_sent, r);
         }
     }
 
@@ -1394,9 +1394,9 @@ void Stcp_pipe_out_cb(
             return;
         }
 
-        __sync_fetch_and_add(&s->stat_direct, fwritten);
-        __sync_fetch_and_add(&p->stat_direct, fwritten);
-        __sync_fetch_and_add(&p->bytes_sent, r);
+        INCR_STAT(s, &s->stat_direct, fwritten);
+        INCR_STAT(s, &p->stat_direct, fwritten);
+        INCR_STAT(s, &p->bytes_sent, r);
     }
 
     /* Note -- using truncate frame as heuristic
@@ -1436,9 +1436,9 @@ void Stcp_pipe_out_cb(
             return;
         }
 
-        __sync_fetch_and_add(&s->stat_sent, fwritten);
-        __sync_fetch_and_add(&p->stat_sent, fwritten);
-        __sync_fetch_and_add(&p->bytes_sent, r);
+        INCR_STAT(s, &s->stat_sent, fwritten);
+        INCR_STAT(s, &p->stat_sent, fwritten);
+        INCR_STAT(s, &p->bytes_sent, r);
     }
 
     if (!tried) {
@@ -1480,7 +1480,7 @@ void Stcp_pipe_in_cb(
     }
 
     nitro_buffer_extend(p->in_buffer, r);
-    __sync_fetch_and_add(&p->bytes_recv, r);
+    INCR_STAT(s, &p->bytes_recv, r);
 
     Stcp_parse_socket_buffer(p);
 

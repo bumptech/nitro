@@ -245,7 +245,7 @@ static int Sinproc_socket_send_general(nitro_inproc_socket_t *s,  nitro_frame_t 
             ret = nitro_queue_push(try->q_recv, fr,
                                        !(flags & NITRO_NOWAIT));
 
-            __sync_fetch_and_add(&try->stat_recv, 1);
+            INCR_STAT(try, &try->stat_recv, 1);
         }
 
         pthread_rwlock_unlock(&s->link_lock);
@@ -257,7 +257,7 @@ static int Sinproc_socket_send_general(nitro_inproc_socket_t *s,  nitro_frame_t 
         } else {
             ret = nitro_queue_push(s->links->q_recv, fr,
                                    !(flags & NITRO_NOWAIT));
-            __sync_fetch_and_add(&s->links->stat_recv, 1);
+            INCR_STAT(s->links, &s->links->stat_recv, 1);
         }
     }
 
@@ -281,7 +281,7 @@ static int Sinproc_socket_send_to_ident(nitro_inproc_socket_t *s, uint8_t *ident
 
             ret = nitro_queue_push(try->q_recv, fr, 0);
 
-            __sync_fetch_and_add(&try->stat_recv, 1);
+            INCR_STAT(try, &try->stat_recv, 1);
         }
 
         pthread_rwlock_unlock(&s->link_lock);
@@ -293,7 +293,7 @@ static int Sinproc_socket_send_to_ident(nitro_inproc_socket_t *s, uint8_t *ident
         } else {
             ret = nitro_queue_push(s->links->q_recv, fr,
                                    !(flags & NITRO_NOWAIT));
-            __sync_fetch_and_add(&s->links->stat_recv, 1);
+            INCR_STAT(s->links, &s->links->stat_recv, 1);
         }
     }
 
