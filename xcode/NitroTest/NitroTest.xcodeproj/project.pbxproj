@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		647E6E93178B746000A539E0 /* libsodium.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 647E6E5E178B746000A539E0 /* libsodium.a */; };
 		64EF4870176297FF000C3A89 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF486F176297FF000C3A89 /* UIKit.framework */; };
 		64EF4872176297FF000C3A89 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF4871176297FF000C3A89 /* Foundation.framework */; };
 		64EF4874176297FF000C3A89 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF4873176297FF000C3A89 /* CoreGraphics.framework */; };
@@ -98,13 +99,11 @@
 		64EF49641762B0CF000C3A89 /* crypto_uint8.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493C1762B0CF000C3A89 /* crypto_uint8.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF49651762B0CF000C3A89 /* crypto_verify_16.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493D1762B0CF000C3A89 /* crypto_verify_16.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF49661762B0CF000C3A89 /* crypto_verify_32.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493E1762B0CF000C3A89 /* crypto_verify_32.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		64EF49671762B0CF000C3A89 /* randombytes.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493F1762B0CF000C3A89 /* randombytes.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF496D1762B23D000C3A89 /* libnacl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF496C1762B23D000C3A89 /* libnacl.a */; };
 		64EF497B1762B324000C3A89 /* ev.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF49701762B324000C3A89 /* ev.c */; };
 		64EF497C1762B324000C3A89 /* ev.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49711762B324000C3A89 /* ev.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF49821762B324000C3A89 /* ev_vars.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49771762B324000C3A89 /* ev_vars.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF49831762B324000C3A89 /* ev_wrap.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49781762B324000C3A89 /* ev_wrap.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		64EF49881762B698000C3A89 /* randombytes.o in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF49871762B698000C3A89 /* randombytes.o */; };
 		64EF498C1762BB27000C3A89 /* NitroFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF498B1762BB27000C3A89 /* NitroFramework.framework */; };
 /* End PBXBuildFile section */
 
@@ -119,6 +118,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		647E6E5E178B746000A539E0 /* libsodium.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libsodium.a; sourceTree = "<group>"; };
 		64EF486C176297FF000C3A89 /* NitroTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NitroTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		64EF486F176297FF000C3A89 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		64EF4871176297FF000C3A89 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -218,13 +218,11 @@
 		64EF493C1762B0CF000C3A89 /* crypto_uint8.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = crypto_uint8.h; sourceTree = "<group>"; };
 		64EF493D1762B0CF000C3A89 /* crypto_verify_16.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = crypto_verify_16.h; sourceTree = "<group>"; };
 		64EF493E1762B0CF000C3A89 /* crypto_verify_32.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = crypto_verify_32.h; sourceTree = "<group>"; };
-		64EF493F1762B0CF000C3A89 /* randombytes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = randombytes.h; sourceTree = "<group>"; };
 		64EF496C1762B23D000C3A89 /* libnacl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libnacl.a; sourceTree = "<group>"; };
 		64EF49701762B324000C3A89 /* ev.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ev.c; sourceTree = "<group>"; };
 		64EF49711762B324000C3A89 /* ev.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ev.h; sourceTree = "<group>"; };
 		64EF49771762B324000C3A89 /* ev_vars.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ev_vars.h; sourceTree = "<group>"; };
 		64EF49781762B324000C3A89 /* ev_wrap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ev_wrap.h; sourceTree = "<group>"; };
-		64EF49871762B698000C3A89 /* randombytes.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = randombytes.o; sourceTree = "<group>"; };
 		64EF498B1762BB27000C3A89 /* NitroFramework.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NitroFramework.framework; path = "../../../../../../Library/Developer/Xcode/DerivedData/NitroTest-fvhcgdiocaxbycfgoenrcyxreexa/Build/Products/Debug-iphoneos/NitroFramework.framework"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -245,14 +243,22 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				647E6E93178B746000A539E0 /* libsodium.a in Frameworks */,
 				64EF489B17629889000C3A89 /* CoreFoundation.framework in Frameworks */,
-				64EF49881762B698000C3A89 /* randombytes.o in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		647E6E5D178B746000A539E0 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				647E6E5E178B746000A539E0 /* libsodium.a */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
 		64EF4863176297FF000C3A89 = {
 			isa = PBXGroup;
 			children = (
@@ -286,6 +292,7 @@
 		64EF4875176297FF000C3A89 /* NitroTest */ = {
 			isa = PBXGroup;
 			children = (
+				647E6E5D178B746000A539E0 /* lib */,
 				64EF487E176297FF000C3A89 /* BMPAppDelegate.h */,
 				64EF487F176297FF000C3A89 /* BMPAppDelegate.m */,
 				64EF4887176297FF000C3A89 /* MainStoryboard_iPhone.storyboard */,
@@ -316,7 +323,6 @@
 		64EF489C17629889000C3A89 /* NitroFramework */ = {
 			isa = PBXGroup;
 			children = (
-				64EF49871762B698000C3A89 /* randombytes.o */,
 				64EF496E1762B324000C3A89 /* ev */,
 				64EF49151762B0CF000C3A89 /* include */,
 				64EF48A71762B059000C3A89 /* src */,
@@ -447,7 +453,6 @@
 				64EF493C1762B0CF000C3A89 /* crypto_uint8.h */,
 				64EF493D1762B0CF000C3A89 /* crypto_verify_16.h */,
 				64EF493E1762B0CF000C3A89 /* crypto_verify_32.h */,
-				64EF493F1762B0CF000C3A89 /* randombytes.h */,
 			);
 			path = arm;
 			sourceTree = "<group>";
@@ -531,7 +536,6 @@
 				64EF49641762B0CF000C3A89 /* crypto_uint8.h in Headers */,
 				64EF49651762B0CF000C3A89 /* crypto_verify_16.h in Headers */,
 				64EF49661762B0CF000C3A89 /* crypto_verify_32.h in Headers */,
-				64EF49671762B0CF000C3A89 /* randombytes.h in Headers */,
 				64EF497C1762B324000C3A89 /* ev.h in Headers */,
 				64EF49821762B324000C3A89 /* ev_vars.h in Headers */,
 				64EF49831762B324000C3A89 /* ev_wrap.h in Headers */,
@@ -778,6 +782,7 @@
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "NitroTest/NitroTest-Prefix.pch";
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/NitroTest/include";
 				INFOPLIST_FILE = "NitroTest/NitroTest-Info.plist";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -800,6 +805,7 @@
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "NitroTest/NitroTest-Prefix.pch";
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/NitroTest/include";
 				INFOPLIST_FILE = "NitroTest/NitroTest-Info.plist";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -822,10 +828,17 @@
 				GCC_PREFIX_HEADER = "NitroFramework/NitroFramework-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = EV_STANDALONE;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				HEADER_SEARCH_PATHS = /usr/local/include;
+				HEADER_SEARCH_PATHS = (
+					/usr/local/include,
+					"$(SRCROOT)/NitroTest/include/**",
+				);
 				INFOPLIST_FILE = "NitroFramework/NitroFramework-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
 				IPHONEOS_DEPLOYMENT_TARGET = 5.0;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/NitroTest/lib",
+				);
 				LINK_WITH_STANDARD_LIBRARIES = NO;
 				MACH_O_TYPE = mh_object;
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
@@ -848,10 +861,17 @@
 				GCC_PREFIX_HEADER = "NitroFramework/NitroFramework-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = EV_STANDALONE;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				HEADER_SEARCH_PATHS = /usr/local/include;
+				HEADER_SEARCH_PATHS = (
+					/usr/local/include,
+					"$(SRCROOT)/NitroTest/include/**",
+				);
 				INFOPLIST_FILE = "NitroFramework/NitroFramework-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
 				IPHONEOS_DEPLOYMENT_TARGET = 5.0;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/NitroTest/lib",
+				);
 				LINK_WITH_STANDARD_LIBRARIES = NO;
 				MACH_O_TYPE = mh_object;
 				MACOSX_DEPLOYMENT_TARGET = 10.8;

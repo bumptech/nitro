@@ -70,6 +70,7 @@ int main(int argc, char **argv) {
     MESSAGES = atoi(argv[1]);
     SIZE = atoi(argv[2]);
     nitro_runtime_start();
+    nitro_enable_stats();
 
     nitro_socket_t *r = nitro_socket_bind("tcp://127.0.0.1:4444", NULL);
     nitro_socket_t *c = nitro_socket_connect("tcp://127.0.0.1:4444", NULL);

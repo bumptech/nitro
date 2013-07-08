@@ -1,10 +1,13 @@
 import sys
-old = None
+import re
+import os
 
-line = sys.stdin.readline()
-while line:
-    num = int(line.split(':')[1])
-    if old and num - old == 1:
-        sys.stdout.write("Double Blank:" + line)
-    old = num
-    line = sys.stdin.readline()
+fn = sys.argv[1]
+
+data = open(fn).read()
+
+newname = fn + '.tmp'
+with open(newname, 'wb') as rw:
+    rw.write(re.sub(r"\n\n\n", "\n\n", data, re.MULTILINE))
+
+os.rename(newname, fn)

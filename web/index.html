@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Bootstrap -->
     <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <link href="css/bootstrap-responsive.css" rel="stylesheet">
     <link href="//fonts.googleapis.com/css?family=Droid+Sans" rel="stylesheet" type="text/css">
     <style>
         .container-narrow {
@@ -80,6 +81,10 @@
             margin: 12px 0;
         }
 
+        .reldata {
+            font-size: 12px;
+        }
+
         .bindings {
             margin-top: 20px;
             padding: 10px 0;
@@ -100,12 +105,13 @@
             display: block;
             margin: 0 auto;
             max-width: 150px;
+            max-height: 40px;
         }
 
         .bindings-lab {
             position: relative;
             left: -10px;
-            top: 35px;
+            top: 28px;
             -webkit-transform: rotate(270deg);
             -moz-transform: rotate(270deg);
             -o-transform: rotate(270deg);
@@ -154,7 +160,7 @@
             </div>
             <div class="span4 main-buttons">
                 <a class="btn btn-primary btn-warning btn-large"
-                    href="//downloads.gonitro.io/nitro-0.1.0.tar.gz">Download</a>
+                    href="//github.com/bumptech/nitro/releases/v0.1.1">Download 0.1.1<br><span class="reldata">(Jun 7, 2013)</span></a>
                 <a class="btn btn-primary btn-large"
                     href="//docs.gonitro.io">Docs</a>
             </div>
@@ -186,7 +192,11 @@
                         <img src="img/lang-python.png" class="lang-logo">
                         <a href="https://github.com/bumptech/nitro-python">pynitro</a>
                     </div>
-                    <div class="span8 bindings-more-soon">
+                    <div class="span3">
+                        <img src="img/lang-haskell.png" class="lang-logo">
+                        <a href="https://github.com/bumptech/nitro-haskell">nitro-haskell</a>
+                    </div>
+                    <div class="span5 bindings-more-soon">
                         .. and more soon!
                     </div>
                 </div>

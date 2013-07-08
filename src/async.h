@@ -33,8 +33,8 @@
  *
  */
 
-#ifndef ASYNC_H
-#define ASYNC_H
+#ifndef NITRO_ASYNC_H
+#define NITRO_ASYNC_H
 #include "common.h"
 
 #include "socket.h"
@@ -88,6 +88,5 @@ typedef struct nitro_async {
 void nitro_async_cb(struct ev_loop *loop, ev_async *a, int revents);
 nitro_async_t *nitro_async_new(int type);
 void nitro_async_schedule(nitro_async_t *a);
-
 
 #endif /* ASYNC_H */

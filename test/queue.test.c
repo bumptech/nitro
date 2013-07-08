@@ -98,7 +98,7 @@ void *pipe_consume(void *p) {
     return NULL;
 }
 
-inline nitro_frame_t *make_frames(void *p) {
+static inline nitro_frame_t *make_frames(void *p) {
     int *i = (int *)p;
     if (*i == CONSUME_COUNT)
         return NULL;
@@ -533,11 +533,12 @@ int main(int argc, char **argv) {
     pipe_pass pp = {out, pread};
     pthread_create(&reader, NULL, pipe_consume, &pp);
     do {
+        int written;
         errno = 0;
         if (bytes > 0)
             total += bytes;
         bytes = nitro_queue_fd_write(
-            q, pwrite, remain, &remain);
+            q, pwrite, remain, &remain, &written);
     } while (bytes > 0 || errno == EAGAIN || errno == EWOULDBLOCK);
     if (bytes < 0) {
         perror("write to pipe:");

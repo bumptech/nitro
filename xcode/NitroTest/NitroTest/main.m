@@ -72,7 +72,7 @@ void print_report(struct test_state *ts, char *name) {
     fprintf(stderr, "{%s} %d messages in %.3f seconds (%d/s)\n",
             name, MESSAGES, delt, (int)(MESSAGES / delt));
 }
-void do_test(void * nothing) {
+void * do_test(void * nothing) {
     MESSAGES = 100000;
     SIZE = 40;
     nitro_runtime_start();
@@ -132,6 +132,7 @@ void do_test(void * nothing) {
     nitro_socket_close(c);
     
     nitro_runtime_stop();
+    return NULL;
 
 }
 int main(int argc, char **argv) {

@@ -1,7 +1,7 @@
 /*
  * Nitro
  *
- * nitro-common.h - Common includes
+ * common.h - Common includes
  *
  *  -- LICENSE --
  *
@@ -35,7 +35,7 @@
 #ifndef NITRO_COMMON_H
 #define NITRO_COMMON_H
 
-#include "crypto_box.h"
+#include <sodium.h>
 
 #define SOCKET_IDENT_LENGTH crypto_box_PUBLICKEYBYTES
 
@@ -57,7 +57,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
 #include <sys/types.h>
 #include <sys/uio.h>
 #endif /* __APPLE__ */
