@@ -54,7 +54,7 @@ static void nitro_queue_grow(nitro_queue_t *q, int suggestion) {
     }
 }
 
-inline int nitro_queue_count(
+ int nitro_queue_count(
     nitro_queue_t *q)
 {
     return q->count;

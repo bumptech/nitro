@@ -34,6 +34,7 @@ typedef struct nitro_queue_t {
     int capacity;
     int send_target;
     pthread_mutex_t lock;
+    pthread_mutex_t pulllock;
     pthread_cond_t trigger;
 
     nitro_queue_state_changed state_callback;

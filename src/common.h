@@ -35,14 +35,14 @@
 #ifndef NITRO_COMMON_H
 #define NITRO_COMMON_H
 
-#include <crypto_box.h>
+#include "crypto_box.h"
 
 #define SOCKET_IDENT_LENGTH crypto_box_PUBLICKEYBYTES
 
 #include <arpa/inet.h>
 #include <assert.h>
 #include <errno.h>
-#include <ev.h>
+#include "ev.h"
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>

@@ -22,90 +22,90 @@
 		64EF489B17629889000C3A89 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF489A17629889000C3A89 /* CoreFoundation.framework */; };
 		64EF48A117629889000C3A89 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 64EF489F17629889000C3A89 /* InfoPlist.strings */; };
 		64EF48DF1762B059000C3A89 /* async.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48A81762B059000C3A89 /* async.c */; };
-		64EF48E01762B059000C3A89 /* async.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48A91762B059000C3A89 /* async.h */; };
+		64EF48E01762B059000C3A89 /* async.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48A91762B059000C3A89 /* async.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF48E21762B059000C3A89 /* buffer.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48AB1762B059000C3A89 /* buffer.c */; };
-		64EF48E31762B059000C3A89 /* buffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48AC1762B059000C3A89 /* buffer.h */; };
+		64EF48E31762B059000C3A89 /* buffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48AC1762B059000C3A89 /* buffer.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF48E51762B059000C3A89 /* cbuffer.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48AE1762B059000C3A89 /* cbuffer.c */; };
-		64EF48E61762B059000C3A89 /* cbuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48AF1762B059000C3A89 /* cbuffer.h */; };
-		64EF48E81762B059000C3A89 /* common.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48B11762B059000C3A89 /* common.h */; };
+		64EF48E61762B059000C3A89 /* cbuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48AF1762B059000C3A89 /* cbuffer.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF48E81762B059000C3A89 /* common.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48B11762B059000C3A89 /* common.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF48E91762B059000C3A89 /* crypto.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48B21762B059000C3A89 /* crypto.c */; };
-		64EF48EA1762B059000C3A89 /* crypto.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48B31762B059000C3A89 /* crypto.h */; };
+		64EF48EA1762B059000C3A89 /* crypto.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48B31762B059000C3A89 /* crypto.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF48EC1762B059000C3A89 /* err.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48B51762B059000C3A89 /* err.c */; };
-		64EF48ED1762B059000C3A89 /* err.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48B61762B059000C3A89 /* err.h */; };
+		64EF48ED1762B059000C3A89 /* err.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48B61762B059000C3A89 /* err.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF48EF1762B059000C3A89 /* frame.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48B81762B059000C3A89 /* frame.c */; };
-		64EF48F01762B059000C3A89 /* frame.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48B91762B059000C3A89 /* frame.h */; };
-		64EF48F21762B059000C3A89 /* log.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48BB1762B059000C3A89 /* log.h */; };
+		64EF48F01762B059000C3A89 /* frame.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48B91762B059000C3A89 /* frame.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF48F21762B059000C3A89 /* log.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48BB1762B059000C3A89 /* log.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF48F31762B059000C3A89 /* nitro.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48BC1762B059000C3A89 /* nitro.c */; };
-		64EF48F41762B059000C3A89 /* nitro.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48BD1762B059000C3A89 /* nitro.h */; };
+		64EF48F41762B059000C3A89 /* nitro.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48BD1762B059000C3A89 /* nitro.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF48F61762B059000C3A89 /* opt.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48BF1762B059000C3A89 /* opt.c */; };
-		64EF48F71762B059000C3A89 /* opt.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48C01762B059000C3A89 /* opt.h */; };
+		64EF48F71762B059000C3A89 /* opt.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48C01762B059000C3A89 /* opt.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF48F91762B059000C3A89 /* queue.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48C21762B059000C3A89 /* queue.c */; };
-		64EF48FA1762B059000C3A89 /* queue.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48C31762B059000C3A89 /* queue.h */; };
+		64EF48FA1762B059000C3A89 /* queue.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48C31762B059000C3A89 /* queue.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF48FC1762B059000C3A89 /* runtime.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48C51762B059000C3A89 /* runtime.c */; };
-		64EF48FD1762B059000C3A89 /* runtime.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48C61762B059000C3A89 /* runtime.h */; };
+		64EF48FD1762B059000C3A89 /* runtime.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48C61762B059000C3A89 /* runtime.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF48FF1762B059000C3A89 /* sha1.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48C81762B059000C3A89 /* sha1.c */; };
-		64EF49001762B059000C3A89 /* sha1.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48C91762B059000C3A89 /* sha1.h */; };
+		64EF49001762B059000C3A89 /* sha1.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48C91762B059000C3A89 /* sha1.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF49021762B059000C3A89 /* Sinproc.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48CB1762B059000C3A89 /* Sinproc.c */; };
-		64EF49031762B059000C3A89 /* Sinproc.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48CC1762B059000C3A89 /* Sinproc.h */; };
+		64EF49031762B059000C3A89 /* Sinproc.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48CC1762B059000C3A89 /* Sinproc.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF49051762B059000C3A89 /* socket.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48CE1762B059000C3A89 /* socket.c */; };
-		64EF49061762B059000C3A89 /* socket.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48CF1762B059000C3A89 /* socket.h */; };
+		64EF49061762B059000C3A89 /* socket.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48CF1762B059000C3A89 /* socket.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF49081762B059000C3A89 /* Stcp.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48D11762B059000C3A89 /* Stcp.c */; };
-		64EF49091762B059000C3A89 /* Stcp.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48D21762B059000C3A89 /* Stcp.h */; };
+		64EF49091762B059000C3A89 /* Stcp.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48D21762B059000C3A89 /* Stcp.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF490B1762B059000C3A89 /* trie.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48D41762B059000C3A89 /* trie.c */; };
-		64EF490C1762B059000C3A89 /* trie.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48D51762B059000C3A89 /* trie.h */; };
-		64EF490E1762B059000C3A89 /* utarray.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48D81762B059000C3A89 /* utarray.h */; };
-		64EF490F1762B059000C3A89 /* uthash.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48D91762B059000C3A89 /* uthash.h */; };
-		64EF49101762B059000C3A89 /* utlist.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48DA1762B059000C3A89 /* utlist.h */; };
-		64EF49111762B059000C3A89 /* utstring.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48DB1762B059000C3A89 /* utstring.h */; };
+		64EF490C1762B059000C3A89 /* trie.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48D51762B059000C3A89 /* trie.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF490E1762B059000C3A89 /* utarray.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48D81762B059000C3A89 /* utarray.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF490F1762B059000C3A89 /* uthash.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48D91762B059000C3A89 /* uthash.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49101762B059000C3A89 /* utlist.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48DA1762B059000C3A89 /* utlist.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49111762B059000C3A89 /* utstring.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48DB1762B059000C3A89 /* utstring.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF49121762B059000C3A89 /* util.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF48DC1762B059000C3A89 /* util.c */; };
-		64EF49131762B059000C3A89 /* util.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48DD1762B059000C3A89 /* util.h */; };
-		64EF49401762B0CF000C3A89 /* cpucycles.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49181762B0CF000C3A89 /* cpucycles.h */; };
-		64EF49411762B0CF000C3A89 /* crypto_auth.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49191762B0CF000C3A89 /* crypto_auth.h */; };
-		64EF49421762B0CF000C3A89 /* crypto_auth_hmacsha256.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF491A1762B0CF000C3A89 /* crypto_auth_hmacsha256.h */; };
-		64EF49431762B0CF000C3A89 /* crypto_auth_hmacsha512256.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF491B1762B0CF000C3A89 /* crypto_auth_hmacsha512256.h */; };
-		64EF49441762B0CF000C3A89 /* crypto_box.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF491C1762B0CF000C3A89 /* crypto_box.h */; };
-		64EF49451762B0CF000C3A89 /* crypto_box_curve25519xsalsa20poly1305.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF491D1762B0CF000C3A89 /* crypto_box_curve25519xsalsa20poly1305.h */; };
-		64EF49461762B0CF000C3A89 /* crypto_core_hsalsa20.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF491E1762B0CF000C3A89 /* crypto_core_hsalsa20.h */; };
-		64EF49471762B0CF000C3A89 /* crypto_core_salsa20.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF491F1762B0CF000C3A89 /* crypto_core_salsa20.h */; };
-		64EF49481762B0CF000C3A89 /* crypto_core_salsa2012.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49201762B0CF000C3A89 /* crypto_core_salsa2012.h */; };
-		64EF49491762B0CF000C3A89 /* crypto_core_salsa208.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49211762B0CF000C3A89 /* crypto_core_salsa208.h */; };
-		64EF494A1762B0CF000C3A89 /* crypto_hash.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49221762B0CF000C3A89 /* crypto_hash.h */; };
-		64EF494B1762B0CF000C3A89 /* crypto_hash_sha256.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49231762B0CF000C3A89 /* crypto_hash_sha256.h */; };
-		64EF494C1762B0CF000C3A89 /* crypto_hash_sha512.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49241762B0CF000C3A89 /* crypto_hash_sha512.h */; };
-		64EF494D1762B0CF000C3A89 /* crypto_hashblocks.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49251762B0CF000C3A89 /* crypto_hashblocks.h */; };
-		64EF494E1762B0CF000C3A89 /* crypto_hashblocks_sha256.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49261762B0CF000C3A89 /* crypto_hashblocks_sha256.h */; };
-		64EF494F1762B0CF000C3A89 /* crypto_hashblocks_sha512.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49271762B0CF000C3A89 /* crypto_hashblocks_sha512.h */; };
-		64EF49501762B0CF000C3A89 /* crypto_int16.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49281762B0CF000C3A89 /* crypto_int16.h */; };
-		64EF49511762B0CF000C3A89 /* crypto_int32.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49291762B0CF000C3A89 /* crypto_int32.h */; };
-		64EF49521762B0CF000C3A89 /* crypto_int64.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF492A1762B0CF000C3A89 /* crypto_int64.h */; };
-		64EF49531762B0CF000C3A89 /* crypto_int8.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF492B1762B0CF000C3A89 /* crypto_int8.h */; };
-		64EF49541762B0CF000C3A89 /* crypto_onetimeauth.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF492C1762B0CF000C3A89 /* crypto_onetimeauth.h */; };
-		64EF49551762B0CF000C3A89 /* crypto_onetimeauth_poly1305.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF492D1762B0CF000C3A89 /* crypto_onetimeauth_poly1305.h */; };
-		64EF49561762B0CF000C3A89 /* crypto_scalarmult_curve25519.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF492E1762B0CF000C3A89 /* crypto_scalarmult_curve25519.h */; };
-		64EF49571762B0CF000C3A89 /* crypto_secretbox.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF492F1762B0CF000C3A89 /* crypto_secretbox.h */; };
-		64EF49581762B0CF000C3A89 /* crypto_secretbox_xsalsa20poly1305.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49301762B0CF000C3A89 /* crypto_secretbox_xsalsa20poly1305.h */; };
-		64EF49591762B0CF000C3A89 /* crypto_sign.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49311762B0CF000C3A89 /* crypto_sign.h */; };
-		64EF495A1762B0CF000C3A89 /* crypto_sign_edwards25519sha512batch.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49321762B0CF000C3A89 /* crypto_sign_edwards25519sha512batch.h */; };
-		64EF495B1762B0CF000C3A89 /* crypto_stream.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49331762B0CF000C3A89 /* crypto_stream.h */; };
-		64EF495C1762B0CF000C3A89 /* crypto_stream_aes128ctr.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49341762B0CF000C3A89 /* crypto_stream_aes128ctr.h */; };
-		64EF495D1762B0CF000C3A89 /* crypto_stream_salsa20.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49351762B0CF000C3A89 /* crypto_stream_salsa20.h */; };
-		64EF495E1762B0CF000C3A89 /* crypto_stream_salsa2012.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49361762B0CF000C3A89 /* crypto_stream_salsa2012.h */; };
-		64EF495F1762B0CF000C3A89 /* crypto_stream_salsa208.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49371762B0CF000C3A89 /* crypto_stream_salsa208.h */; };
-		64EF49601762B0CF000C3A89 /* crypto_stream_xsalsa20.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49381762B0CF000C3A89 /* crypto_stream_xsalsa20.h */; };
-		64EF49611762B0CF000C3A89 /* crypto_uint16.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49391762B0CF000C3A89 /* crypto_uint16.h */; };
-		64EF49621762B0CF000C3A89 /* crypto_uint32.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493A1762B0CF000C3A89 /* crypto_uint32.h */; };
-		64EF49631762B0CF000C3A89 /* crypto_uint64.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493B1762B0CF000C3A89 /* crypto_uint64.h */; };
-		64EF49641762B0CF000C3A89 /* crypto_uint8.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493C1762B0CF000C3A89 /* crypto_uint8.h */; };
-		64EF49651762B0CF000C3A89 /* crypto_verify_16.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493D1762B0CF000C3A89 /* crypto_verify_16.h */; };
-		64EF49661762B0CF000C3A89 /* crypto_verify_32.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493E1762B0CF000C3A89 /* crypto_verify_32.h */; };
-		64EF49671762B0CF000C3A89 /* randombytes.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493F1762B0CF000C3A89 /* randombytes.h */; };
+		64EF49131762B059000C3A89 /* util.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF48DD1762B059000C3A89 /* util.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49401762B0CF000C3A89 /* cpucycles.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49181762B0CF000C3A89 /* cpucycles.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49411762B0CF000C3A89 /* crypto_auth.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49191762B0CF000C3A89 /* crypto_auth.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49421762B0CF000C3A89 /* crypto_auth_hmacsha256.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF491A1762B0CF000C3A89 /* crypto_auth_hmacsha256.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49431762B0CF000C3A89 /* crypto_auth_hmacsha512256.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF491B1762B0CF000C3A89 /* crypto_auth_hmacsha512256.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49441762B0CF000C3A89 /* crypto_box.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF491C1762B0CF000C3A89 /* crypto_box.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49451762B0CF000C3A89 /* crypto_box_curve25519xsalsa20poly1305.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF491D1762B0CF000C3A89 /* crypto_box_curve25519xsalsa20poly1305.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49461762B0CF000C3A89 /* crypto_core_hsalsa20.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF491E1762B0CF000C3A89 /* crypto_core_hsalsa20.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49471762B0CF000C3A89 /* crypto_core_salsa20.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF491F1762B0CF000C3A89 /* crypto_core_salsa20.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49481762B0CF000C3A89 /* crypto_core_salsa2012.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49201762B0CF000C3A89 /* crypto_core_salsa2012.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49491762B0CF000C3A89 /* crypto_core_salsa208.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49211762B0CF000C3A89 /* crypto_core_salsa208.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF494A1762B0CF000C3A89 /* crypto_hash.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49221762B0CF000C3A89 /* crypto_hash.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF494B1762B0CF000C3A89 /* crypto_hash_sha256.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49231762B0CF000C3A89 /* crypto_hash_sha256.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF494C1762B0CF000C3A89 /* crypto_hash_sha512.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49241762B0CF000C3A89 /* crypto_hash_sha512.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF494D1762B0CF000C3A89 /* crypto_hashblocks.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49251762B0CF000C3A89 /* crypto_hashblocks.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF494E1762B0CF000C3A89 /* crypto_hashblocks_sha256.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49261762B0CF000C3A89 /* crypto_hashblocks_sha256.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF494F1762B0CF000C3A89 /* crypto_hashblocks_sha512.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49271762B0CF000C3A89 /* crypto_hashblocks_sha512.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49501762B0CF000C3A89 /* crypto_int16.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49281762B0CF000C3A89 /* crypto_int16.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49511762B0CF000C3A89 /* crypto_int32.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49291762B0CF000C3A89 /* crypto_int32.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49521762B0CF000C3A89 /* crypto_int64.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF492A1762B0CF000C3A89 /* crypto_int64.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49531762B0CF000C3A89 /* crypto_int8.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF492B1762B0CF000C3A89 /* crypto_int8.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49541762B0CF000C3A89 /* crypto_onetimeauth.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF492C1762B0CF000C3A89 /* crypto_onetimeauth.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49551762B0CF000C3A89 /* crypto_onetimeauth_poly1305.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF492D1762B0CF000C3A89 /* crypto_onetimeauth_poly1305.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49561762B0CF000C3A89 /* crypto_scalarmult_curve25519.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF492E1762B0CF000C3A89 /* crypto_scalarmult_curve25519.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49571762B0CF000C3A89 /* crypto_secretbox.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF492F1762B0CF000C3A89 /* crypto_secretbox.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49581762B0CF000C3A89 /* crypto_secretbox_xsalsa20poly1305.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49301762B0CF000C3A89 /* crypto_secretbox_xsalsa20poly1305.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49591762B0CF000C3A89 /* crypto_sign.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49311762B0CF000C3A89 /* crypto_sign.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF495A1762B0CF000C3A89 /* crypto_sign_edwards25519sha512batch.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49321762B0CF000C3A89 /* crypto_sign_edwards25519sha512batch.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF495B1762B0CF000C3A89 /* crypto_stream.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49331762B0CF000C3A89 /* crypto_stream.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF495C1762B0CF000C3A89 /* crypto_stream_aes128ctr.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49341762B0CF000C3A89 /* crypto_stream_aes128ctr.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF495D1762B0CF000C3A89 /* crypto_stream_salsa20.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49351762B0CF000C3A89 /* crypto_stream_salsa20.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF495E1762B0CF000C3A89 /* crypto_stream_salsa2012.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49361762B0CF000C3A89 /* crypto_stream_salsa2012.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF495F1762B0CF000C3A89 /* crypto_stream_salsa208.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49371762B0CF000C3A89 /* crypto_stream_salsa208.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49601762B0CF000C3A89 /* crypto_stream_xsalsa20.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49381762B0CF000C3A89 /* crypto_stream_xsalsa20.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49611762B0CF000C3A89 /* crypto_uint16.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49391762B0CF000C3A89 /* crypto_uint16.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49621762B0CF000C3A89 /* crypto_uint32.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493A1762B0CF000C3A89 /* crypto_uint32.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49631762B0CF000C3A89 /* crypto_uint64.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493B1762B0CF000C3A89 /* crypto_uint64.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49641762B0CF000C3A89 /* crypto_uint8.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493C1762B0CF000C3A89 /* crypto_uint8.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49651762B0CF000C3A89 /* crypto_verify_16.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493D1762B0CF000C3A89 /* crypto_verify_16.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49661762B0CF000C3A89 /* crypto_verify_32.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493E1762B0CF000C3A89 /* crypto_verify_32.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49671762B0CF000C3A89 /* randombytes.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF493F1762B0CF000C3A89 /* randombytes.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF496D1762B23D000C3A89 /* libnacl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF496C1762B23D000C3A89 /* libnacl.a */; };
 		64EF497B1762B324000C3A89 /* ev.c in Sources */ = {isa = PBXBuildFile; fileRef = 64EF49701762B324000C3A89 /* ev.c */; };
-		64EF497C1762B324000C3A89 /* ev.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49711762B324000C3A89 /* ev.h */; };
-		64EF49821762B324000C3A89 /* ev_vars.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49771762B324000C3A89 /* ev_vars.h */; };
-		64EF49831762B324000C3A89 /* ev_wrap.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49781762B324000C3A89 /* ev_wrap.h */; };
+		64EF497C1762B324000C3A89 /* ev.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49711762B324000C3A89 /* ev.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49821762B324000C3A89 /* ev_vars.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49771762B324000C3A89 /* ev_vars.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		64EF49831762B324000C3A89 /* ev_wrap.h in Headers */ = {isa = PBXBuildFile; fileRef = 64EF49781762B324000C3A89 /* ev_wrap.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64EF49881762B698000C3A89 /* randombytes.o in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF49871762B698000C3A89 /* randombytes.o */; };
-		64EF498A1762B859000C3A89 /* NitroFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF49891762B859000C3A89 /* NitroFramework.framework */; };
+		64EF498C1762BB27000C3A89 /* NitroFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64EF498B1762BB27000C3A89 /* NitroFramework.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -225,7 +225,7 @@
 		64EF49771762B324000C3A89 /* ev_vars.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ev_vars.h; sourceTree = "<group>"; };
 		64EF49781762B324000C3A89 /* ev_wrap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ev_wrap.h; sourceTree = "<group>"; };
 		64EF49871762B698000C3A89 /* randombytes.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = randombytes.o; sourceTree = "<group>"; };
-		64EF49891762B859000C3A89 /* NitroFramework.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NitroFramework.framework; path = "../../../../../../Library/Developer/Xcode/DerivedData/NitroTest-fvhcgdiocaxbycfgoenrcyxreexa/Build/Products/Debug-iphoneos/NitroFramework.framework"; sourceTree = "<group>"; };
+		64EF498B1762BB27000C3A89 /* NitroFramework.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NitroFramework.framework; path = "../../../../../../Library/Developer/Xcode/DerivedData/NitroTest-fvhcgdiocaxbycfgoenrcyxreexa/Build/Products/Debug-iphoneos/NitroFramework.framework"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -237,7 +237,7 @@
 				64EF4872176297FF000C3A89 /* Foundation.framework in Frameworks */,
 				64EF4874176297FF000C3A89 /* CoreGraphics.framework in Frameworks */,
 				64EF496D1762B23D000C3A89 /* libnacl.a in Frameworks */,
-				64EF498A1762B859000C3A89 /* NitroFramework.framework in Frameworks */,
+				64EF498C1762BB27000C3A89 /* NitroFramework.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -292,8 +292,8 @@
 				64EF488A176297FF000C3A89 /* MainStoryboard_iPad.storyboard */,
 				64EF488D176297FF000C3A89 /* BMPViewController.h */,
 				64EF488E176297FF000C3A89 /* BMPViewController.m */,
+				64EF498B1762BB27000C3A89 /* NitroFramework.framework */,
 				64EF496C1762B23D000C3A89 /* libnacl.a */,
-				64EF49891762B859000C3A89 /* NitroFramework.framework */,
 				64EF4876176297FF000C3A89 /* Supporting Files */,
 			);
 			path = NitroTest;
@@ -771,6 +771,7 @@
 		64EF4893176297FF000C3A89 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEAD_CODE_STRIPPING = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/../../../../../Library/Developer/Xcode/DerivedData/NitroTest-fvhcgdiocaxbycfgoenrcyxreexa/Build/Products/Debug-iphoneos\"",
@@ -782,7 +783,9 @@
 					"$(inherited)",
 					"\"$(SRCROOT)/NitroTest\"",
 				);
+				ONLY_ACTIVE_ARCH = NO;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				VALID_ARCHS = armv7;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Debug;
@@ -790,6 +793,7 @@
 		64EF4894176297FF000C3A89 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEAD_CODE_STRIPPING = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/../../../../../Library/Developer/Xcode/DerivedData/NitroTest-fvhcgdiocaxbycfgoenrcyxreexa/Build/Products/Debug-iphoneos\"",
@@ -802,6 +806,7 @@
 					"\"$(SRCROOT)/NitroTest\"",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				VALID_ARCHS = armv7;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Release;
@@ -809,8 +814,9 @@
 		64EF48A417629889000C3A89 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				ARCHS = armv7;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "NitroFramework/NitroFramework-Prefix.pch";
@@ -820,10 +826,12 @@
 				INFOPLIST_FILE = "NitroFramework/NitroFramework-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
 				IPHONEOS_DEPLOYMENT_TARGET = 5.0;
+				LINK_WITH_STANDARD_LIBRARIES = NO;
 				MACH_O_TYPE = mh_object;
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				VALID_ARCHS = armv7;
 				WRAPPER_EXTENSION = framework;
 			};
 			name = Debug;
@@ -831,8 +839,9 @@
 		64EF48A517629889000C3A89 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				ARCHS = armv7;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -843,10 +852,12 @@
 				INFOPLIST_FILE = "NitroFramework/NitroFramework-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
 				IPHONEOS_DEPLOYMENT_TARGET = 5.0;
+				LINK_WITH_STANDARD_LIBRARIES = NO;
 				MACH_O_TYPE = mh_object;
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				VALID_ARCHS = armv7;
 				WRAPPER_EXTENSION = framework;
 			};
 			name = Release;
@@ -870,6 +881,7 @@
 				64EF4894176297FF000C3A89 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		64EF48A317629889000C3A89 /* Build configuration list for PBXNativeTarget "NitroFramework" */ = {
 			isa = XCConfigurationList;
@@ -878,6 +890,7 @@
 				64EF48A517629889000C3A89 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
