@@ -46,13 +46,13 @@
 #define INT_TO_PTR(p, i) {p = (void *)i;}
 #endif
 
-
 static pthread_key_t err_key;
 static pthread_key_t gai_err_key;
 
 char *nitro_errmsg(NITRO_ERROR error) {
     int ge;
     void *p;
+
     switch (error) {
     case NITRO_ERR_NONE:
         return "(no error)";

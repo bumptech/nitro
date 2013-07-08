@@ -186,7 +186,7 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
                          nitro_frame_t *partial,
                          nitro_frame_t **remain,
                          int *frames_written
-                         ) {
+                        ) {
     /* Does gather IO to avoid copying buffers around */
     pthread_mutex_lock(&q->lock);
     int actual_iovs = 0;

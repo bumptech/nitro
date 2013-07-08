@@ -244,6 +244,7 @@ static int Sinproc_socket_send_general(nitro_inproc_socket_t *s,  nitro_frame_t 
 
             ret = nitro_queue_push(try->q_recv, fr,
                                        !(flags & NITRO_NOWAIT));
+
             __sync_fetch_and_add(&try->stat_recv, 1);
         }
 
@@ -279,6 +280,7 @@ static int Sinproc_socket_send_to_ident(nitro_inproc_socket_t *s, uint8_t *ident
         else {
 
             ret = nitro_queue_push(try->q_recv, fr, 0);
+
             __sync_fetch_and_add(&try->stat_recv, 1);
         }
 
@@ -582,28 +584,29 @@ void Sinproc_socket_describe(nitro_inproc_socket_t *s, nitro_buffer_t *buf) {
     pthread_rwlock_rdlock(&s->link_lock);
 
     int written;
+
     if (!s->bound) {
-        written = snprintf(ptr, amt, "C-%02x%02x%02x%02x inproc://%s (recv_q=%u, recv_tot=%" PRIu64 ")\n", 
-            SOCKET_UNIVERSAL(s)->opt->ident[0],
-            SOCKET_UNIVERSAL(s)->opt->ident[1],
-            SOCKET_UNIVERSAL(s)->opt->ident[2],
-            SOCKET_UNIVERSAL(s)->opt->ident[3],
-            s->given_location,
-            nitro_queue_count(s->q_recv),
-            s->stat_recv
-            );
+        written = snprintf(ptr, amt, "C-%02x%02x%02x%02x inproc://%s (recv_q=%u, recv_tot=%" PRIu64 ")\n",
+                           SOCKET_UNIVERSAL(s)->opt->ident[0],
+                           SOCKET_UNIVERSAL(s)->opt->ident[1],
+                           SOCKET_UNIVERSAL(s)->opt->ident[2],
+                           SOCKET_UNIVERSAL(s)->opt->ident[3],
+                           s->given_location,
+                           nitro_queue_count(s->q_recv),
+                           s->stat_recv
+                          );
         nitro_buffer_extend(buf, written);
     } else {
-        written = snprintf(ptr, amt, "B-%02x%02x%02x%02x  inproc://%s (peers=%d, recv_q=%u, recv_tot=%" PRIu64 ")\n", 
-            SOCKET_UNIVERSAL(s)->opt->ident[0],
-            SOCKET_UNIVERSAL(s)->opt->ident[1],
-            SOCKET_UNIVERSAL(s)->opt->ident[2],
-            SOCKET_UNIVERSAL(s)->opt->ident[3],
-            s->given_location,
-            s->num_links,
-            nitro_queue_count(s->q_recv),
-            s->stat_recv
-            );
+        written = snprintf(ptr, amt, "B-%02x%02x%02x%02x  inproc://%s (peers=%d, recv_q=%u, recv_tot=%" PRIu64 ")\n",
+                           SOCKET_UNIVERSAL(s)->opt->ident[0],
+                           SOCKET_UNIVERSAL(s)->opt->ident[1],
+                           SOCKET_UNIVERSAL(s)->opt->ident[2],
+                           SOCKET_UNIVERSAL(s)->opt->ident[3],
+                           s->given_location,
+                           s->num_links,
+                           nitro_queue_count(s->q_recv),
+                           s->stat_recv
+                          );
         nitro_buffer_extend(buf, written);
     }
 

@@ -173,21 +173,24 @@ static int Stcp_parse_location(char *p_location,
         struct addrinfo *rslots[5];
         hints.ai_family = AF_INET;
         r = getaddrinfo(buf, NULL,
-            &hints, &results);
+                        &hints, &results);
 
         if (r != 0) {
             nitro_set_gai_error(r);
             return nitro_set_error(NITRO_ERR_GAI);
         }
+
         struct addrinfo *p = results;
 
         int i;
-        for (i=0; i < 5 && p; ++i) {
+
+        for (i = 0; i < 5 && p; ++i) {
             rslots[i] = p;
             p = p->ai_next;
         }
 
         struct timeval tv;
+
         gettimeofday(&tv, NULL);
 
         addr->sin_addr = ((struct sockaddr_in *)rslots[tv.tv_usec % i]->ai_addr)->sin_addr;
@@ -687,10 +690,10 @@ void Stcp_make_pipe(nitro_tcp_socket_t *s, int fd, struct sockaddr_in *addr) {
     if (addr) {
         char tmp[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &(addr->sin_addr),
-            tmp, INET_ADDRSTRLEN);
+                  tmp, INET_ADDRSTRLEN);
 
         snprintf(p->remote_location, sizeof(p->remote_location),
-            "%s:%d", tmp, addr->sin_port);
+                 "%s:%d", tmp, addr->sin_port);
     }
 }
 
@@ -1345,6 +1348,7 @@ void Stcp_pipe_out_cb(
                 Stcp_destroy_pipe(p);
                 return;
             }
+
             __sync_fetch_and_add(&p->bytes_sent, r);
         }
     }
@@ -1357,6 +1361,7 @@ void Stcp_pipe_out_cb(
     }
 
     fwritten = 0;
+
     if (p->partial || nitro_queue_count(p->q_send)) {
         tried = 1;
 
@@ -1372,7 +1377,7 @@ void Stcp_pipe_out_cb(
                     p->q_send,
                     p->fd, p->partial, &(p->partial),
                     &fwritten
-                    );
+                );
         }
 
         if (r < 0 && OKAY_ERRNO) {
@@ -1388,6 +1393,7 @@ void Stcp_pipe_out_cb(
             Stcp_destroy_pipe(p);
             return;
         }
+
         __sync_fetch_and_add(&s->stat_direct, fwritten);
         __sync_fetch_and_add(&p->stat_direct, fwritten);
         __sync_fetch_and_add(&p->bytes_sent, r);
@@ -1396,6 +1402,7 @@ void Stcp_pipe_out_cb(
     /* Note -- using truncate frame as heuristic
        to guess kernel buffer is full*/
     fwritten = 0;
+
     if ((!tried || !p->partial) && nitro_queue_count(s->q_send)) {
         tried = 1;
 
@@ -1412,7 +1419,7 @@ void Stcp_pipe_out_cb(
                     s->q_send,
                     p->fd, p->partial, &(p->partial),
                     &fwritten
-                    );
+                );
         }
 
         if (r < 0 && OKAY_ERRNO) {
@@ -1428,6 +1435,7 @@ void Stcp_pipe_out_cb(
             Stcp_destroy_pipe(p);
             return;
         }
+
         __sync_fetch_and_add(&s->stat_sent, fwritten);
         __sync_fetch_and_add(&p->stat_sent, fwritten);
         __sync_fetch_and_add(&p->bytes_sent, r);
@@ -1938,50 +1946,53 @@ void Stcp_socket_describe(nitro_tcp_socket_t *s, nitro_buffer_t *buf) {
     pthread_mutex_lock(&s->l_pipes);
 
     int written;
+
     if (s->outbound) {
         char remote[9];
+
         if (s->pipes) {
             if (s->pipes->them_handshake) {
                 snprintf(remote, 9, "%02x%02x%02x%02x",
-                    s->pipes->remote_ident[0],
-                    s->pipes->remote_ident[1],
-                    s->pipes->remote_ident[2],
-                    s->pipes->remote_ident[3]);
+                         s->pipes->remote_ident[0],
+                         s->pipes->remote_ident[1],
+                         s->pipes->remote_ident[2],
+                         s->pipes->remote_ident[3]);
             } else {
                 strcpy(remote, "????????");
             }
         } else {
             strcpy(remote, "(none)");
         }
-        written = snprintf(ptr, amt, "C-%02x%02x%02x%02x tcp://%s (remote=%s, secure=%s, gen_q=%u, recv_q=%u gen_tot=%" PRIu64 ", recv_tot=%" PRIu64 ")\n", 
-            SOCKET_UNIVERSAL(s)->opt->ident[0],
-            SOCKET_UNIVERSAL(s)->opt->ident[1],
-            SOCKET_UNIVERSAL(s)->opt->ident[2],
-            SOCKET_UNIVERSAL(s)->opt->ident[3],
-            s->given_location,
-            remote,
-            s->opt->secure ? "yes" : "no",
-            nitro_queue_count(s->q_send),
-            nitro_queue_count(s->q_recv),
-            s->stat_sent,
-            s->stat_recv
-            );
+
+        written = snprintf(ptr, amt, "C-%02x%02x%02x%02x tcp://%s (remote=%s, secure=%s, gen_q=%u, recv_q=%u gen_tot=%" PRIu64 ", recv_tot=%" PRIu64 ")\n",
+                           SOCKET_UNIVERSAL(s)->opt->ident[0],
+                           SOCKET_UNIVERSAL(s)->opt->ident[1],
+                           SOCKET_UNIVERSAL(s)->opt->ident[2],
+                           SOCKET_UNIVERSAL(s)->opt->ident[3],
+                           s->given_location,
+                           remote,
+                           s->opt->secure ? "yes" : "no",
+                           nitro_queue_count(s->q_send),
+                           nitro_queue_count(s->q_recv),
+                           s->stat_sent,
+                           s->stat_recv
+                          );
         nitro_buffer_extend(buf, written);
     } else {
-        written = snprintf(ptr, amt, "B-%02x%02x%02x%02x tcp://%s (peers=%d, secure=%s, gen_q=%u, recv_q=%u, gen_tot=%" PRIu64 ", recv_tot=%" PRIu64 ", direct_tot=%" PRIu64 ")\n", 
-            SOCKET_UNIVERSAL(s)->opt->ident[0],
-            SOCKET_UNIVERSAL(s)->opt->ident[1],
-            SOCKET_UNIVERSAL(s)->opt->ident[2],
-            SOCKET_UNIVERSAL(s)->opt->ident[3],
-            s->given_location,
-            s->num_pipes,
-            s->opt->secure ? "yes" : "no",
-            nitro_queue_count(s->q_send),
-            nitro_queue_count(s->q_recv),
-            s->stat_sent,
-            s->stat_recv,
-            s->stat_direct
-            );
+        written = snprintf(ptr, amt, "B-%02x%02x%02x%02x tcp://%s (peers=%d, secure=%s, gen_q=%u, recv_q=%u, gen_tot=%" PRIu64 ", recv_tot=%" PRIu64 ", direct_tot=%" PRIu64 ")\n",
+                           SOCKET_UNIVERSAL(s)->opt->ident[0],
+                           SOCKET_UNIVERSAL(s)->opt->ident[1],
+                           SOCKET_UNIVERSAL(s)->opt->ident[2],
+                           SOCKET_UNIVERSAL(s)->opt->ident[3],
+                           s->given_location,
+                           s->num_pipes,
+                           s->opt->secure ? "yes" : "no",
+                           nitro_queue_count(s->q_send),
+                           nitro_queue_count(s->q_recv),
+                           s->stat_sent,
+                           s->stat_recv,
+                           s->stat_direct
+                          );
         nitro_buffer_extend(buf, written);
 
         nitro_pipe_t *p;
@@ -1990,26 +2001,28 @@ void Stcp_socket_describe(nitro_tcp_socket_t *s, nitro_buffer_t *buf) {
             ptr = nitro_buffer_prepare(buf, &amt);
 
             char remote[9];
+
             if (p->them_handshake) {
                 snprintf(remote, 9, "%02x%02x%02x%02x",
-                    p->remote_ident[0],
-                    p->remote_ident[1],
-                    p->remote_ident[2],
-                    p->remote_ident[3]);
+                         p->remote_ident[0],
+                         p->remote_ident[1],
+                         p->remote_ident[2],
+                         p->remote_ident[3]);
             } else {
                 strcpy(remote, "????????");
             }
+
             written = snprintf(ptr, amt, "  -> %s on %s for %.1fs (gen=%" PRIu64 ", recv=%" PRIu64 ", direct=%" PRIu64 ", direct_q=%u, bytes_out=%" PRIu64 ", bytes_in=%" PRIu64 ")\n",
-                remote,
-                p->remote_location,
-                now - p->born,
-                p->stat_sent,
-                p->stat_recv,
-                p->stat_direct,
-                nitro_queue_count(p->q_send),
-                p->bytes_sent,
-                p->bytes_recv
-                );
+                               remote,
+                               p->remote_location,
+                               now - p->born,
+                               p->stat_sent,
+                               p->stat_recv,
+                               p->stat_direct,
+                               nitro_queue_count(p->q_send),
+                               p->bytes_sent,
+                               p->bytes_recv
+                              );
             nitro_buffer_extend(buf, written);
         }
     }
