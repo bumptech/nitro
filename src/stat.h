@@ -37,12 +37,12 @@
 #define NITRO_STAT_H
 
 #if __x86_64__
-#define INCR_STAT(s, st, val) {__sync_fetch_and_add(st, val);}
+#define INCR_STAT(s, st, val) {__sync_fetch_and_add(&st, val);}
 #else
 #define INCR_STAT(s, st, val) {\
-        pthread_mutex_lock(s->l_stats);\
-        st += val;\
-        pthread_mutex_unlock(s->l_stats);\
+        pthread_mutex_lock(&(s)->l_stats);\
+        (st) += val;\
+        pthread_mutex_unlock(&(s)->l_stats);\
     }
 #endif
 
