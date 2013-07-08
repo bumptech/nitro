@@ -99,7 +99,7 @@ NITRO_SOCKET_TRANSPORT socket_parse_location(char *location, char **next) {
     }
 
     nitro_set_error(NITRO_ERR_PARSE_BAD_TRANSPORT);
-    return -1;
+    return NITRO_SOCKET_NO_TRANSPORT;
 }
 
 void nitro_socket_destroy(nitro_socket_t *s) {

@@ -109,6 +109,7 @@ typedef struct nitro_pipe_t {
 #define SOCKET_UNIVERSAL(s) (&(SOCKET_PARENT(s)->stype.univ))
 
 typedef enum {
+    NITRO_SOCKET_NO_TRANSPORT,
     NITRO_SOCKET_TCP,
     NITRO_SOCKET_INPROC,
 } NITRO_SOCKET_TRANSPORT;

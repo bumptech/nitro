@@ -46,7 +46,7 @@ nitro_socket_t *nitro_socket_bind(char *location, nitro_sockopt_t *opt) {
     char *next;
     s->trans = socket_parse_location(location, &next);
 
-    if (s->trans == -1) {
+    if (s->trans == NITRO_SOCKET_NO_TRANSPORT) {
         nitro_socket_destroy(s);
         return NULL;
     }
@@ -74,7 +74,7 @@ nitro_socket_t *nitro_socket_connect(char *location, nitro_sockopt_t *opt) {
     char *next;
     s->trans = socket_parse_location(location, &next);
 
-    if (s->trans == -1) {
+    if (s->trans == NITRO_SOCKET_NO_TRANSPORT) {
         nitro_socket_destroy(s);
         return NULL;
     }
