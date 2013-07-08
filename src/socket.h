@@ -127,6 +127,8 @@ typedef enum {
     void *parent;\
     /* Subscription trie */\
     nitro_prefix_trie_node *subs;\
+    /* Stats lock (for 32 bit systems) */\
+    pthread_mutex_t l_stats;\
     /* Local "want subscription" list */\
     nitro_key_t *sub_keys;\
      
