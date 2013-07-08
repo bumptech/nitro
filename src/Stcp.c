@@ -43,6 +43,8 @@
 
 #include "nitro.h"
 
+#include <netdb.h>
+
 #define TCP_INBUF (64 * 1024)
 
 /* For Mac OS X */
@@ -164,7 +166,33 @@ static int Stcp_parse_location(char *p_location,
                       (void *)&addr->sin_addr);
 
     if (!r) {
-        return nitro_set_error(NITRO_ERR_TCP_LOC_BADIPV4);
+        /* Not an IPv4 already? We need dns resolution. */
+        struct addrinfo hints;
+        bzero(&hints, sizeof(struct addrinfo));
+        struct addrinfo *results;
+        struct addrinfo *rslots[5];
+        hints.ai_family = AF_INET;
+        r = getaddrinfo(buf, NULL,
+            &hints, &results);
+
+        if (r != 0) {
+            nitro_set_gai_error(r);
+            return nitro_set_error(NITRO_ERR_GAI);
+        }
+        struct addrinfo *p = results;
+
+        int i;
+        for (i=0; i < 5 && p; ++i) {
+            rslots[i] = p;
+            p = p->ai_next;
+        }
+
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+
+        addr->sin_addr = ((struct sockaddr_in *)rslots[tv.tv_usec % i]->ai_addr)->sin_addr;
+
+        freeaddrinfo(results);
     }
 
     return 0;

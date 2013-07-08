@@ -36,9 +36,23 @@
 #include "err.h"
 #include "log.h"
 
+#include <netdb.h>
+
+#if __x86_64__
+#define PTR_TO_INT(i, p) {uint64_t __tmp_64 = (uint64_t)p; i = (int)__tmp_64;}
+#define INT_TO_PTR(p, i) {uint64_t __tmp_64 = (uint64_t)i; p = (void *)__tmp_64;}
+#else
+#define PTR_TO_INT(i, p) {i = (int)p;}
+#define INT_TO_PTR(p, i) {p = (void *)i;}
+#endif
+
+
 static pthread_key_t err_key;
+static pthread_key_t gai_err_key;
 
 char *nitro_errmsg(NITRO_ERROR error) {
+    int ge;
+    void *p;
     switch (error) {
     case NITRO_ERR_NONE:
         return "(no error)";
@@ -54,6 +68,12 @@ char *nitro_errmsg(NITRO_ERROR error) {
 
     case NITRO_ERR_ERRNO:
         return strerror(errno);
+        break;
+
+    case NITRO_ERR_GAI:
+        p = pthread_getspecific(gai_err_key);
+        PTR_TO_INT(ge, p);
+        return (char *)gai_strerror(ge);
         break;
 
     case NITRO_ERR_ALREADY_RUNNING:
@@ -161,14 +181,6 @@ char *nitro_errmsg(NITRO_ERROR error) {
     return NULL;
 }
 
-#if __x86_64__
-#define PTR_TO_INT(i, p) {uint64_t __tmp_64 = (uint64_t)p; i = (int)__tmp_64;}
-#define INT_TO_PTR(p, i) {uint64_t __tmp_64 = (uint64_t)i; p = (void *)__tmp_64;}
-#else
-#define PTR_TO_INT(i, p) {i = (int)p;}
-#define INT_TO_PTR(p, i) {p = (void *)i;}
-#endif
-
 NITRO_ERROR nitro_error() {
     void *p = pthread_getspecific(err_key);
     int e;
@@ -183,6 +195,13 @@ int nitro_set_error(NITRO_ERROR e) {
     return -1;
 }
 
+int nitro_set_gai_error(int e) {
+    void *p;
+    INT_TO_PTR(p, e);
+    pthread_setspecific(gai_err_key, p);
+    return -1;
+}
+
 void nitro_clear_error() {
     nitro_set_error(NITRO_ERR_NONE);
 }
@@ -193,10 +212,12 @@ int nitro_has_error() {
 
 void nitro_err_start() {
     pthread_key_create(&err_key, NULL);
+    pthread_key_create(&gai_err_key, NULL);
 }
 
 void nitro_err_stop() {
     pthread_key_delete(err_key);
+    pthread_key_delete(gai_err_key);
 }
 
 void nitro_error_log_handler(int err, void *baton) {

@@ -65,6 +65,7 @@
 #define NITRO_ERR_SUB_ALREADY           25
 #define NITRO_ERR_SUB_MISSING           26
 #define NITRO_ERR_TCP_BAD_ANY           27
+#define NITRO_ERR_GAI                   28
 
 int nitro_set_error(NITRO_ERROR e);
 char *nitro_errmsg(NITRO_ERROR error);
@@ -74,5 +75,6 @@ int nitro_has_error();
 void nitro_error_log_handler(int err, void *baton);
 void nitro_err_start();
 void nitro_err_stop();
+int nitro_set_gai_error(int e);
 
 #endif /* ERR_H */
