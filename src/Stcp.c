@@ -1480,7 +1480,7 @@ void Stcp_pipe_in_cb(
     }
 
     nitro_buffer_extend(p->in_buffer, r);
-    INCR_STAT((nitro_tcp_socket_t*)p->the_socket, p->bytes_recv, r);
+    INCR_STAT((nitro_tcp_socket_t *)p->the_socket, p->bytes_recv, r);
 
     Stcp_parse_socket_buffer(p);
 

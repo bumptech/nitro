@@ -239,13 +239,13 @@ static int Sinproc_socket_send_general(nitro_inproc_socket_t *s,  nitro_frame_t 
 
                 ok = __sync_bool_compare_and_swap(
 
-                         &s->current, (nitro_inproc_socket_t*)try, try->next);
+                         &s->current, (nitro_inproc_socket_t *)try, try->next);
             }
 
             ret = nitro_queue_push(try->q_recv, fr,
                                        !(flags & NITRO_NOWAIT));
 
-            INCR_STAT((nitro_inproc_socket_t*)try, try->stat_recv, 1);
+            INCR_STAT((nitro_inproc_socket_t *)try, try->stat_recv, 1);
         }
 
         pthread_rwlock_unlock(&s->link_lock);
