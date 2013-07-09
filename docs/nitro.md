@@ -876,11 +876,10 @@ protocol://location
 
 Nitro supports two protocols, "tcp" and "inproc".
 
-TCP locations must be given as "<IPv4>:<port>"
-specifications.  Nitro does not currently do
-DNS resolutions, so you'll need to resolve names
-at a higher level before creating sockets.  Nitro
-also does not currently support IPv6.
+TCP locations must be given as "<host>:<port>"
+specifications.  Host can either be a hostname
+or an IPv4 address
+(Nitro does does not currently support IPv6).
 
 Inproc locations can be any arbitrary string,
 but by convention it should be a reasonable
@@ -1614,13 +1613,14 @@ ZeroMQ's high water mark?**
 Yes, but the implementation is not quite done and the tests aren't written,
 so its use is not recommended yet.
 
-**Q: No DNS resolution is inconvenient.**
+**Q: Does Nitro re-attempt DNS resolution (to get new A records) when a
+connect() socket reconnects?**
 
-That's not a question, but yes, yes it is.  Unfortunately, standard library
-support for asynchronous DNS resolution is still nonexistant.  We might
-add support for doing resolutions in the top-level functions (like bind()
-and connect()) on your thread, but that doesn't solve the problem of
-names changing for long-running services.
+No, Nitro resolves names when connect() is called.  It does not re-resolve
+names on its background thread.  In large part, it avoids background
+resolutions because using an asynchronous resolver would introduce
+another dependency (and the standard libresolv stuff does not
+have an asynchronous interface).
 
 **Q: How is this different than ZeroMQ?**
 
