@@ -156,6 +156,74 @@ Pub and Sub
     to a prefix of that key will receive the message.
  2. The return value is the number of peers who were sent the message.
 
+Queues
+------
+
+Every nitro socket manages one or more queues:
+
+**Receive Queue**
+
+Messages received by this socket, waiting for `nitro_recv` to
+pop them off.
+
+**General Send Queue (TCP only)**
+
+Messages that want to be sent to any connected peer, but are waiting
+on one becoming writable so they can be transferred over the network.
+
+*Note: inproc sockets immediately attempt delivery directly into
+a peer receive queue, so there is no such concept as "outbound
+and waiting".  The consequence of this design is that messages cannot
+be queued while no peers are connected to an inproc socket.*
+
+**Direct Send Queue (per peer, TCP only)**
+
+Messages that are queued up to be sent to a particular peer only,
+due to `nitro_reply`, `nitro_relay_bk`, or `nitro_pub` targeting
+a particular recipient or subscriber.
+
+On TCP sockets, each peer has its own direct send queue, so
+a TCP socket's total number of queues (including receive and general send)
+is 2 + num_peers.
+
+*Note: inproc sockets immediately attempt delivery directly
+into the matching peer's receive queue (if a matching peer is
+connected).*
+
+High-Water Mark
+---------------
+
+The high water mark (HWM) is a very useful construct for constraining
+the number of messages that can be outstanding on a Nitro socket.
+Fundamentally, it represents a queue's capacity.
+
+A good example of why HWM is useful is a system where a producer is trying to
+send messages over TCP to a downstream consumer on another machine.
+If the downstream machine were to crash, the producer would queue
+up an infinite number of messages until that machine comes back
+online.  Then, the downstream machine would be overwhelmed by a giant flood of
+messages and may never be able to catch up; or if the downstream
+machine takes too long to come back, the producer may exhaust
+memory and be killed by the OOM killer, losing all messages
+queued in RAM.
+
+A common solution to this is to "back up the pipeline" by
+setting the high-water mark on queues to, say, 1000.  Then
+when the downstream machine crashes, when the 1001st message
+is attempted to be sent, `nitro_send` will block the producer
+(or trigger NITRO_ERR_EAGAIN if NITRO_NOBLOCK is set).
+
+Granted, this just unearths a basic problem in queueing theory: if you
+block a pipeline of queues, fundamentally the backup has
+to pile up *somewhere*.  But high-water marks let the application
+developer control where (or, lets them decide to discard the
+overflow messages altogether).
+
+Nitro allows you to manage high-water marks via
+`nitro_sockopt_set_hwm`.  The default behavior is to have
+no high-water marks, allowing an infinite (technically, memory-bounded)
+number of messages to be queued.
+
 Examples
 ========
 
@@ -460,6 +528,86 @@ Thread safe.
 When `nitro_socket_t` objects are given to a socket constructor,
 the socket now owns that options object.  The application does
 not need to destroy the options object.
+
+**nitro_sockopt_set_hwm**
+
+~~~~~{.c}
+void nitro_sockopt_set_hwm(nitro_sockopt_t *opt, int hwm);
+~~~~~
+
+Set the high-water mark for the socket.
+
+This sets the high-water mark for all queues associated with the socket
+the receive queue, and both general and direct queues (if applicable).
+
+See "High-Water Mark" in the Concepts for details.
+
+*Arguments*
+
+ * `nitro_socket_t *opt` - The socket options structure to modify
+ * `int hwm` - Count of messages that can be outstanding before
+   the `nitro_send`, `nitro_recv`, and friends block or fail.
+
+*Thread Safety*
+
+Reentrant and thread safe.
+
+*Default Value*
+
+The default value is `0`, which means "no high-water mark".  Unlimited
+frames can be queued.
+
+*Usage Note*
+
+If socket A is pushing messages to socket B, it's important to have
+both B and A use a high-water mark to have it be effective.  If instead,
+only A has a high-water mark, B will always accept messages off the network,
+even if it is not processing them quickly enough (`nitro_recv`).  A large
+pile of messages will consume memory and risk being lost in B's receive
+queue.  On the other hand, if B has a high-water mark, but A does not,
+nitro will eventually be unable to send messages over the network to
+B, but the messages will be enqueued in A's general send queue.  So
+A's process will balloon.
+
+**nitro_sockopt_set_hwm_detail**
+
+~~~~~{.c}
+void nitro_sockopt_set_hwm_detail(nitro_sockopt_t *opt, int hwm_in,
+                                  int hwm_out_general, int hwm_out_private);
+~~~~~
+
+Set the high-water mark for the socket, with detailed limits
+for receive, general send, and direct send queues.
+
+Use this function when sending and recieving high-water marks should
+vary for some appilcation-specific reason.
+
+See "High-Water Mark" in the Concepts for details.
+
+*Arguments*
+
+ * `nitro_socket_t *opt` - The socket options structure to modify
+ * `int hwm_in` - Count of messages that can be outstanding in the
+   receive queue before `nitro_recv` blocks/fails.
+ * `int hwm_out_general` - Count of messages that can be outstanding in the
+   general send queue before `nitro_send`, or `nitro_relay_fw` block/fail.
+ * `int hwm_out_private` - Count of messages that can be outstanding in the
+   direct send queues for a particular peer before `nitro_reply` and
+   `nitro_relay_bk` fail (direct addressing schemes refuse to block as
+   a safety mechanism) or `nitro_pub` skips delivery to the backed-up peer.
+
+*Thread Safety*
+
+Reentrant and thread safe.
+
+*Default Value*
+
+The default value is `0`, which means "no high-water mark".  Unlimited
+frames can be queued.
+
+*Usage Note*
+
+(Same as nitro_sockopt_set_hwm).
 
 **nitro_sockopt_set_want_eventfd**
 
@@ -1598,20 +1746,14 @@ soon after that.
 
 **Q: What about other platforms?**
 
-We're working on ports to iOS and Android, and while
-we have no other ports planned, porting to other POSIX
-systems like *BSD should be pretty straightforward.
+It runs on Linux, Mac OS X, FreeBSD, and iOS--and we're working on
+a port to Android.  Porting to other POSIX systems should be
+pretty straightforward.
 
 **Q: What about Windows?**
 
 Oy.  That's a bigger effort and one that's frankly not a priority for us.
 If someone out there wants to put some effort into the port, that'd be great.
-
-**Q: There are a few reference to "high water mark".  What's that about?  Is it like
-ZeroMQ's high water mark?**
-
-Yes, but the implementation is not quite done and the tests aren't written,
-so its use is not recommended yet.
 
 **Q: Does Nitro re-attempt DNS resolution (to get new A records) when a
 connect() socket reconnects?**
@@ -1735,8 +1877,8 @@ to come by.
 Contact/Credits
 ===============
 
-nitro was written by @jamwt, with help from @magicseth and @dowski.  We all
-work for @bumptech.
+nitro was written by @jamwt, with help from @magicseth, @dowski, and
+@edahlgren.  We all work for @bumptech.
 
 Come talk to us on Freenode/#gonitro
 
