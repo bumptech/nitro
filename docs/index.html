@@ -48,6 +48,9 @@ code > span.er { color: #c3bf9f; }
 <li><a href="#receiving">Receiving</a></li>
 <li><a href="#sending">Sending</a></li>
 <li><a href="#pub-and-sub">Pub and Sub</a></li>
+<li><a href="#queues">Queues</a></li>
+<li><a href="#high-water-mark">High-Water Mark</a></li>
+<li><a href="#socket-statistics">Socket Statistics</a></li>
 </ul></li>
 <li><a href="#examples">Examples</a><ul>
 <li><a href="#pipelines">Pipelines</a></li>
@@ -74,7 +77,7 @@ code > span.er { color: #c3bf9f; }
 <h1 id="introducing-nitro"><a href="#introducing-nitro">Introducing Nitro</a></h1>
 <p>Nitro is a library for writing scalable, flexible, and secure network applications. Nitro applications create bound sockets (&quot;nitro sockets&quot; here being a different and higher-level abstraction than BSD sockets) that listen at a certain location so that other Nitro sockets can connect and exchange messages.</p>
 <p>A message, wrapped in a &quot;frame&quot;, is the fundamental unit of communication between Nitro sockets. When a frame is sent, it is either received completely by another party or not at all. Application developers don't need to worry about boundary conditions, message delimiting, etc.</p>
-<p>Sockets can also be set to be &quot;secure&quot;, in which case NaCl-based public-key encryption is used. These secure sockets can be given a required public key the peer socket must present to authenticate the connection (and protect against man-in-the-middle attacks).</p>
+<p>Sockets can also be set to be &quot;secure&quot;, in which case libsodium-based public-key encryption is used. These secure sockets can be given a required public key the peer socket must present to authenticate the connection (and protect against man-in-the-middle attacks).</p>
 <p>Sockets can either be protocol &quot;tcp&quot; or &quot;inproc&quot;. TCP sockets actually push the message frames between hosts over a TCP/IP network. Inproc sockets are thin (but API-compatible) wrappers on top of thread-safe message queues to help with multithreaded in-process message passing or to provide abstraction/generalization of local vs. remote services.</p>
 <p>Some use cases for nitro:</p>
 <ul>
@@ -144,6 +147,76 @@ code > span.er { color: #c3bf9f; }
 <li>Publish a frame to a given key. All peers who are subscribing to a prefix of that key will receive the message.</li>
 <li>The return value is the number of peers who were sent the message.</li>
 </ol>
+<h2 id="queues"><a href="#queues">Queues</a></h2>
+<p>Every nitro socket manages one or more queues:</p>
+<p><strong>Receive Queue</strong></p>
+<p>Messages received by this socket, waiting for <code>nitro_recv</code> to pop them off.</p>
+<p><strong>General Send Queue (TCP only)</strong></p>
+<p>Messages that want to be sent to any connected peer, but are waiting on one becoming writable so they can be transferred over the network.</p>
+<p><em>Note: inproc sockets immediately attempt delivery directly into a peer receive queue, so there is no such concept as &quot;outbound and waiting&quot;. The consequence of this design is that messages cannot be queued while no peers are connected to an inproc socket.</em></p>
+<p><strong>Direct Send Queue (per peer, TCP only)</strong></p>
+<p>Messages that are queued up to be sent to a particular peer only, due to <code>nitro_reply</code>, <code>nitro_relay_bk</code>, or <code>nitro_pub</code> targeting a particular recipient or subscriber.</p>
+<p>On TCP sockets, each peer has its own direct send queue, so a TCP socket's total number of queues (including receive and general send) is 2 + num_peers.</p>
+<p><em>Note: inproc sockets immediately attempt delivery directly into the matching peer's receive queue (if a matching peer is connected).</em></p>
+<h2 id="high-water-mark"><a href="#high-water-mark">High-Water Mark</a></h2>
+<p>The high water mark (HWM) is a very useful construct for constraining the number of messages that can be outstanding on a Nitro socket. Fundamentally, it represents a queue's capacity.</p>
+<p>A good example of why HWM is useful is a system where a producer is trying to send messages over TCP to a downstream consumer on another machine. If the downstream machine were to crash, the producer would queue up an infinite number of messages until that machine comes back online. Then, the downstream machine would be overwhelmed by a giant flood of messages and may never be able to catch up; or if the downstream machine takes too long to come back, the producer may exhaust memory and be killed by the OOM killer, losing all messages queued in RAM.</p>
+<p>A common solution to this is to &quot;back up the pipeline&quot; by setting the high-water mark on queues to, say, 1000. Then when the downstream machine crashes, when the 1001st message is attempted to be sent, <code>nitro_send</code> will block the producer (or trigger NITRO_ERR_EAGAIN if NITRO_NOBLOCK is set).</p>
+<p>Granted, this just unearths a basic problem in queueing theory: if you block a pipeline of queues, fundamentally the backup has to pile up <em>somewhere</em>. But high-water marks let the application developer control where (or, lets them decide to discard the overflow messages altogether).</p>
+<p>Nitro allows you to manage high-water marks via <code>nitro_sockopt_set_hwm</code>. The default behavior is to have no high-water marks, allowing an infinite (technically, memory-bounded) number of messages to be queued.</p>
+<h2 id="socket-statistics"><a href="#socket-statistics">Socket Statistics</a></h2>
+<p>Nitro tracks socket various socket statistics that can be viewed on <code>stderr</code> after calling <code>nitro_enable_stats</code>. Just send SIGUSR1 to the application and you'll get a report like this in your stderr logs:</p>
+<pre><code>~~~ NITRO SOCKET REPORT ~~~
+B-0ffc37d5  inproc://bal0 (peers=5, recv_q=0, recv_tot=2108)
+B-74fae14b  inproc://bal1 (peers=5, recv_q=0, recv_tot=2108)
+B-e66fd00b  inproc://bal2 (peers=5, recv_q=0, recv_tot=2109)
+B-482a5d4b tcp://*:4440 (peers=3, secure=no, gen_q=0, recv_q=3, gen_tot=0, recv_tot=6324, direct_tot=6324)
+  -&gt; 2ac6f833 on 127.0.0.1:4569 for 2.7s (gen=0, recv=2108, direct=2108, direct_q=0, bytes_out=101176, bytes_in=101224)
+  -&gt; fc3244b4 on 127.0.0.1:4313 for 2.7s (gen=0, recv=2108, direct=2109, direct_q=0, bytes_out=101224, bytes_in=101224)
+  -&gt; 2bb73914 on 127.0.0.1:4057 for 2.7s (gen=0, recv=2108, direct=2107, direct_q=0, bytes_out=101128, bytes_in=101224)
+C-2bb73914 tcp://127.0.0.1:4440 (remote=482a5d4b, secure=no, gen_q=0, recv_q=0 gen_tot=2108, recv_tot=2106)
+C-fc3244b4 tcp://127.0.0.1:4440 (remote=482a5d4b, secure=no, gen_q=0, recv_q=0 gen_tot=2108, recv_tot=2108)
+C-2ac6f833 tcp://127.0.0.1:4440 (remote=482a5d4b, secure=no, gen_q=2, recv_q=0 gen_tot=2108, recv_tot=2107)
+C-a54e8c3b inproc://bal0 (recv_q=0, recv_tot=753)
+C-eeaabae6 inproc://bal1 (recv_q=0, recv_tot=753)
+C-38e2ec54 inproc://bal2 (recv_q=0, recv_tot=753)
+C-4eae3d85 inproc://bal0 (recv_q=0, recv_tot=566)
+C-6ec7b385 inproc://bal1 (recv_q=0, recv_tot=567)
+C-6a38529b inproc://bal2 (recv_q=0, recv_tot=566)
+C-a53b2113 inproc://bal0 (recv_q=0, recv_tot=413)
+C-e66cd5b8 inproc://bal1 (recv_q=0, recv_tot=413)
+C-fc7d4e0a inproc://bal2 (recv_q=0, recv_tot=413)
+C-3b8fda8d inproc://bal0 (recv_q=0, recv_tot=262)
+C-aebd7b67 inproc://bal1 (recv_q=0, recv_tot=262)
+C-c86edea8 inproc://bal2 (recv_q=0, recv_tot=262)
+C-24801779 inproc://bal0 (recv_q=0, recv_tot=112)
+C-fb80ab6e inproc://bal1 (recv_q=0, recv_tot=113)
+C-f573a0ff inproc://bal2 (recv_q=0, recv_tot=113)
+~~~ END NITRO SOCKET REPORT ~~~</code></pre>
+<p>Every socket line starts with either a <code>B</code>, for bound sockets, or a <code>C</code>, for connecting ones. Then, following a dash, is a truncated version of the socket's identity. Next, the socket's location appears, and finally, a list of statitics (see below).</p>
+<p>For inproc sockets, bound sockets naturally have peer connected socket in this socket report.</p>
+<p>For tcp sockets, bound sockets will have a special &quot;connection&quot; line for each connected peer, that indicates the duration of the connection, the host and port of the peer, and the socket identity (as well as peer-specific statistics).</p>
+<p><strong>General Statistics</strong></p>
+<ul>
+<li><strong>peers</strong> - Number of connected peers (bound sockets only).</li>
+<li><strong>remote</strong> - Identity of remote TCP socket (connected sockets only, may be '????????' if handshake has not completed yet, or '(none)' if socket is currently disconnected).</li>
+<li><strong>secure</strong> - Is this socket encrypted? (TCP only)</li>
+</ul>
+<p><strong>Queue Statistics</strong></p>
+<ul>
+<li><strong>recv_q</strong> - Number of messages currently in the receive queue (waiting to be popped via <code>nitro_recv</code>). If this number climbs, it may indicate a failure to processing incoming messages quickly enough.</li>
+<li><strong>gen_q</strong> - Number of messages in general delivery queue, which could be handled by any connected peer. If this number climbs, it may indicate slow peers, too few peers, or high-water marks being met on downstream peers.</li>
+<li><strong>direct_q</strong> - Number of messages in a particular peer's direct send queue. If this number climbs, it may indicate this peer is lagging in processing messages or has a network connection that is not fast enough to keep up with the message stream.</li>
+</ul>
+<p><strong>Traffic Statistics</strong></p>
+<ul>
+<li><strong>recv_tot</strong> - Total number of messages received from all peers on this socket.</li>
+<li><strong>gen_tot</strong> - Total number of messages sent to any peer on this socket, using <code>nitro_send</code> or <code>nitro_relay_fw</code>.</li>
+<li><strong>direct_tot</strong> - Total number of messages sent directly to any peer, including <code>nitro_reply</code>, <code>nitro_relay_bk</code>, and <code>nitro_pub</code>.</li>
+<li><strong>gen,recv,direct</strong> - Peer-specific counts (bound TCP sockets)</li>
+<li><strong>bytes_in</strong> - Total bandwidth received over TCP from this peer (including metadata, handshakes, encryption overhead, etc).</li>
+<li><strong>bytes_out</strong> - Total bandwidth sent over TCP to this peer (including metadata, handshakes, encryption overhead, etc).</li>
+</ul>
 <h1 id="examples"><a href="#examples">Examples</a></h1>
 <p><em>Note: these examples assume you have already used the README.md to successfully install Nitro and learn how to build Nitro programs. Please review the README.md if this is not so.</em></p>
 <h2 id="pipelines"><a href="#pipelines">Pipelines</a></h2>
@@ -234,6 +307,12 @@ $</code></pre>
 </ul>
 <p><em>Thread Safety</em></p>
 <p>Not thread safe. The runtime must be started exactly once (until <code>nitro_runtime_stop</code> is called).</p>
+<p><strong>nitro_enable_stats</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_enable_stats();</code></pre>
+<p>Registers a USR1 signal handler that will print a socket statistics report to <code>stderr</code>, as described in the Concepts.</p>
+<p>This function must be called after <code>nitro_runtime_start</code>. Applications which use this should never call <code>nitro_runtime_stop</code>, or a subsequent USR1 signal could make the application crash.</p>
+<p><em>Thread Safety</em></p>
+<p>Not thread safe. Call exactly once, ideally right after <code>nitro_runtime_start</code>.</p>
 <p><strong>nitro_runtime_stop</strong></p>
 <pre class="sourceCode c"><code class="sourceCode c"><span class="dt">int</span> nitro_runtime_stop();</code></pre>
 <p>Stops the Nitro thread, cleans up all memory, etc.</p>
@@ -300,6 +379,41 @@ $</code></pre>
 <p>Thread safe.</p>
 <p><em>Ownership Notes</em></p>
 <p>When <code>nitro_socket_t</code> objects are given to a socket constructor, the socket now owns that options object. The application does not need to destroy the options object.</p>
+<p><strong>nitro_sockopt_set_hwm</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_sockopt_set_hwm(nitro_sockopt_t *opt, <span class="dt">int</span> hwm);</code></pre>
+<p>Set the high-water mark for the socket.</p>
+<p>This sets the high-water mark for all queues associated with the socket the receive queue, and both general and direct queues (if applicable).</p>
+<p>See &quot;High-Water Mark&quot; in the Concepts for details.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *opt</code> - The socket options structure to modify</li>
+<li><code>int hwm</code> - Count of messages that can be outstanding before the <code>nitro_send</code>, <code>nitro_recv</code>, and friends block or fail.</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><em>Default Value</em></p>
+<p>The default value is <code>0</code>, which means &quot;no high-water mark&quot;. Unlimited frames can be queued.</p>
+<p><em>Usage Note</em></p>
+<p>If socket A is pushing messages to socket B, it's important to have both B and A use a high-water mark to have it be effective. If instead, only A has a high-water mark, B will always accept messages off the network, even if it is not processing them quickly enough (<code>nitro_recv</code>). A large pile of messages will consume memory and risk being lost in B's receive queue. On the other hand, if B has a high-water mark, but A does not, nitro will eventually be unable to send messages over the network to B, but the messages will be enqueued in A's general send queue. So A's process will balloon.</p>
+<p><strong>nitro_sockopt_set_hwm_detail</strong></p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_sockopt_set_hwm_detail(nitro_sockopt_t *opt, <span class="dt">int</span> hwm_in,
+                                  <span class="dt">int</span> hwm_out_general, <span class="dt">int</span> hwm_out_private);</code></pre>
+<p>Set the high-water mark for the socket, with detailed limits for receive, general send, and direct send queues.</p>
+<p>Use this function when sending and recieving high-water marks should vary for some appilcation-specific reason.</p>
+<p>See &quot;High-Water Mark&quot; in the Concepts for details.</p>
+<p><em>Arguments</em></p>
+<ul>
+<li><code>nitro_socket_t *opt</code> - The socket options structure to modify</li>
+<li><code>int hwm_in</code> - Count of messages that can be outstanding in the receive queue before <code>nitro_recv</code> blocks/fails.</li>
+<li><code>int hwm_out_general</code> - Count of messages that can be outstanding in the general send queue before <code>nitro_send</code>, or <code>nitro_relay_fw</code> block/fail.</li>
+<li><code>int hwm_out_private</code> - Count of messages that can be outstanding in the direct send queues for a particular peer before <code>nitro_reply</code> and <code>nitro_relay_bk</code> fail (direct addressing schemes refuse to block as a safety mechanism) or <code>nitro_pub</code> skips delivery to the backed-up peer.</li>
+</ul>
+<p><em>Thread Safety</em></p>
+<p>Reentrant and thread safe.</p>
+<p><em>Default Value</em></p>
+<p>The default value is <code>0</code>, which means &quot;no high-water mark&quot;. Unlimited frames can be queued.</p>
+<p><em>Usage Note</em></p>
+<p>(Same as nitro_sockopt_set_hwm).</p>
 <p><strong>nitro_sockopt_set_want_eventfd</strong></p>
 <pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_sockopt_set_want_eventfd(nitro_sockopt_t *opt, <span class="dt">int</span> want_eventfd);</code></pre>
 <p>Enable the event fd on this socket.</p>
@@ -365,7 +479,7 @@ $</code></pre>
 <pre class="sourceCode c"><code class="sourceCode c"><span class="dt">void</span> nitro_sockopt_set_secure(nitro_sockopt_t *opt,
     <span class="dt">int</span> enabled);</code></pre>
 <p>Make this TCP socket a secure socket.</p>
-<p>Frames will be encrypted using NaCl's authenticated, public-key encryption (<code>crypto_box</code>).</p>
+<p>Frames will be encrypted using libsodium's authenticated public-key encryption (<code>crypto_box</code>).</p>
 <p>How crypto works in nitro:</p>
 <ol type="1">
 <li>Every socket created in Nitro has a socket identity.</li>
@@ -396,7 +510,7 @@ $</code></pre>
 <p>Explicitly set the crypto_box public and private keys for this socket.</p>
 <p>It is imperative to use this function (as well as <code>nitro_sockopt_set_required_remote_ident</code> below) to prevent man-in-the-middle attacks, DNS spoofing, etc.</p>
 <p>The typical deployment would be that the bound socket sets a specific known keypair, and then the clients would ship the public key from this pair and require that this key be the one sent exchanged in the <code>HELLO</code>.</p>
-<p>You can create a valid keypair using <code>crypto_box_keypair</code> from NaCl. Keep your private keys safe on your production machines! Do not ship them to clients.</p>
+<p>You can create a valid keypair using <code>crypto_box_keypair</code> from libsodium. Keep your private keys safe on your production machines! Do not ship them to clients.</p>
 <p><em>Arguments</em></p>
 <ul>
 <li><code>nitro_socket_t *opt</code> - The socket options structure to modify</li>
@@ -486,7 +600,7 @@ $</code></pre>
 <p>Socket locations given to <code>bind</code> and <code>connect</code> are of this form:</p>
 <pre><code>protocol://location</code></pre>
 <p>Nitro supports two protocols, &quot;tcp&quot; and &quot;inproc&quot;.</p>
-<p>TCP locations must be given as &quot;<IPv4>:<port>&quot; specifications. Nitro does not currently do DNS resolutions, so you'll need to resolve names at a higher level before creating sockets. Nitro also does not currently support IPv6.</p>
+<p>TCP locations must be given as &quot;<host>:<port>&quot; specifications. Host can either be a hostname or an IPv4 address (Nitro does does not currently support IPv6).</p>
 <p>Inproc locations can be any arbitrary string, but by convention it should be a reasonable identifer like alphanumeric with dashes.</p>
 <p>Here are some valid locations:</p>
 <pre><code>tcp://127.0.0.1:4444
@@ -514,7 +628,7 @@ inproc://router-database</code></pre>
 <li><code>NITRO_ERR_TCP_LOC_BADIPV4</code> &quot;TCP socket location was not a valid IPv4 address (a.b.c.d)&quot;.</li>
 <li><code>NITRO_ERR_BAD_INPROC_OPT</code> &quot;inproc socket creation was given an unsupported socket option&quot;. An inproc socket was probably given an option documented with &quot;Socket Type Restrictions&quot; that require tcp-only.</li>
 <li><code>NITRO_ERR_INPROC_ALREADY_BOUND</code> &quot;another inproc socket is already bound to that location&quot;.</li>
-<li><code>NITRO_ERR_ERRNO</code> A low-level socket operation failed; check errno.</li>
+<li><code>NITRO_ERR_ERRNO</code> A low-level socket operation failed (like EMFILE); check errno.</li>
 </ul>
 <p><em>Thread Safety</em></p>
 <p>Reentrant and thread safe.</p>
@@ -536,7 +650,7 @@ inproc://router-database</code></pre>
 <li><code>NITRO_ERR_TCP_LOC_BADIPV4</code> &quot;TCP socket location was not a valid IPv4 address (a.b.c.d)&quot;.</li>
 <li><code>NITRO_ERR_BAD_INPROC_OPT</code> &quot;inproc socket creation was given an unsupported socket option&quot;. An inproc socket was probably given an option documented with &quot;Socket Type Restrictions&quot; that require tcp-only.</li>
 <li><code>NITRO_ERR_INPROC_NOT_BOUND</code> &quot;cannot connect to inproc: not bound&quot;. No inproc socket is bound at that location.</li>
-<li><code>NITRO_ERR_ERRNO</code> A low-level socket operation failed; check errno.</li>
+<li><code>NITRO_ERR_ERRNO</code> A low-level socket operation failed (like EMFILE); check errno.</li>
 </ul>
 <p><em>Connection Timing Notes</em></p>
 <p>TCP sockets connect asynchronously and continuously as needed. Inproc sockets connect synchronously, during the call to <code>nitro_socket_connect</code>.</p>
@@ -694,7 +808,7 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 <p><strong>nitro_reply</strong></p>
 <pre class="sourceCode c"><code class="sourceCode c"><span class="dt">int</span> nitro_reply(nitro_frame_t *snd, nitro_frame_t **frp,
     nitro_socket_t *s, <span class="dt">int</span> flags);</code></pre>
-<p>Send a frame <code>*frp</code> directly to the peer that sent frame <code>snd</code>.</p>
+<p>Send a frame <code>*frp</code> directly to the peer that sent frame <code>snd</code>. <code>nitro_reply</code> will never block, so the NITRO_NOBLOCK is ignored (it is considered always true).</p>
 <p>This is RPC-style behavior; see Concepts for details.</p>
 <p><em>Arguments</em></p>
 <ul>
@@ -705,14 +819,13 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 </ul>
 <p><em>Flags</em></p>
 <ul>
-<li><code>NITRO_NOBLOCK</code> - Do not block on this <code>nitro_send</code> call; return immediately</li>
 <li><code>NITRO_REUSE</code> - Copy/refcount the frame, and do not NULLify the pointer, so the application can reuse it.</li>
 </ul>
 <p><em>Return Value</em></p>
 <p>0 on success, &lt; 0 on error. <code>nitro_error</code> will be set.</p>
 <p>Possible Errors:</p>
 <ul>
-<li><code>NITRO_ERR_EAGAIN</code> - The high water mark has been hit on the outgoing frame queue, so this operation would have blocked, but <code>NITRO_NOBLOCK</code> was in <code>flags</code>.</li>
+<li><code>NITRO_ERR_EAGAIN</code> - The high water mark has been hit on the outgoing frame queue.</li>
 <li><code>NITRO_ERR_NO_RECIPIENT</code> - The recipient identified by <code>snd</code> is no longer (or never was) in the connection table.</li>
 </ul>
 <p><em>Ownership</em></p>
@@ -750,7 +863,7 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 <p><strong>nitro_relay_bk</strong></p>
 <pre class="sourceCode c"><code class="sourceCode c"><span class="dt">int</span> nitro_relay_bk(nitro_frame_t *snd, nitro_frame_t **frp,
     nitro_socket_t *s, <span class="dt">int</span> flags);</code></pre>
-<p>Pop the top address off the routing stack in <code>snd</code> and forward the frame <code>*frp</code> to that specific peer on socket <code>s</code>.</p>
+<p>Pop the top address off the routing stack in <code>snd</code> and forward the frame <code>*frp</code> to that specific peer on socket <code>s</code>. <code>nitro_relay_bk</code> will never block, so the NITRO_NOBLOCK flag is ignored (it is considered always true).</p>
 <p>This is proxy-style behavior; see Concepts for details.</p>
 <p><em>Arguments</em></p>
 <ul>
@@ -761,14 +874,13 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 </ul>
 <p><em>Flags</em></p>
 <ul>
-<li><code>NITRO_NOBLOCK</code> - Do not block on this <code>nitro_send</code> call; return immediately</li>
 <li><code>NITRO_REUSE</code> - Copy/refcount the frame, and do not NULLify the pointer, so the application can reuse it.</li>
 </ul>
 <p><em>Return Value</em></p>
 <p>0 on success, &lt; 0 on error. <code>nitro_error</code> will be set.</p>
 <p>Possible Errors:</p>
 <ul>
-<li><code>NITRO_ERR_EAGAIN</code> - The high water mark has been hit on the outgoing frame queue, so this operation would have blocked, but <code>NITRO_NOBLOCK</code> was in <code>flags</code>.</li>
+<li><code>NITRO_ERR_EAGAIN</code> - The high water mark has been hit on the outgoing frame queue.</li>
 <li><code>NITRO_ERR_NO_RECIPIENT</code> - The recipient identified by the top of the routing stack in <code>snd</code> is no longer (or never was) in this socket's connection table.</li>
 </ul>
 <p><em>Ownership</em></p>
@@ -831,13 +943,11 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 <p>Unfortunately, Nitro doesn't have many language bindings yet. If you write one, please drop us a line and we'll add it to the home page.</p>
 <p>Python, Haskell, and Objective-C/iOS bindings are being developed by members of the Nitro project; we'll probably work on Java/Android soon after that.</p>
 <p><strong>Q: What about other platforms?</strong></p>
-<p>We're working on ports to iOS and Android, and while we have no other ports planned, porting to other POSIX systems like *BSD should be pretty straightforward.</p>
+<p>It runs on Linux, Mac OS X, FreeBSD, and iOS--and we're working on a port to Android. Porting to other POSIX systems should be pretty straightforward.</p>
 <p><strong>Q: What about Windows?</strong></p>
 <p>Oy. That's a bigger effort and one that's frankly not a priority for us. If someone out there wants to put some effort into the port, that'd be great.</p>
-<p><strong>Q: There are a few reference to &quot;high water mark&quot;. What's that about? Is it like ZeroMQ's high water mark?</strong></p>
-<p>Yes, but the implementation is not quite done and the tests aren't written, so its use is not recommended yet.</p>
-<p><strong>Q: No DNS resolution is inconvenient.</strong></p>
-<p>That's not a question, but yes, yes it is. Unfortunately, standard library support for asynchronous DNS resolution is still nonexistant. We might add support for doing resolutions in the top-level functions (like bind() and connect()) on your thread, but that doesn't solve the problem of names changing for long-running services.</p>
+<p><strong>Q: Does Nitro re-attempt DNS resolution (to get new A records) when a connect() socket reconnects?</strong></p>
+<p>No, Nitro resolves names when connect() is called. It does not re-resolve names on its background thread. In large part, it avoids background resolutions because using an asynchronous resolver would introduce another dependency (and the standard libresolv stuff does not have an asynchronous interface).</p>
 <p><strong>Q: How is this different than ZeroMQ?</strong></p>
 <p>Nitro is in many ways a reaction to ZeroMQ (ZMQ), and is heavily inspired by it (especially czmq). The team at bu.mp (that wrote Nitro) uses ZeroMQ extensively, including shipping it on tens of millions of smartphones, and there's a lot to love about ZMQ.<br />So much, in fact, that the deficiencies of ZMQ we encountered motivated Nitro--because the basic communication model that ZMQ pioneered is mostly wonderful to use and develop against.</p>
 <p>However ZeroMQ was designed for relatively low-concurrency, very high throughput (especially multicast PGM) communication on private, trusted, low-latency networks... not for large scale public Internet services with high connection counts, fickle clients and wobbly links.</p>
@@ -847,7 +957,7 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 <li>Nitro does not commit messages to a particular socket at send() time, but does send() on a general queue and lets peers &quot;work steal&quot; stripes of frames as soon as they have room on their TCP buffer. This makes for a lot more transparency about the &quot;true&quot; high-water mark for a socket, it constrains the total number of messages that may be lost due to a client disconnect, and it can minimize mean latency of receipt of any general message (vs. naive round robin).</li>
 <li>Nitro clears private queues for dead peer sockets instead of leaving them around indefintely in case they return. This fixes one of the biggest issues with doing high-concurrency work in ZeroMQ: an unavoidable memory leak in ROUTER sockets when there is pending data for clients who will never return.</li>
 <li>ZeroMQ (esp 2.X) had some more or less hard coded peer limits (1024), which is far less than a good C daemon on epoll can handle; nitro has no such restrictions.</li>
-<li>ZeroMQ does not have any crypto story, so we had to roll our own awkardly using NaCl. With Nitro, we built NaCl in, including a key exchange step, so you don't need to ship keys with every frame.</li>
+<li>ZeroMQ does not have any crypto story, so we had to roll our own awkardly using NaCl. With Nitro, we built NaCl/libsodium in, including a key exchange step, so you don't need to ship keys with every frame.</li>
 <li>ZeroMQ's heritage of private networks has bit us and others with things that are assert()s instead of closes-and-logs. On the public internet, sometimes people with your socket with a random HTTP request. It is also not clear how much attention ZeroMQ has paid to invalid data in the form of attacks on inbound TCP streams, integer overflows, etc. Nitro tries to be paranoid and it shuts down bad peers instead of crashing.</li>
 <li>ZeroMQ ROUTER sockets also have some O(n) algorithms, where n is the number of connected peers on a socket; nitro is all O(1). This doesn't matter much when you have 5 or 10 or 50 big server systems pushing loads to each other on a private network, but it sucks when you have 50,000 mostly-idle clients on high-latency Internet links.</li>
 <li>In practice we found the &quot;typed socket&quot; paradigm (REQ/REP/PUSH) more of a hindrance than a help. We often ended up with hybrid schemes, like &quot;REQ/maybe REP&quot;, or &quot;REQ/multi REP&quot;. Also, if you want REQ/REP with multiple clients where you do some processing to produce the REP result, you'll need to chain together ROUTER/DEALER. REQ/REP stacks and make sure you carefully track the address frames. Nitro lets you create any topology you want, and the routing is relatively abstracted from the application developer--you don't need to worry how deep or shallow you are, for example.</li>
@@ -869,7 +979,7 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 <p><strong>Q: With the domain gonitro.io, I expected something written for (or in) golang. Does this have anything to do with go?</strong></p>
 <p>No. Go is a cool language, and we might have a go port soon if we can talk @xb95 into writing it :-), but nitro proper is written in C and has nothing directly to do with golang. Hey, good domain names are hard to come by.</p>
 <h1 id="contactcredits"><a href="#contactcredits">Contact/Credits</a></h1>
-<p>nitro was written by @jamwt, with help from @magicseth and @dowski. We all work for @bumptech.</p>
+<p>nitro was written by @jamwt, with help from @magicseth, @dowski, and @edahlgren. We all work for @bumptech.</p>
 <p>Come talk to us on Freenode/#gonitro</p>
 <p>Send our bugs and pull requests to GitHub: https://github.com/bumptech/nitro</p>
 <p>If there are typos or inaccuracies in this document, let us know that as well!</p>

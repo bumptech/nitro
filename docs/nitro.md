@@ -224,6 +224,88 @@ Nitro allows you to manage high-water marks via
 no high-water marks, allowing an infinite (technically, memory-bounded)
 number of messages to be queued.
 
+Socket Statistics
+-----------------
+
+Nitro tracks socket various socket statistics that can be viewed
+on `stderr` after calling `nitro_enable_stats`.  Just send SIGUSR1
+to the application and you'll get a report like this in your stderr
+logs:
+
+    ~~~ NITRO SOCKET REPORT ~~~
+    B-0ffc37d5  inproc://bal0 (peers=5, recv_q=0, recv_tot=2108)
+    B-74fae14b  inproc://bal1 (peers=5, recv_q=0, recv_tot=2108)
+    B-e66fd00b  inproc://bal2 (peers=5, recv_q=0, recv_tot=2109)
+    B-482a5d4b tcp://*:4440 (peers=3, secure=no, gen_q=0, recv_q=3, gen_tot=0, recv_tot=6324, direct_tot=6324)
+      -> 2ac6f833 on 127.0.0.1:4569 for 2.7s (gen=0, recv=2108, direct=2108, direct_q=0, bytes_out=101176, bytes_in=101224)
+      -> fc3244b4 on 127.0.0.1:4313 for 2.7s (gen=0, recv=2108, direct=2109, direct_q=0, bytes_out=101224, bytes_in=101224)
+      -> 2bb73914 on 127.0.0.1:4057 for 2.7s (gen=0, recv=2108, direct=2107, direct_q=0, bytes_out=101128, bytes_in=101224)
+    C-2bb73914 tcp://127.0.0.1:4440 (remote=482a5d4b, secure=no, gen_q=0, recv_q=0 gen_tot=2108, recv_tot=2106)
+    C-fc3244b4 tcp://127.0.0.1:4440 (remote=482a5d4b, secure=no, gen_q=0, recv_q=0 gen_tot=2108, recv_tot=2108)
+    C-2ac6f833 tcp://127.0.0.1:4440 (remote=482a5d4b, secure=no, gen_q=2, recv_q=0 gen_tot=2108, recv_tot=2107)
+    C-a54e8c3b inproc://bal0 (recv_q=0, recv_tot=753)
+    C-eeaabae6 inproc://bal1 (recv_q=0, recv_tot=753)
+    C-38e2ec54 inproc://bal2 (recv_q=0, recv_tot=753)
+    C-4eae3d85 inproc://bal0 (recv_q=0, recv_tot=566)
+    C-6ec7b385 inproc://bal1 (recv_q=0, recv_tot=567)
+    C-6a38529b inproc://bal2 (recv_q=0, recv_tot=566)
+    C-a53b2113 inproc://bal0 (recv_q=0, recv_tot=413)
+    C-e66cd5b8 inproc://bal1 (recv_q=0, recv_tot=413)
+    C-fc7d4e0a inproc://bal2 (recv_q=0, recv_tot=413)
+    C-3b8fda8d inproc://bal0 (recv_q=0, recv_tot=262)
+    C-aebd7b67 inproc://bal1 (recv_q=0, recv_tot=262)
+    C-c86edea8 inproc://bal2 (recv_q=0, recv_tot=262)
+    C-24801779 inproc://bal0 (recv_q=0, recv_tot=112)
+    C-fb80ab6e inproc://bal1 (recv_q=0, recv_tot=113)
+    C-f573a0ff inproc://bal2 (recv_q=0, recv_tot=113)
+    ~~~ END NITRO SOCKET REPORT ~~~
+
+Every socket line starts with either a `B`, for bound sockets,
+or a `C`, for connecting ones.  Then, following a dash, is a truncated
+version of the socket's identity.  Next, the socket's location
+appears, and finally, a list of statitics (see below).
+
+For inproc sockets, bound sockets naturally have peer
+connected socket in this socket report.
+
+For tcp sockets, bound sockets will have a special "connection"
+line for each connected peer, that indicates the duration of
+the connection, the host and port of the peer, and the socket
+identity (as well as peer-specific statistics).
+
+**General Statistics**
+
+ * **peers** - Number of connected peers (bound sockets only).
+ * **remote** - Identity of remote TCP socket (connected sockets only, may be
+   '????????' if handshake has not completed yet, or '(none)' if socket is
+   currently disconnected).
+ * **secure** - Is this socket encrypted? (TCP only)
+
+**Queue Statistics**
+
+ * **recv_q** - Number of messages currently in the receive queue (waiting to be popped
+   via `nitro_recv`).  If this number climbs, it may indicate a failure to processing incoming
+   messages quickly enough.
+ * **gen_q** - Number of messages in general delivery queue, which could be handled by
+   any connected peer.  If this number climbs, it may indicate slow peers, too few peers,
+   or high-water marks being met on downstream peers.
+ * **direct_q** - Number of messages in a particular peer's direct send queue.  If this
+   number climbs, it may indicate this peer is lagging in processing messages or has
+   a network connection that is not fast enough to keep up with the message stream.
+
+**Traffic Statistics**
+
+ * **recv_tot** - Total number of messages received from all peers on this socket.
+ * **gen_tot** - Total number of messages sent to any peer on this socket, using
+   `nitro_send` or `nitro_relay_fw`.
+ * **direct_tot** - Total number of messages sent directly to any peer, including
+   `nitro_reply`, `nitro_relay_bk`, and `nitro_pub`.
+ * **gen,recv,direct** - Peer-specific counts (bound TCP sockets)
+ * **bytes_in** - Total bandwidth received over TCP from this peer (including metadata, handshakes,
+   encryption overhead, etc).
+ * **bytes_out** - Total bandwidth sent over TCP to this peer (including metadata, handshakes,
+   encryption overhead, etc).
+
 Examples
 ========
 
@@ -386,6 +468,23 @@ Nitro functions.
 
 Not thread safe.  The runtime must be started exactly once
 (until `nitro_runtime_stop` is called).
+
+**nitro_enable_stats**
+
+~~~~~~{.c}
+void nitro_enable_stats();
+~~~~~~
+
+Registers a USR1 signal handler that will print a socket
+statistics report to `stderr`, as described in the Concepts.
+
+This function must be called after `nitro_runtime_start`.  Applications
+which use this should never call `nitro_runtime_stop`, or a subsequent
+USR1 signal could make the application crash.
+
+*Thread Safety*
+
+Not thread safe.  Call exactly once, ideally right after `nitro_runtime_start`.
 
 **nitro_runtime_stop**
 
