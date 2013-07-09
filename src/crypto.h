@@ -1,7 +1,7 @@
 /*
  * Nitro
  *
- * crypto.h - NaCL-based encryption to support Stcp sockets.
+ * crypto.h - NaCl/libsodium-based encryption to support Stcp sockets.
  *
  *  -- LICENSE --
  *

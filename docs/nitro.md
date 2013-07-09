@@ -22,7 +22,7 @@ developers don't need to worry about boundary
 conditions, message delimiting, etc.
 
 Sockets can also be set to be "secure", in which
-case NaCl-based public-key encryption is used.
+case libsodium-based public-key encryption is used.
 These secure sockets can be given a required
 public key the peer socket must present to
 authenticate the connection (and protect against
@@ -601,7 +601,7 @@ void nitro_sockopt_set_secure(nitro_sockopt_t *opt,
 
 Make this TCP socket a secure socket.
 
-Frames will be encrypted using NaCl's authenticated,
+Frames will be encrypted using libsodium's authenticated
 public-key encryption (`crypto_box`).
 
 How crypto works in nitro:
@@ -676,7 +676,7 @@ the public key from this pair and require that this key
 be the one sent exchanged in the `HELLO`.
 
 You can create a valid keypair using `crypto_box_keypair`
-from NaCl.  Keep your private keys safe on your production
+from libsodium.  Keep your private keys safe on your production
 machines!  Do not ship them to clients.
 
 *Arguments*
@@ -1660,9 +1660,9 @@ These are some of the design decisions Nitro made that differ from ZeroMQ:
    (1024), which is far less than a good C daemon on epoll can handle;
    nitro has no such restrictions.
  * ZeroMQ does not have any crypto story, so we had to roll our
-   own awkardly using NaCl.  With Nitro, we built NaCl in, including
-   a key exchange step, so you don't need to ship keys with every
-   frame.
+   own awkardly using NaCl.  With Nitro, we built NaCl/libsodium
+   in, including a key exchange step, so you don't need to ship
+   keys with every frame.
  * ZeroMQ's heritage of private networks has bit us and others with
    things that are assert()s instead of closes-and-logs.  On the
    public internet, sometimes people with your socket with a random

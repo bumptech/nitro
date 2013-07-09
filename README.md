@@ -13,8 +13,8 @@ You need:
 
  0. Linux, Mac OS X, FreeBSD... something Unix-y
  1. redo, a build tool ( https://github.com/apenwarr/redo )
- 2. libev development libraries installed ( something like `apt-get install libev-dev` )
- 3. libsodium ( https://github.com/jedisct1/libsodium )
+ 2. libev development libraries installed (something like `apt-get install libev-dev` should work)
+ 3. libsodium ( https://github.com/jedisct1/libsodium/releases ).  0.4.2+ recommended.
 
 Then:
 
