@@ -211,7 +211,7 @@ A common solution to this is to "back up the pipeline" by
 setting the high-water mark on queues to, say, 1000.  Then
 when the downstream machine crashes, when the 1001st message
 is attempted to be sent, `nitro_send` will block the producer
-(or trigger NITRO_ERR_EAGAIN if NITRO_NOBLOCK is set).
+(or trigger NITRO_ERR_EAGAIN if NITRO_NOWAIT is set).
 
 Granted, this just unearths a basic problem in queueing theory: if you
 block a pipeline of queues, fundamentally the backup has
@@ -724,7 +724,7 @@ The event fd is level triggered, meaning it will remain readable until
 the socket recieve queue is empty.
 
 The highest-performance way to consume this is to repeatedly
-call `nitro_recv` in your readable-callback with `NITRO_NOBLOCK`
+call `nitro_recv` in your readable-callback with `NITRO_NOWAIT`
 set until it returns NULL.
 
 *Arguments*
@@ -1473,7 +1473,7 @@ way to receive frames from a socket.
 
 *Flags*
 
- * `NITRO_NOBLOCK` - Do not block on this `nitro_recv`
+ * `NITRO_NOWAIT` - Do not block on this `nitro_recv`
    call; return immediately
 
 *Return Value*
@@ -1483,7 +1483,7 @@ A new frame, or NULL if error.
 Possible Errors:
 
  * `NITRO_ERR_EAGAIN` - No frames were waiting in the
-   incoming socket buffer, and `NITRO_NOBLOCK` was
+   incoming socket buffer, and `NITRO_NOWAIT` was
    passed to the `nitro_recv` call.
 
 *Ownership*
@@ -1521,7 +1521,7 @@ See Concepts for details about behavior.
 
 *Flags*
 
- * `NITRO_NOBLOCK` - Do not block on this `nitro_send`
+ * `NITRO_NOWAIT` - Do not block on this `nitro_send`
    call; return immediately
  * `NITRO_REUSE` - Copy/refcount the frame, and
    do not NULLify the pointer, so the application
@@ -1536,7 +1536,7 @@ Possible Errors:
  * `NITRO_ERR_EAGAIN` - The high water mark has
    been hit on the outgoing frame queue, so
    this operation would have blocked, but
-   `NITRO_NOBLOCK` was in `flags`.
+   `NITRO_NOWAIT` was in `flags`.
  * `NITRO_ERR_INPROC_NO_CONNECTIONS` - The
    send operation was attempted on a
    bound inproc socket without any
@@ -1562,7 +1562,7 @@ int nitro_reply(nitro_frame_t *snd, nitro_frame_t **frp,
 ~~~~~
 
 Send a frame `*frp` directly to the peer that sent frame `snd`.
-`nitro_reply` will never block, so the NITRO_NOBLOCK is
+`nitro_reply` will never block, so the NITRO_NOWAIT is
 ignored (it is considered always true).
 
 This is RPC-style behavior; see Concepts for details.
@@ -1635,7 +1635,7 @@ This is proxy-style behavior; see Concepts for details.
 
 *Flags*
 
- * `NITRO_NOBLOCK` - Do not block on this `nitro_send`
+ * `NITRO_NOWAIT` - Do not block on this `nitro_send`
    call; return immediately
  * `NITRO_REUSE` - Copy/refcount the frame, and
    do not NULLify the pointer, so the application
@@ -1650,7 +1650,7 @@ Possible Errors:
  * `NITRO_ERR_EAGAIN` - The high water mark has
    been hit on the outgoing frame queue, so
    this operation would have blocked, but
-   `NITRO_NOBLOCK` was in `flags`.
+   `NITRO_NOWAIT` was in `flags`.
  * `NITRO_ERR_INPROC_NO_CONNECTIONS` - The
    send operation was attempted on a
    bound inproc socket without any
@@ -1678,7 +1678,7 @@ int nitro_relay_bk(nitro_frame_t *snd, nitro_frame_t **frp,
 Pop the top address off the routing stack in `snd`
 and forward the frame `*frp` to that specific
 peer on socket `s`.
-`nitro_relay_bk` will never block, so the NITRO_NOBLOCK
+`nitro_relay_bk` will never block, so the NITRO_NOWAIT
 flag is ignored (it is considered always true).
 
 This is proxy-style behavior; see Concepts for details.
@@ -1820,7 +1820,7 @@ multiple threads is possible but inadvisable.
 *Special Non-Blocking Behavior*
 
 Due to the nature of publishing, there is
-no `NITRO_NOBLOCK` flag, because `nitro_pub`
+no `NITRO_NOWAIT` flag, because `nitro_pub`
 is always nonblocking.
 
 If a peer subscribed to the channel has a

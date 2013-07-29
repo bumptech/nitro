@@ -161,7 +161,7 @@ code > span.er { color: #c3bf9f; }
 <h2 id="high-water-mark"><a href="#high-water-mark">High-Water Mark</a></h2>
 <p>The high water mark (HWM) is a very useful construct for constraining the number of messages that can be outstanding on a Nitro socket. Fundamentally, it represents a queue's capacity.</p>
 <p>A good example of why HWM is useful is a system where a producer is trying to send messages over TCP to a downstream consumer on another machine. If the downstream machine were to crash, the producer would queue up an infinite number of messages until that machine comes back online. Then, the downstream machine would be overwhelmed by a giant flood of messages and may never be able to catch up; or if the downstream machine takes too long to come back, the producer may exhaust memory and be killed by the OOM killer, losing all messages queued in RAM.</p>
-<p>A common solution to this is to &quot;back up the pipeline&quot; by setting the high-water mark on queues to, say, 1000. Then when the downstream machine crashes, when the 1001st message is attempted to be sent, <code>nitro_send</code> will block the producer (or trigger NITRO_ERR_EAGAIN if NITRO_NOBLOCK is set).</p>
+<p>A common solution to this is to &quot;back up the pipeline&quot; by setting the high-water mark on queues to, say, 1000. Then when the downstream machine crashes, when the 1001st message is attempted to be sent, <code>nitro_send</code> will block the producer (or trigger NITRO_ERR_EAGAIN if NITRO_NOWAIT is set).</p>
 <p>Granted, this just unearths a basic problem in queueing theory: if you block a pipeline of queues, fundamentally the backup has to pile up <em>somewhere</em>. But high-water marks let the application developer control where (or, lets them decide to discard the overflow messages altogether).</p>
 <p>Nitro allows you to manage high-water marks via <code>nitro_sockopt_set_hwm</code>. The default behavior is to have no high-water marks, allowing an infinite (technically, memory-bounded) number of messages to be queued.</p>
 <h2 id="socket-statistics"><a href="#socket-statistics">Socket Statistics</a></h2>
@@ -419,7 +419,7 @@ $</code></pre>
 <p>Enable the event fd on this socket.</p>
 <p>The event fd is a file descriptor whose readability indicates one or more whole frames is ready to be read via <code>nitro_recv</code>. This is useful for integrating Nitro into other event loops.</p>
 <p>The event fd is level triggered, meaning it will remain readable until the socket recieve queue is empty.</p>
-<p>The highest-performance way to consume this is to repeatedly call <code>nitro_recv</code> in your readable-callback with <code>NITRO_NOBLOCK</code> set until it returns NULL.</p>
+<p>The highest-performance way to consume this is to repeatedly call <code>nitro_recv</code> in your readable-callback with <code>NITRO_NOWAIT</code> set until it returns NULL.</p>
 <p><em>Arguments</em></p>
 <ul>
 <li><code>nitro_socket_t *opt</code> - The socket options structure to modify</li>
@@ -766,13 +766,13 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 </ul>
 <p><em>Flags</em></p>
 <ul>
-<li><code>NITRO_NOBLOCK</code> - Do not block on this <code>nitro_recv</code> call; return immediately</li>
+<li><code>NITRO_NOWAIT</code> - Do not block on this <code>nitro_recv</code> call; return immediately</li>
 </ul>
 <p><em>Return Value</em></p>
 <p>A new frame, or NULL if error.</p>
 <p>Possible Errors:</p>
 <ul>
-<li><code>NITRO_ERR_EAGAIN</code> - No frames were waiting in the incoming socket buffer, and <code>NITRO_NOBLOCK</code> was passed to the <code>nitro_recv</code> call.</li>
+<li><code>NITRO_ERR_EAGAIN</code> - No frames were waiting in the incoming socket buffer, and <code>NITRO_NOWAIT</code> was passed to the <code>nitro_recv</code> call.</li>
 </ul>
 <p><em>Ownership</em></p>
 <p>You own all frames you receive. You must either call <code>nitro_frame_destroy</code>, or forward them on to another socket via a send function.</p>
@@ -791,14 +791,14 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 </ul>
 <p><em>Flags</em></p>
 <ul>
-<li><code>NITRO_NOBLOCK</code> - Do not block on this <code>nitro_send</code> call; return immediately</li>
+<li><code>NITRO_NOWAIT</code> - Do not block on this <code>nitro_send</code> call; return immediately</li>
 <li><code>NITRO_REUSE</code> - Copy/refcount the frame, and do not NULLify the pointer, so the application can reuse it.</li>
 </ul>
 <p><em>Return Value</em></p>
 <p>0 on success, &lt; 0 on error. <code>nitro_error</code> will be set.</p>
 <p>Possible Errors:</p>
 <ul>
-<li><code>NITRO_ERR_EAGAIN</code> - The high water mark has been hit on the outgoing frame queue, so this operation would have blocked, but <code>NITRO_NOBLOCK</code> was in <code>flags</code>.</li>
+<li><code>NITRO_ERR_EAGAIN</code> - The high water mark has been hit on the outgoing frame queue, so this operation would have blocked, but <code>NITRO_NOWAIT</code> was in <code>flags</code>.</li>
 <li><code>NITRO_ERR_INPROC_NO_CONNECTIONS</code> - The send operation was attempted on a bound inproc socket without any current peers.</li>
 </ul>
 <p><em>Ownership</em></p>
@@ -808,7 +808,7 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 <p><strong>nitro_reply</strong></p>
 <pre class="sourceCode c"><code class="sourceCode c"><span class="dt">int</span> nitro_reply(nitro_frame_t *snd, nitro_frame_t **frp,
     nitro_socket_t *s, <span class="dt">int</span> flags);</code></pre>
-<p>Send a frame <code>*frp</code> directly to the peer that sent frame <code>snd</code>. <code>nitro_reply</code> will never block, so the NITRO_NOBLOCK is ignored (it is considered always true).</p>
+<p>Send a frame <code>*frp</code> directly to the peer that sent frame <code>snd</code>. <code>nitro_reply</code> will never block, so the NITRO_NOWAIT is ignored (it is considered always true).</p>
 <p>This is RPC-style behavior; see Concepts for details.</p>
 <p><em>Arguments</em></p>
 <ul>
@@ -846,14 +846,14 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 </ul>
 <p><em>Flags</em></p>
 <ul>
-<li><code>NITRO_NOBLOCK</code> - Do not block on this <code>nitro_send</code> call; return immediately</li>
+<li><code>NITRO_NOWAIT</code> - Do not block on this <code>nitro_send</code> call; return immediately</li>
 <li><code>NITRO_REUSE</code> - Copy/refcount the frame, and do not NULLify the pointer, so the application can reuse it.</li>
 </ul>
 <p><em>Return Value</em></p>
 <p>0 on success, &lt; 0 on error. <code>nitro_error</code> will be set.</p>
 <p>Possible Errors:</p>
 <ul>
-<li><code>NITRO_ERR_EAGAIN</code> - The high water mark has been hit on the outgoing frame queue, so this operation would have blocked, but <code>NITRO_NOBLOCK</code> was in <code>flags</code>.</li>
+<li><code>NITRO_ERR_EAGAIN</code> - The high water mark has been hit on the outgoing frame queue, so this operation would have blocked, but <code>NITRO_NOWAIT</code> was in <code>flags</code>.</li>
 <li><code>NITRO_ERR_INPROC_NO_CONNECTIONS</code> - The send operation was attempted on a bound inproc socket without any current peers.</li>
 </ul>
 <p><em>Ownership</em></p>
@@ -863,7 +863,7 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 <p><strong>nitro_relay_bk</strong></p>
 <pre class="sourceCode c"><code class="sourceCode c"><span class="dt">int</span> nitro_relay_bk(nitro_frame_t *snd, nitro_frame_t **frp,
     nitro_socket_t *s, <span class="dt">int</span> flags);</code></pre>
-<p>Pop the top address off the routing stack in <code>snd</code> and forward the frame <code>*frp</code> to that specific peer on socket <code>s</code>. <code>nitro_relay_bk</code> will never block, so the NITRO_NOBLOCK flag is ignored (it is considered always true).</p>
+<p>Pop the top address off the routing stack in <code>snd</code> and forward the frame <code>*frp</code> to that specific peer on socket <code>s</code>. <code>nitro_relay_bk</code> will never block, so the NITRO_NOWAIT flag is ignored (it is considered always true).</p>
 <p>This is proxy-style behavior; see Concepts for details.</p>
 <p><em>Arguments</em></p>
 <ul>
@@ -936,7 +936,7 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 <p><em>Thread Safety</em></p>
 <p>Thread safe, including using the same socket in multiple threads. Using the same frame in multiple threads is possible but inadvisable.</p>
 <p><em>Special Non-Blocking Behavior</em></p>
-<p>Due to the nature of publishing, there is no <code>NITRO_NOBLOCK</code> flag, because <code>nitro_pub</code> is always nonblocking.</p>
+<p>Due to the nature of publishing, there is no <code>NITRO_NOWAIT</code> flag, because <code>nitro_pub</code> is always nonblocking.</p>
 <p>If a peer subscribed to the channel has a frame queue that is at its high water mark, the delivery will simply be skipped. Ergo, it is possible to drop subscribed messages if socket does not keep up with the message stream.</p>
 <h1 id="faq"><a href="#faq">FAQ</a></h1>
 <p><strong>Q: I don't want to write my service in C. Where's a binding for my language?</strong></p>
