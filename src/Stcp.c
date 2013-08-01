@@ -1182,7 +1182,9 @@ void Stcp_parse_socket_buffer(nitro_pipe_t *p) {
             s->opt->error_handler(nitro_error(),
                                   s->opt->error_handler_baton);
         }
-
+        if (parse_state.cbuf) {
+            nitro_counted_buffer_decref(parse_state.cbuf);
+        }
         Stcp_destroy_pipe(p);
         return;
     }
