@@ -70,7 +70,6 @@ int nitro_runtime_start() {
     ZALLOC(the_runtime);
     signal(SIGPIPE, handle_pipe); /* ignore sigpipe */
     the_runtime->the_loop = ev_loop_new(0); // AUTO backend
-    pthread_mutex_init(&the_runtime->l_tcp_connect, NULL);
     pthread_mutex_init(&the_runtime->l_inproc, NULL);
     pthread_mutex_init(&the_runtime->l_async, NULL);
     pthread_mutex_init(&the_runtime->l_socks, NULL);

@@ -42,10 +42,6 @@ typedef struct nitro_runtime {
     struct ev_loop *the_loop;
     pthread_t the_thread;
 
-    /* TCP specific things */
-    nitro_socket_t *want_tcp_connect;
-    pthread_mutex_t l_tcp_connect;
-
     nitro_async_t *async_queue;
     pthread_mutex_t l_async;
 
