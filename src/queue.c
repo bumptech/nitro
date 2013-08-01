@@ -275,12 +275,12 @@ int nitro_queue_fd_write(nitro_queue_t *q, int fd,
         } while (actual_bytes && !done);
 
         if (done) {
-            nitro_frame_destroy(fr);
             ++fwritten;
         } else {
             assert(!actual_bytes);
             *remain = nitro_frame_copy_partial(fr, scratch);
         }
+        nitro_frame_destroy(fr);
 
         q->head++;
 
