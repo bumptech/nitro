@@ -48,7 +48,9 @@
 #include "common.h"
 #include "frame.h"
 
+#define QUEUE_GROWTH_FACTOR 3
 #define INITIAL_QUEUE_SZ 1024
+#define SHRINK_QUEUE_SZ (INITIAL_QUEUE_SZ << (QUEUE_GROWTH_FACTOR * 3))
 
 typedef enum {
     NITRO_QUEUE_STATE_EMPTY,

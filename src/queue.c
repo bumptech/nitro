@@ -42,8 +42,6 @@
 
 extern inline int nitro_queue_count(nitro_queue_t *q);
 
-#define QUEUE_GROWTH_FACTOR 3
-
 #define NITRO_MAX_IOV IOV_MAX
 #define QUEUE_FD_BUFFER_GUESS (32 * 1024)
 #define QUEUE_FD_BUFFER_PADDING (2 * 1024)
@@ -480,6 +478,15 @@ void nitro_queue_destroy(nitro_queue_t *q) {
     free(q);
 }
 
+static void nitro_queue_shrink(nitro_queue_t *q) {
+    /* We release memory here if we've shrunk substantially */
+    if (q->size >= SHRINK_QUEUE_SZ) {
+        q->size = 0;
+        q->head = q->tail = q->end = q->q;
+        nitro_queue_grow(q, 0);
+    }
+}
+
 static void nitro_queue_issue_callbacks(nitro_queue_t *q,
                                         int old_count) {
     if (!q->state_callback) {
@@ -500,6 +507,7 @@ static void nitro_queue_issue_callbacks(nitro_queue_t *q,
 
     /* 2. FULL|CONTENTS to EMPTY */
     else if (old_count > 0 && !q->count) {
+        nitro_queue_shrink(q);
         q->state_callback(NITRO_QUEUE_STATE_EMPTY, old_state, q->baton);
     }
 
