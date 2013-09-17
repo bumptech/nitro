@@ -74,7 +74,7 @@ void Stcp_socket_connect_timer_cb(
     int revents);
 void Stcp_socket_check_sub(
     struct ev_loop *loop,
-    ev_timer *connect_timer,
+    ev_timer *sub_timer,
     int revents);
 void Stcp_socket_close_cb(
     struct ev_loop *loop,
@@ -508,9 +508,9 @@ void Stcp_scan_subs(nitro_tcp_socket_t *s) {
  */
 void Stcp_socket_check_sub(
     struct ev_loop *loop,
-    ev_timer *connect_timer,
+    ev_timer *sub_timer,
     int revents) {
-    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)connect_timer->data;
+    nitro_tcp_socket_t *s = (nitro_tcp_socket_t *)sub_timer->data;
 
     pthread_mutex_lock(&s->l_pipes);
     Stcp_scan_subs(s);
