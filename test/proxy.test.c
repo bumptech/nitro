@@ -34,7 +34,7 @@ void *recipient(void *p) {
 }
 
 void *proxy(void *ptr) {
-    nitro_socket_t *outs[2];
+    nitro_socket_t *outs[2] = {0, 0};
     nitro_socket_t *inp = NULL;
 
     nitro_sockopt_t *opt = nitro_sockopt_new();
