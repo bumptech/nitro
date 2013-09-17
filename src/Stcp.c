@@ -564,6 +564,9 @@ void Stcp_connect_cb(
         /* let's restart the timer */
         ev_io_stop(the_runtime->the_loop, &s->connect_io);
         close(s->connect_fd);
+        ev_timer_set(
+            &s->connect_timer,
+            s->opt->reconnect_interval, 0);
         ev_timer_start(the_runtime->the_loop, &s->connect_timer);
     }
 }
@@ -604,6 +607,9 @@ void Stcp_socket_start_connect(nitro_tcp_socket_t *s) {
         ev_io_start(the_runtime->the_loop, &s->connect_io);
     } else {
         close(s->connect_fd);
+        ev_timer_set(
+            &s->connect_timer,
+            s->opt->reconnect_interval, 0);
         ev_timer_start(the_runtime->the_loop, &s->connect_timer);
     }
 }
