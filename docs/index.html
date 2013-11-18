@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="generator" content="pandoc">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <meta name="author" content="Jamie Turner">
   <title>The Nitro Codex</title>
   <style type="text/css">code{white-space: pre;}</style>
@@ -73,7 +74,7 @@ code > span.er { color: #c3bf9f; }
 <li><a href="#contactcredits">Contact/Credits</a></li>
 </ul>
 </nav>
-<p><em>Current for: nitro-0.2.1</em></p>
+<p><em>Current for: nitro-0.2.2</em></p>
 <h1 id="introducing-nitro"><a href="#introducing-nitro">Introducing Nitro</a></h1>
 <p>Nitro is a library for writing scalable, flexible, and secure network applications. Nitro applications create bound sockets (&quot;nitro sockets&quot; here being a different and higher-level abstraction than BSD sockets) that listen at a certain location so that other Nitro sockets can connect and exchange messages.</p>
 <p>A message, wrapped in a &quot;frame&quot;, is the fundamental unit of communication between Nitro sockets. When a frame is sent, it is either received completely by another party or not at all. Application developers don't need to worry about boundary conditions, message delimiting, etc.</p>
@@ -962,7 +963,7 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 <li>ZeroMQ ROUTER sockets also have some O(n) algorithms, where n is the number of connected peers on a socket; nitro is all O(1). This doesn't matter much when you have 5 or 10 or 50 big server systems pushing loads to each other on a private network, but it sucks when you have 50,000 mostly-idle clients on high-latency Internet links.</li>
 <li>In practice we found the &quot;typed socket&quot; paradigm (REQ/REP/PUSH) more of a hindrance than a help. We often ended up with hybrid schemes, like &quot;REQ/maybe REP&quot;, or &quot;REQ/multi REP&quot;. Also, if you want REQ/REP with multiple clients where you do some processing to produce the REP result, you'll need to chain together ROUTER/DEALER. REQ/REP stacks and make sure you carefully track the address frames. Nitro lets you create any topology you want, and the routing is relatively abstracted from the application developer--you don't need to worry how deep or shallow you are, for example.</li>
 <li>We found having the ZMQ's routing information in special MORE frames that have implict rules that differ on the basis of socket types (DEALER will generate it, REQ will not) cumbersome.</li>
-<li>ZMQ Socket options have documented rules about when they take effect and when not, but these rules are not enforced by the API so they can bite you. Nitro separates things that must be decided at construction time from those you can modify on the fly (_sub and _unsub, etc).</li>
+<li>ZMQ Socket options have documented rules about when they take effect and when not, but these rules are not enforced by the API so they can bite you. Nitro separates things that must be decided at construction time from those you can modify on the fly (<em>sub and </em>unsub, etc).</li>
 <li>Pub/sub based on message body was limiting for us in practice. Oftentimes we wanted a separation of the &quot;channel name&quot; and the message body.</li>
 <li>ZMQ sockets are not thread safe. So the way to make a multicore exploiting RPC service is to chain tcp/ROUTER frontends to an array of inproc backends, each running in a separate pthread. This is a layer of complexity nitro removes by just having sockets be thread afe.</li>
 <li>ZMQ_FD is edge triggered. It's much harder to integrate an edge-triggered interface into other event loops. Though it has a theoretical performance benefit, Nitro uses a level-triggered activity fd to make integration easier for 3rd party binding developers.</li>
@@ -977,9 +978,9 @@ nitro_frame_t *nitro_frame_new(<span class="dt">void</span> *data, <span class="
 <li>ZeroMQ is ported to work on Windows and lots of other places. Nitro has not yet been ported to anything but Linux and Mac OS X.</li>
 </ul>
 <p><strong>Q: With the domain gonitro.io, I expected something written for (or in) golang. Does this have anything to do with go?</strong></p>
-<p>No. Go is a cool language, and we might have a go port soon if we can talk @xb95 into writing it :-), but nitro proper is written in C and has nothing directly to do with golang. Hey, good domain names are hard to come by.</p>
+<p>No. Go is a cool language, and we might have a go port soon if we can talk <span class="citation" data-cites="xb95">@xb95</span> into writing it :-), but nitro proper is written in C and has nothing directly to do with golang. Hey, good domain names are hard to come by.</p>
 <h1 id="contactcredits"><a href="#contactcredits">Contact/Credits</a></h1>
-<p>nitro was written by @jamwt, with help from @magicseth, @dowski, and @edahlgren. We all work for @bumptech.</p>
+<p>nitro was written by <span class="citation" data-cites="jamwt">@jamwt</span>, with help from <span class="citation" data-cites="magicseth">@magicseth</span>, <span class="citation" data-cites="dowski">@dowski</span>, and <span class="citation" data-cites="edahlgren">@edahlgren</span>. We all work for <span class="citation" data-cites="bumptech">@bumptech</span>.</p>
 <p>Come talk to us on Freenode/#gonitro</p>
 <p>Send our bugs and pull requests to GitHub: https://github.com/bumptech/nitro</p>
 <p>If there are typos or inaccuracies in this document, let us know that as well!</p>

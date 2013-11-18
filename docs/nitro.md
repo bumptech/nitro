@@ -2,7 +2,7 @@
 %Jamie Turner
 %August 1st, 2013
 
-*Current for: nitro-0.2.1*
+*Current for: nitro-0.2.2*
 
 Introducing Nitro
 =================
