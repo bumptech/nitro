@@ -1259,7 +1259,7 @@ void Stcp_bind_callback(
                     &addr, &len);
 
     if (fd < 0) {
-        switch (fd) {
+        switch (errno) {
         case EAGAIN:
 #if (EAGAIN != EWOULDBLOCK)
         case EWOULDBLOCK:
